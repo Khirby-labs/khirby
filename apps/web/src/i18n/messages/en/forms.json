@@ -1,0 +1,190 @@
+{
+  "analytics": {
+    "byForm": {
+      "columns": {
+        "form": "Form",
+        "submissions": "Submissions"
+      },
+      "empty": {
+        "message": "Widen the date range or clear the form filter to see activity.",
+        "title": "No submissions in this range"
+      },
+      "title": "By form"
+    },
+    "daily": {
+      "barTitle": "{date}: {count} submission | {date}: {count} submissions",
+      "title": "Daily submissions"
+    },
+    "filters": {
+      "allForms": "All forms",
+      "form": "Form",
+      "range": "Date range"
+    },
+    "stats": {
+      "activeForms": "Active forms",
+      "total": "Total submissions"
+    },
+    "title": "Forms analytics"
+  },
+  "detail": {
+    "discard": {
+      "confirm": "Discard changes",
+      "message": "This form has unsaved changes. Leaving now discards them.",
+      "title": "Discard changes?"
+    },
+    "endpointToken": "Endpoint token:",
+    "general": {
+      "active": "Active",
+      "kind": "Kind",
+      "name": "Name",
+      "slug": "Slug",
+      "slugHint": "Lowercase letters, numbers and hyphens",
+      "title": "General"
+    },
+    "replaceFields": {
+      "confirm": "Replace fields",
+      "message": "Applying a template replaces every field currently on this form.",
+      "title": "Replace all fields?"
+    },
+    "save": "Save changes",
+    "schema": {
+      "addField": "Add field",
+      "apply": "Apply",
+      "applyTemplate": "Apply template",
+      "applyTemplatePlaceholder": "Apply template…",
+      "emailHint": "Submissions are matched to contacts by email, so a form with fields must include a required {code} field.",
+      "empty": {
+        "message": "Add a field or apply a template to start building the form.",
+        "title": "No fields yet"
+      },
+      "fieldName": "Field name",
+      "fieldNamePlaceholder": "e.g. first_name",
+      "label": "Label",
+      "labelEn": "Label (EN)",
+      "labelEnPlaceholder": "e.g. Full name",
+      "labelPl": "Label (PL)",
+      "labelPlPlaceholder": "e.g. Imię i nazwisko",
+      "labelPlaceholder": "e.g. First name",
+      "moveDownAria": "Move field {position} down",
+      "moveUpAria": "Move field {position} up",
+      "options": "Options (comma-separated)",
+      "optionsPlaceholder": "e.g. Small, Medium, Large",
+      "remove": "Remove",
+      "removeAria": "Remove field {position}",
+      "required": "Required",
+      "title": "Schema fields",
+      "type": "Type"
+    },
+    "submissions": {
+      "columns": {
+        "contact": "Contact",
+        "date": "Date",
+        "referer": "Referer"
+      },
+      "empty": {
+        "message": "Submissions collected from your site will appear here.",
+        "title": "No submissions yet"
+      },
+      "title": "{count} submission | {count} submissions",
+      "viewContact": "View contact"
+    },
+    "unsavedChanges": "Unsaved changes",
+    "validation": {
+      "duplicateFieldName": "Duplicate field name “{name}” — field names must be unique.",
+      "emailFieldRequired": "Add a required “{field}” field — submissions are matched to contacts by email.",
+      "fieldNameRequired": "Every field needs a name.",
+      "nameRequired": "Name is required.",
+      "selectNeedsOptions": "Dropdown field “{name}” needs at least one option.",
+      "slugFormat": "Slug must contain only lowercase letters, numbers and hyphens.",
+      "unnamedField": "unnamed"
+    }
+  },
+  "errors": {
+    "create": "Couldn't create the form",
+    "delete": "Couldn't delete the form",
+    "load": "Couldn't load the form",
+    "loadList": "Couldn't load forms",
+    "loadStats": "Couldn't load analytics",
+    "save": "Couldn't save the form"
+  },
+  "fieldType": {
+    "checkbox": "Checkbox",
+    "email": "Email",
+    "number": "Number",
+    "select": "Dropdown",
+    "tel": "Phone",
+    "text": "Text",
+    "textarea": "Long text",
+    "url": "URL"
+  },
+  "integration": {
+    "copy": "Copy",
+    "copyEndpoint": "Copy endpoint URL",
+    "errors": {
+      "copy": "Couldn't copy. Copy the text manually."
+    },
+    "submitUrl": "Submit URL:",
+    "tabsAria": "Integration examples",
+    "title": "Integration",
+    "toast": {
+      "copied": "Copied",
+      "endpointCopied": "Endpoint URL copied"
+    }
+  },
+  "kind": {
+    "contact": "Contact",
+    "feedback": "Feedback",
+    "waitlist": "Waitlist",
+    "wishlist": "Wishlist"
+  },
+  "list": {
+    "analytics": "Analytics",
+    "columns": {
+      "kind": "Kind",
+      "name": "Name",
+      "slug": "Slug",
+      "status": "Status",
+      "submissions": "Submissions"
+    },
+    "create": {
+      "active": "Active",
+      "name": "Name",
+      "slug": "Slug",
+      "slugHint": "Only lowercase letters, numbers and hyphens",
+      "slugPlaceholder": "my-form-slug",
+      "template": "Template",
+      "title": "Create form"
+    },
+    "delete": {
+      "confirm": "Delete form",
+      "message": "Delete “{name}”? This can't be undone. Submissions already collected are kept.",
+      "title": "Delete form?"
+    },
+    "empty": {
+      "action": "Create form",
+      "message": "Create a form to start collecting submissions from your site.",
+      "title": "No forms yet"
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "title": "Forms"
+  },
+  "preview": {
+    "caption": "Live preview — what visitors see",
+    "empty": "Add a field to see the preview.",
+    "localeAria": "Preview language",
+    "localeEn": "EN",
+    "localePl": "PL",
+    "optionPlaceholder": "Option",
+    "submit": "Submit",
+    "untitledField": "Untitled field",
+    "untitledForm": "Untitled form"
+  },
+  "toast": {
+    "created": "Form created",
+    "deleted": "Form deleted",
+    "saved": "Form saved"
+  }
+}

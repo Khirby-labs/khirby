@@ -1,0 +1,27 @@
+{
+  "workspace": {
+    "contacts": "Contacts",
+    "pipeline": "Pipeline",
+    "boards": "Boards",
+    "forms": "Forms",
+    "mail": "Mail"
+  },
+  "settings": {
+    "general": "General",
+    "members": "Members",
+    "roles": "Roles",
+    "integrations": "Plugins",
+    "mail": "Mail"
+  },
+  "quickCreate": {
+    "contact": "New contact",
+    "lead": "New lead",
+    "form": "New form"
+  },
+  "commandGroup": {
+    "navigate": "Navigate",
+    "plugins": "Plugins",
+    "create": "Create",
+    "contacts": "Contacts"
+  }
+}

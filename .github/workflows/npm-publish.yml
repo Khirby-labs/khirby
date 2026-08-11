@@ -1,0 +1,105 @@
+name: Publish npm packages
+
+# Publishes from this monorepo:
+#   @khirby/plugin-sdk, @khirby/plugin-host
+#   @khirby/forms-client, @khirby/forms-ui, @khirby/payload-forms
+# First-party and community plugins publish from https://github.com/Khirby-labs/plugins
+#
+# Tag formats (push to origin):
+#   khirby-plugins@1.0.0   — plugin-sdk + plugin-host
+#   plugin-sdk@1.0.1       — sdk only
+#   plugin-host@1.0.1      — host only
+#   khirby-forms@0.1.0     — forms-client + forms-ui + payload-forms
+#   forms-client@0.1.1     — forms-client only
+#   forms-ui@0.1.0         — forms-ui only
+#   payload-forms@0.1.0    — payload-forms only
+#
+# Required secret: NPM_TOKEN
+
+on:
+  push:
+    tags:
+      - 'khirby-plugins@*'
+      - 'plugin-sdk@*'
+      - 'plugin-host@*'
+      - 'khirby-forms@*'
+      - 'forms-client@*'
+      - 'forms-ui@*'
+      - 'payload-forms@*'
+
+jobs:
+  publish:
+    name: Publish @khirby/* to npm
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build plugin-sdk
+        if: startsWith(github.ref_name, 'khirby-plugins@') || startsWith(github.ref_name, 'plugin-sdk@') || startsWith(github.ref_name, 'plugin-host@')
+        run: pnpm --filter @khirby/plugin-sdk build
+
+      - name: Build plugin-host
+        if: startsWith(github.ref_name, 'khirby-plugins@') || startsWith(github.ref_name, 'plugin-host@')
+        run: pnpm --filter @khirby/plugin-host build
+
+      - name: Build forms-client
+        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'forms-client@') || startsWith(github.ref_name, 'forms-ui@') || startsWith(github.ref_name, 'payload-forms@')
+        run: pnpm --filter @khirby/forms-client build
+
+      - name: Build forms-ui
+        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'forms-ui@') || startsWith(github.ref_name, 'payload-forms@')
+        run: pnpm --filter @khirby/forms-ui build
+
+      - name: Build payload-forms
+        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'payload-forms@')
+        run: pnpm --filter @khirby/payload-forms build
+
+      - name: Publish plugin-sdk
+        if: startsWith(github.ref_name, 'khirby-plugins@') || startsWith(github.ref_name, 'plugin-sdk@')
+        run: pnpm --filter @khirby/plugin-sdk publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish plugin-host
+        if: startsWith(github.ref_name, 'khirby-plugins@') || startsWith(github.ref_name, 'plugin-host@')
+        run: pnpm --filter @khirby/plugin-host publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish forms-client
+        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'forms-client@')
+        run: pnpm --filter @khirby/forms-client publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish forms-ui
+        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'forms-ui@')
+        run: pnpm --filter @khirby/forms-ui publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish payload-forms
+        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'payload-forms@')
+        run: pnpm --filter @khirby/payload-forms publish --access public --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

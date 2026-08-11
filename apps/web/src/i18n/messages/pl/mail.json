@@ -1,0 +1,146 @@
+{
+  "settings": {
+    "title": "Poczta",
+    "subtitle": "Podłącz firmową skrzynkę pocztową przez IMAP, SMTP lub Google.",
+    "enabledLabel": "Włącz skrzynkę",
+    "enabledHint": "Aktywuje synchronizację IMAP i umożliwia wysyłanie przez SMTP.",
+    "lastSync": "Ostatnia synchronizacja",
+    "testConnection": "Testuj połączenie",
+    "testing": "Testowanie…",
+    "testOk": "Połączenie udane",
+    "testFailed": "Połączenie nieudane",
+    "passwordHint": "Zostaw puste, aby zachować aktualne hasło.",
+    "backfillDays": "Wstępne uzupełnienie historii (dni)",
+    "noSecretsKey": "Klucz MAIL_SECRETS_KEY nie jest skonfigurowany na serwerze. Hasła nie mogą być przechowywane i skrzynka nie może zostać włączona. Ustaw 32-bajtowy klucz hex w środowisku i uruchom API ponownie.",
+    "status": {
+      "disconnected": "Rozłączona",
+      "connected": "Połączona",
+      "reconnecting": "Łączenie ponowne…",
+      "error": "Błąd połączenia"
+    },
+    "identity": {
+      "title": "Tożsamość",
+      "fromName": "Nazwa nadawcy",
+      "fromAddress": "Adres nadawcy",
+      "name": "Etykieta skrzynki"
+    },
+    "imap": {
+      "title": "IMAP (poczta przychodząca)",
+      "host": "Serwer",
+      "hostPlaceholder": "imap.example.com",
+      "port": "Port",
+      "user": "Użytkownik",
+      "password": "Hasło",
+      "secure": "Użyj TLS / SSL (port 993)",
+      "secureHint": "Włącz dla portu 993. Wyłącz dla 143 (STARTTLS)."
+    },
+    "smtp": {
+      "title": "SMTP (poczta wychodząca)",
+      "host": "Serwer",
+      "hostPlaceholder": "smtp.example.com",
+      "port": "Port",
+      "user": "Użytkownik",
+      "password": "Hasło",
+      "secure": "Użyj TLS / SSL (port 465)",
+      "secureHint": "Włącz dla portu 465. Wyłącz dla 587 (STARTTLS)."
+    },
+    "google": {
+      "title": "Google",
+      "hint": "Wysyłaj i odbieraj e-maile korzystając z konta Google z bezpiecznym OAuth.",
+      "connect": "Podłącz konto Google",
+      "disconnect": "Odłącz konto Google",
+      "connectedAs": "Podłączone jako {email}",
+      "connectedFlash": "Konto Google podłączone.",
+      "errorFlash": "Nie udało się podłączyć konta Google.",
+      "hostsManaged": "Hosty Gmaila są zarządzane automatycznie."
+    },
+    "errors": {
+      "required": "To pole jest wymagane."
+    }
+  },
+  "inbox": {
+    "title": "Skrzynka odbiorcza",
+    "empty": "Brak wątków",
+    "emptyHint": "Odebrane i wysłane wiadomości pojawią się tutaj po skonfigurowaniu skrzynki.",
+    "refresh": "Odśwież",
+    "settings": "Ustawienia skrzynki",
+    "selectThread": "Wybierz rozmowę, aby przeczytać ją tutaj."
+  },
+  "panel": {
+    "empty": "Brak korespondencji",
+    "emptyHint": "Wiadomości wymienione z tym kontaktem będą widoczne tutaj.",
+    "compose": "Nowa wiadomość",
+    "cancelCompose": "Anuluj",
+    "backToList": "Powrót do listy",
+    "correspondenceTitle": "Korespondencja"
+  },
+  "thread": {
+    "noSubject": "(brak tematu)",
+    "unknownContact": "Nieznany nadawca",
+    "messageCount": "{n} wiadomość | {n} wiadomości | {n} wiadomości",
+    "delete": {
+      "action": "Usuń",
+      "title": "Usunąć rozmowę?",
+      "message": "Usunąć „{subject}”? Rozmowa zostanie trwale usunięta ze skrzynki CRM. Tej operacji nie można cofnąć.",
+      "confirm": "Usuń wątek",
+      "deleting": "Usuwanie…"
+    }
+  },
+  "direction": {
+    "inbound": "Odebrana",
+    "outbound": "Wysłana"
+  },
+  "message": {
+    "to": "Do",
+    "failed": "Błąd wysyłki",
+    "pending": "Oczekuje",
+    "retry": "Ponów",
+    "retrying": "Ponawiam…",
+    "attachmentsNote": "Załączniki nie są wyświetlane w wersji 1."
+  },
+  "compose": {
+    "subject": "Temat",
+    "body": "Treść",
+    "send": "Wyślij",
+    "sending": "Wysyłanie…"
+  },
+  "reply": {
+    "title": "Odpowiedź",
+    "placeholder": "Napisz odpowiedź…",
+    "send": "Wyślij odpowiedź",
+    "sending": "Wysyłanie…"
+  },
+  "toast": {
+    "mailboxSaved": "Ustawienia skrzynki zostały zapisane.",
+    "sent": "Wiadomość wysłana.",
+    "googleDisconnected": "Konto Google odłączone.",
+    "deleted": "Rozmowa usunięta.",
+    "captured": "Kontakt utworzony, wątek powiązany"
+  },
+  "errors": {
+    "loadMailbox": "Nie udało się załadować ustawień skrzynki.",
+    "saveMailbox": "Nie udało się zapisać ustawień skrzynki.",
+    "testFailed": "Test połączenia nie powiódł się.",
+    "loadThreads": "Nie udało się załadować wiadomości.",
+    "loadThread": "Nie udało się załadować wątku.",
+    "send": "Nie udało się wysłać wiadomości.",
+    "googleOAuth": "Uwierzytelnienie Google nie powiodło się. Spróbuj ponownie.",
+    "googleDisconnect": "Nie udało się odłączyć konta Google.",
+    "delete": "Nie udało się usunąć rozmowy.",
+    "capture": "Nie udało się dodać nadawcy jako kontaktu. Spróbuj ponownie"
+  },
+  "aiSuggest": {
+    "generate": "Generuj szkic",
+    "generating": "Generowanie…",
+    "instructionPlaceholder": "Opcjonalna instrukcja…",
+    "error": "Nie udało się wygenerować szkicu"
+  },
+  "capture": {
+    "banner": "Nieznany nadawca — brak w CRM. Dodaj kontakt, aby powiązać rozmowę.",
+    "cta": "Dodaj kontakt i lead",
+    "title": "Kontakt z wiadomości",
+    "hint": "Imię i nazwisko można skopiować z fragmentu wiadomości poniżej.",
+    "messageHint": "Fragment wiadomości",
+    "submit": "Utwórz kontakt"
+  }
+}

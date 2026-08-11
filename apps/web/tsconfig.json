@@ -1,0 +1,25 @@
+{
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    // @vue/tsconfig stops at ES2020 on purpose and leaves newer built-ins to the
+    // consumer. We need ES2021.Intl for Intl.ListFormat, which joins values (role
+    // names) with the punctuation of the active locale instead of a ', ' literal.
+    // Baseline-supported in every browser this SPA targets.
+    "lib": ["ES2020", "ES2021.Intl", "DOM", "DOM.Iterable"],
+    // Locale messages are JSON so translation tooling can read them directly.
+    "resolveJsonModule": true,
+    "paths": {
+      "@/*": ["src/*"],
+      "@khirby/types": ["../../packages/types/src"],
+      "@khirby/plugin-sdk": ["../../packages/plugin-sdk/src"],
+      "@khirby/web-api": ["src/api/client"],
+      "@khirby/web-ui/AppTable": ["src/components/AppTable.vue"],
+      "@khirby/web-ui/AppModal": ["src/components/AppModal.vue"],
+      "@khirby/web-ui/AppSelect": ["src/components/ui/AppSelect.vue"],
+      "@khirby/web-ui/AppDatePicker": ["src/components/ui/AppDatePicker.vue"],
+      "@khirby/web-ui/useConfirm": ["src/composables/useConfirm.ts"]
+    }
+  },
+  "include": ["src/**/*"]
+}

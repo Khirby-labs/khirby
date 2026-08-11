@@ -1,0 +1,29 @@
+node_modules/
+.pnpm-store/
+dist/
+**/dist/
+.env
+.env.local
+docker/crm.env
+*.local
+.DS_Store
+/plugins/
+.tmp-plugins-repo/
+# compiled outputs from packages (built inline by api tsconfig)
+packages/**/*.js
+packages/**/*.js.map
+packages/**/*.d.ts
+apps/api/drizzle.config.js
+apps/api/drizzle.config.js.map
+apps/api/drizzle.config.d.ts
+apps/api/tsconfig.tsbuildinfo
+# agentic state markers (local, written by .claude/scripts)
+.claude/.verify-ok.json
+.claude/.ledger-state.json
+.claude/worktrees/
+.omc/
+.playwright-mcp/
+# test artifacts
+**/coverage/
+**/test-results/
+**/playwright-report/

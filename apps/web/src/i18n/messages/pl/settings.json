@@ -1,0 +1,40 @@
+{
+  "title": "Ustawienia",
+  "navLabel": "Sekcje ustawień",
+  "account": {
+    "title": "Konto"
+  },
+  "appearance": {
+    "title": "Wygląd",
+    "themeLabel": "Motyw",
+    "theme": {
+      "system": "Systemowy",
+      "light": "Jasny",
+      "dark": "Ciemny"
+    },
+    "systemHintDark": "Motyw zgodny z ustawieniami systemu — aktualnie ciemny.",
+    "systemHintLight": "Motyw zgodny z ustawieniami systemu — aktualnie jasny.",
+    "fixedHintDark": "Ciemny motyw na tym urządzeniu, niezależnie od ustawienia systemu.",
+    "fixedHintLight": "Jasny motyw na tym urządzeniu, niezależnie od ustawienia systemu."
+  },
+  "language": {
+    "title": "Język",
+    "groupLabel": "Język interfejsu",
+    "hint": "Zapisywane na koncie i stosowane na każdym urządzeniu. Wprowadzone dane nie są tłumaczone."
+  },
+  "password": {
+    "title": "Zmiana hasła",
+    "current": "Bieżące hasło",
+    "new": "Nowe hasło",
+    "confirm": "Potwierdzenie hasła",
+    "hint": "Co najmniej 8 znaków.",
+    "submit": "Zmień hasło",
+    "success": "Hasło zmienione",
+    "errors": {
+      "currentRequired": "Podaj bieżące hasło.",
+      "tooShort": "Użyj co najmniej 8 znaków.",
+      "mismatch": "Hasła się nie zgadzają.",
+      "failed": "Nie udało się zmienić hasła"
+    }
+  }
+}

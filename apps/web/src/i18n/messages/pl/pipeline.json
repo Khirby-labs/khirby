@@ -1,0 +1,116 @@
+{
+  "addLead": {
+    "email": "E-mail",
+    "errors": {
+      "create": "Nie udało się utworzyć leada"
+    },
+    "name": "Nazwa",
+    "owner": "Opiekun",
+    "priority": "Priorytet",
+    "stage": "Etap",
+    "submit": "Dodaj leada",
+    "title": "Nowy lead",
+    "value": "Kwota"
+  },
+  "board": {
+    "addManually": "Dodaj leada ręcznie",
+    "allOwners": "Wszyscy opiekunowie",
+    "empty": {
+      "dropHere": "Przeciągnij tu leady",
+      "noLeads": "Brak leadów",
+      "noLeadsYet": "Brak leadów"
+    },
+    "newMail": "Nowa wiadomość",
+    "ownerFilterAria": "Filtruj po opiekunie",
+    "stagesLink": "Etapy",
+    "title": "Pipeline"
+  },
+  "errors": {
+    "addComment": "Nie udało się dodać komentarza",
+    "createLead": "Nie udało się utworzyć leada",
+    "createStage": "Nie udało się utworzyć etapu",
+    "deleteStage": "Nie udało się usunąć etapu",
+    "deleteLead": "Nie udało się usunąć leada",
+    "loadBoard": "Nie udało się wczytać pipeline",
+    "moveLead": "Nie udało się przenieść leada",
+    "reorderStages": "Nie udało się zmienić kolejności etapów",
+    "save": "Nie udało się zapisać",
+    "updateStage": "Nie udało się zaktualizować etapu"
+  },
+  "leadDetail": {
+    "addComment": "Dodaj komentarz",
+    "addingComment": "Dodawanie komentarza…",
+    "closeAria": "Zamknij",
+    "commentPlaceholder": "Dodaj komentarz…",
+    "comments": "{count} komentarz | {count} komentarze | {count} komentarzy",
+    "delete": {
+      "message": "Usunąć „{name}”? Tej operacji nie można cofnąć.",
+      "title": "Usunąć leada?"
+    },
+    "deleteLead": "Usuń leada",
+    "errors": {
+      "delete": "Nie udało się usunąć leada"
+    },
+    "noComments": "Brak komentarzy.",
+    "panelAria": "Szczegóły leada",
+    "unknownAuthor": "Nieznany",
+    "titleField": "Tytuł",
+    "formSubmission": "Zgłoszenie z formularza"
+  },
+  "owner": {
+    "unassigned": "Brak opiekuna"
+  },
+  "priority": {
+    "high": "Wysoki",
+    "low": "Niski",
+    "medium": "Średni"
+  },
+  "seedStages": {
+    "lost": "Przegrany",
+    "meetingSet": "Spotkanie umówione",
+    "negotiation": "Negocjacje",
+    "newLead": "Nowy lead",
+    "won": "Wygrany"
+  },
+  "stages": {
+    "add": "Dodaj etap",
+    "back": "Powrót",
+    "colorAria": "Kolor",
+    "colors": {
+      "amber": "Bursztynowy",
+      "blue": "Niebieski",
+      "gray": "Szary",
+      "green": "Zielony",
+      "orange": "Pomarańczowy",
+      "purple": "Fioletowy",
+      "red": "Czerwony"
+    },
+    "delete": {
+      "confirm": "Usuń etap",
+      "message": "Leady z „{name}” zostaną przeniesione na pierwszy etap.",
+      "title": "Usunąć etap?"
+    },
+    "lost": "Przegrany",
+    "moveDown": "Przesuń w dół",
+    "moveDownAria": "Przesuń etap w dół",
+    "moveUp": "Przesuń w górę",
+    "moveUpAria": "Przesuń etap w górę",
+    "namePlaceholder": "Nazwa etapu",
+    "newTitle": "Nowy etap",
+    "seedNameHint": "Pięć etapów z nowej instalacji wyświetla się w języku interfejsu. Zmiana nazwy tutaj sprawia, że wszędzie widoczna jest nowa nazwa.",
+    "thisStage": "Ten etap",
+    "title": "Etapy",
+    "won": "Wygrany"
+  },
+  "toast": {
+    "commentAdded": "Komentarz dodany",
+    "leadCreated": "Lead utworzony",
+    "leadMoved": "Lead przeniesiony",
+    "saved": "Zapisano",
+    "stageCreated": "Etap utworzony",
+    "stageDeleted": "Etap usunięty",
+    "stageUpdated": "Etap zaktualizowany",
+    "stagesReordered": "Kolejność zmieniona",
+    "leadDeleted": "Lead usunięty"
+  }
+}

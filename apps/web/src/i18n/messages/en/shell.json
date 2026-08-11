@@ -1,0 +1,33 @@
+{
+  "actions": {
+    "new": "New"
+  },
+  "sidebar": {
+    "navLabel": "Navigation",
+    "workspace": "Workspace",
+    "plugins": "Plugins",
+    "expand": "Expand sidebar",
+    "collapse": "Collapse",
+    "collapseAria": "Collapse sidebar"
+  },
+  "topbar": {
+    "openNav": "Open navigation",
+    "breadcrumb": "Breadcrumb navigation",
+    "search": "Search…",
+    "searchAria": "Open search ({shortcut})"
+  },
+  "palette": {
+    "title": "Search",
+    "description": "Jump to a page, create something, or find a contact.",
+    "inputAria": "Search input",
+    "listAria": "Results",
+    "placeholder": "Search contacts, pages…",
+    "createTag": "Create",
+    "noMatches": "Nothing found for “{query}”"
+  },
+  "account": {
+    "logOut": "Log out",
+    "trigger": "Account ({email})",
+    "unknownEmail": "Unavailable"
+  }
+}

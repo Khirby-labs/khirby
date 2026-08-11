@@ -1,0 +1,50 @@
+{
+  "name": "@khirby/plugin-host",
+  "version": "1.0.0",
+  "description": "Khirby plugin host surface \u2014 guards, DB token, AppException, service tokens for Nest plugins",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "require": "./dist/index.js",
+        "default": "./dist/index.js"
+      }
+    },
+    "registry": "https://registry.npmjs.org"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0 || ^11.0.0",
+    "@nestjs/core": "^10.0.0 || ^11.0.0",
+    "@khirby/plugin-sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@khirby/plugin-sdk": "workspace:*",
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@types/node": "^22.20.1",
+    "typescript": "^5.5.0"
+  },
+  "keywords": [
+    "khirby",
+    "plugin-host"
+  ],
+  "license": "UNLICENSED"
+}

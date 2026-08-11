@@ -1,0 +1,60 @@
+{
+  "list.heading": "Heading above the member list in the left rail, e.g. 'Members (3)'. PLURAL on {count} — Polish needs three forms. {count} is already formatted by n(). CSS uppercases it, so give sentence case. Glossary: member/user → użytkownik. Replaces a heading that was split into a word plus a separate '(n)' node.",
+  "list.new": "Icon button above the member list, and the action inside the empty state. Opens the create dialog. Imperative or noun phrase, ≤3 words — it is also the button's aria-label and title.",
+  "list.unsaved": "aria-label and title of the small • dot marking a member with unsaved role changes. The dot itself stays in markup. ≤2 words.",
+  "list.noRoles": "Shown under a member's email when no role is assigned to them. Not an error. ≤2 words.",
+  "list.editAria": "aria-label of the pencil button on a member row. {email} is that member's address, so the label is unique per row.",
+  "list.deleteAria": "aria-label of the bin button on a member row. {email} is that member's address, so the label is unique per row.",
+  "list.selfDeleteHint": "title of the bin button when it is disabled because the row is the signed-in operator's own account. Says why it cannot be used. No trailing period.",
+
+  "detail.created": "Line under the member's email in the detail pane, giving the day the account was made. {date} is rendered by d() into its own markup node, so the message must have exactly one {date} slot. ≤3 words plus the value.",
+  "detail.self": "Marker appended to that line when the selected member is the signed-in operator. The · separator stays in markup. ≤2 words. Polish must stay impersonal — no 'Ty'.",
+  "detail.rolesHeading": "Small heading above the role grid in the detail pane. Noun, plural, 1 word. CSS uppercases it.",
+  "detail.roleCount": "Fraction next to that heading: how many of all defined roles this member holds. ONE message — never split the fraction. {assigned} and {total} are both numbers; PLURAL on {total}, so Polish needs three forms. Glossary: role → rola.",
+  "detail.assignAll": "Text button that grants the member every defined role. Imperative, ≤2 words.",
+  "detail.removeAll": "Text button next to it that takes every role away. Imperative, ≤2 words. The · between them stays in markup.",
+  "detail.noRoles": "Shown instead of the role grid when the install has no roles at all yet. One short sentence.",
+  "detail.save": "Primary button at the bottom of the detail pane; commits the pending role assignments. Imperative, ≤2 words. Was Title Case ('Save Changes') before the migration.",
+
+  "empty.noneTitle": "Empty-state title when the install has no members besides none at all. ≤3 words.",
+  "empty.noneMessage": "Body under it. One sentence saying what adding a member achieves — access to the CRM. Polish stays impersonal.",
+  "empty.selectTitle": "Empty-state title in the detail pane when members exist but none is selected. ≤3 words.",
+  "empty.selectMessage": "Body under it. One sentence telling the reader to pick a row on the left, and what they can then do (manage roles).",
+
+  "edit.action": "Label of the pencil action: its title attribute, and the heading it is not — see edit.title. Imperative, ≤3 words.",
+  "edit.title": "Title of the edit dialog. Polish is a noun phrase ('Edycja…'), English an imperative — a heading, not a button. ≤3 words.",
+  "edit.description": "Sub-title of that dialog. {email} is the member being edited and must be wrapped in the locale's own quote marks (Polish „…”, English “…”). It replaced &quot; entities in the old template.",
+  "edit.newPassword": "Field label for the optional replacement password in the edit dialog. ≤2 words.",
+  "edit.passwordHint": "Hint under that field: an empty value means the password is left alone. One sentence.",
+
+  "create.title": "Title of the create dialog. Polish is a noun phrase, English an imperative. ≤3 words.",
+  "create.description": "Sub-title of that dialog. Two short sentences: what is created, and that roles come afterwards. Polish stays impersonal — no 'You can'.",
+  "create.password": "Field label for the starting password in the create dialog. 1 word.",
+  "create.submit": "Submit button of the create dialog. Imperative, ≤3 words.",
+
+  "form.email": "Field label for a member's email address, in both dialogs. 1 word.",
+  "form.emailPlaceholder": "Placeholder in both email inputs — an example address, not a real one. Keep the reserved example.com domain and localize only the name part. The @ MUST be written as {'@'}: a bare @ is vue-i18n's linked-message syntax and fails to compile.",
+  "form.emailRequired": "Validation error shown under the email field when it was left empty. One sentence.",
+  "form.passwordHint": "Hint under the password field of the create dialog. {min} is the minimum length. One short sentence.",
+  "form.passwordPlaceholder": "Placeholder inside both password inputs. Same intent as form.passwordHint but no trailing period. {min} is the minimum length.",
+  "form.passwordMin": "Validation error when the typed password is too short. ONE key for both dialogs, and the same wording in both. {min} is the minimum length — never write the number into the message.",
+
+  "delete.action": "Label of the destructive action: the bin button's title, and the confirm button of its dialog. Names the action AND the object — never a bare 'OK'. Imperative, ≤3 words.",
+  "delete.title": "Title of the delete confirmation. A question, ≤4 words. Polish uses the infinitive ('Usunąć…?').",
+  "delete.message": "Body of that confirmation. {email} identifies the member and must be wrapped in the locale's own quote marks. Say that the action cannot be undone.",
+
+  "discard.title": "Title of the confirmation shown when unsaved role changes would be lost — on switching member, and on leaving the page. A question, ≤3 words. Polish uses the infinitive.",
+  "discard.one": "Body of that confirmation when switching to another member. {email} is the member whose edits are pending, wrapped in the locale's own quote marks.",
+  "discard.all": "Body of the same confirmation when navigating away from the page entirely, where no single member can be named. Polish stays impersonal — no 'You have'.",
+  "discard.confirm": "The confirm button of that dialog. Names what happens: the edits go away. Imperative, ≤3 words.",
+
+  "toast.saved": "Toast after the pending role assignments were stored. Past tense, ≤3 words.",
+  "toast.added": "Toast after a new member was created. Past tense, ≤3 words.",
+  "toast.deleted": "Toast after a member was removed. Past tense, ≤3 words.",
+
+  "errors.load": "Error banner above the whole page when the member list could not be fetched. {message} is the server's own reason, inserted into the sentence — keep it as one message, never as fragments around the value.",
+  "errors.save": "Fallback in the save toast when the server gave no message. No trailing period.",
+  "errors.create": "Fallback in the create dialog when the server gave no message. No trailing period.",
+  "errors.delete": "Fallback in the delete toast when the server gave no message. No trailing period.",
+  "errors.reasonUnknown": "Used as {message} in errors.load when the failure carried no server text at all. A sentence fragment that has to read naturally after a colon — lower case, no trailing period."
+}

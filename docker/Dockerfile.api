@@ -1,0 +1,45 @@
+FROM node:22-alpine AS builder
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@11.0.9 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/types/package.json ./packages/types/
+COPY packages/plugin-sdk/package.json ./packages/plugin-sdk/
+COPY packages/plugin-host/package.json ./packages/plugin-host/
+COPY packages/forms-client/package.json ./packages/forms-client/
+COPY plugins.manifest.json ./plugins.manifest.json
+
+RUN pnpm install --frozen-lockfile
+
+COPY apps/api ./apps/api
+COPY packages ./packages
+COPY scripts ./scripts
+COPY drizzle ./drizzle
+
+RUN node scripts/vendor-plugins-for-build.mjs \
+  && node scripts/generate-plugin-loader.mjs \
+  && pnpm --filter api build
+
+FROM node:22-alpine AS runner
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@11.0.9 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/types/package.json ./packages/types/
+COPY packages/plugin-sdk/package.json ./packages/plugin-sdk/
+COPY packages/plugin-host/package.json ./packages/plugin-host/
+COPY packages/forms-client/package.json ./packages/forms-client/
+COPY plugins.manifest.json ./plugins.manifest.json
+
+RUN pnpm install --frozen-lockfile --prod
+
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/drizzle ./drizzle
+
+WORKDIR /app/apps/api
+EXPOSE 3000
+CMD ["sh", "-c", "node dist/apps/api/src/migrate.js && node dist/apps/api/src/main.js"]

@@ -1,0 +1,29 @@
+{
+  "add": {
+    "listId": "ID listy w Listmonk",
+    "name": "Nazwa wyświetlana",
+    "submit": "Dodaj listę",
+    "submitting": "Dodawanie…",
+    "title": "Nowa lista z Listmonk"
+  },
+  "errors": {
+    "add": "Nie udało się dodać listy",
+    "delete": "Nie udało się usunąć listy",
+    "load": "Nie udało się wczytać list"
+  },
+  "list": {
+    "columns": {
+      "listmonkId": "ID w Listmonk",
+      "name": "Nazwa",
+      "syncedAt": "Synchronizacja"
+    },
+    "delete": {
+      "confirm": "Usuń listę",
+      "message": "Lista „{name}” zostanie usunięta. Tej operacji nie można cofnąć.",
+      "title": "Usunąć listę?"
+    },
+    "empty": "Brak skonfigurowanych list",
+    "never": "Nigdy",
+    "title": "Listy newslettera"
+  }
+}

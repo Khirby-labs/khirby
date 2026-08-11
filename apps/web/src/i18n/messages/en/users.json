@@ -1,0 +1,71 @@
+{
+  "create": {
+    "description": "Create an account with an email and a starting password. Roles can be assigned afterwards.",
+    "password": "Password",
+    "submit": "Add member",
+    "title": "Add member"
+  },
+  "delete": {
+    "action": "Delete member",
+    "message": "“{email}” will be deleted. This can't be undone.",
+    "title": "Delete member?"
+  },
+  "detail": {
+    "assignAll": "Assign all",
+    "created": "Created {date}",
+    "noRoles": "No roles defined yet.",
+    "removeAll": "Remove all",
+    "roleCount": "{assigned}/{total} role | {assigned}/{total} roles",
+    "rolesHeading": "Roles",
+    "save": "Save changes",
+    "self": "You"
+  },
+  "discard": {
+    "all": "Unsaved role changes will be lost if you leave.",
+    "confirm": "Discard changes",
+    "one": "Unsaved role changes to “{email}” will be lost.",
+    "title": "Discard changes?"
+  },
+  "edit": {
+    "action": "Edit member",
+    "description": "Change the email or password of “{email}”.",
+    "newPassword": "New password",
+    "passwordHint": "Leave blank to keep the current password.",
+    "title": "Edit member"
+  },
+  "empty": {
+    "noneMessage": "Add the first member to give someone access to the CRM.",
+    "noneTitle": "No members yet",
+    "selectMessage": "Choose a member from the list to manage their roles.",
+    "selectTitle": "Select a member"
+  },
+  "errors": {
+    "create": "Couldn't create the member",
+    "delete": "Couldn't delete the member",
+    "load": "Couldn't load members: {message}.",
+    "reasonUnknown": "the server gave no reason",
+    "save": "Couldn't save the member"
+  },
+  "form": {
+    "email": "Email",
+    "emailPlaceholder": "name{'@'}example.com",
+    "emailRequired": "Email is required.",
+    "passwordHint": "At least {min} characters.",
+    "passwordMin": "Password must be at least {min} characters.",
+    "passwordPlaceholder": "At least {min} characters"
+  },
+  "toast": {
+    "added": "Member added",
+    "deleted": "Member deleted",
+    "saved": "Member saved"
+  },
+  "list": {
+    "deleteAria": "Delete member {email}",
+    "editAria": "Edit member {email}",
+    "heading": "Member ({count}) | Members ({count})",
+    "new": "New member",
+    "noRoles": "No roles",
+    "selfDeleteHint": "You can't delete your own account",
+    "unsaved": "Unsaved changes"
+  }
+}

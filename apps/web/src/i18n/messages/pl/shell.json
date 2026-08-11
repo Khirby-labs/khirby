@@ -1,0 +1,33 @@
+{
+  "actions": {
+    "new": "Dodaj"
+  },
+  "sidebar": {
+    "navLabel": "Nawigacja",
+    "workspace": "Obszar roboczy",
+    "plugins": "Wtyczki",
+    "expand": "Rozwiń pasek boczny",
+    "collapse": "Zwiń",
+    "collapseAria": "Zwiń pasek boczny"
+  },
+  "topbar": {
+    "openNav": "Otwórz nawigację",
+    "breadcrumb": "Ścieżka nawigacji",
+    "search": "Szukaj…",
+    "searchAria": "Otwórz wyszukiwanie ({shortcut})"
+  },
+  "palette": {
+    "title": "Szukaj",
+    "description": "Przejdź do strony, utwórz coś lub znajdź kontakt.",
+    "inputAria": "Pole wyszukiwania",
+    "listAria": "Wyniki",
+    "placeholder": "Szukaj kontaktów, stron…",
+    "createTag": "Utwórz",
+    "noMatches": "Brak wyników dla „{query}”"
+  },
+  "account": {
+    "logOut": "Wyloguj się",
+    "trigger": "Konto ({email})",
+    "unknownEmail": "Niedostępne"
+  }
+}

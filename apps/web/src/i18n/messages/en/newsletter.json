@@ -1,0 +1,29 @@
+{
+  "add": {
+    "listId": "Listmonk list ID",
+    "name": "Display name",
+    "submit": "Add list",
+    "submitting": "Adding…",
+    "title": "Add a Listmonk list"
+  },
+  "errors": {
+    "add": "Couldn't add the list",
+    "delete": "Couldn't delete the list",
+    "load": "Couldn't load lists"
+  },
+  "list": {
+    "columns": {
+      "listmonkId": "Listmonk ID",
+      "name": "Name",
+      "syncedAt": "Synced"
+    },
+    "delete": {
+      "confirm": "Delete list",
+      "message": "“{name}” will be deleted. This can't be undone.",
+      "title": "Delete list?"
+    },
+    "empty": "No lists configured",
+    "never": "Never",
+    "title": "Newsletter lists"
+  }
+}

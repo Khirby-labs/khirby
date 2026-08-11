@@ -1,0 +1,116 @@
+{
+  "addLead": {
+    "email": "Email",
+    "errors": {
+      "create": "Couldn't create lead"
+    },
+    "name": "Name",
+    "owner": "Owner",
+    "priority": "Priority",
+    "stage": "Stage",
+    "submit": "Add lead",
+    "title": "New lead",
+    "value": "Amount"
+  },
+  "board": {
+    "addManually": "Add lead manually",
+    "allOwners": "All owners",
+    "empty": {
+      "dropHere": "Drop leads here",
+      "noLeads": "No leads",
+      "noLeadsYet": "No leads yet"
+    },
+    "newMail": "New message",
+    "ownerFilterAria": "Filter by owner",
+    "stagesLink": "Stages",
+    "title": "Pipeline"
+  },
+  "errors": {
+    "addComment": "Couldn't add comment",
+    "createLead": "Couldn't create lead",
+    "createStage": "Couldn't create stage",
+    "deleteStage": "Couldn't delete stage",
+    "deleteLead": "Couldn't delete lead",
+    "loadBoard": "Couldn't load pipeline",
+    "moveLead": "Couldn't move lead",
+    "reorderStages": "Couldn't reorder stages",
+    "save": "Couldn't save",
+    "updateStage": "Couldn't update stage"
+  },
+  "leadDetail": {
+    "addComment": "Add comment",
+    "addingComment": "Adding comment…",
+    "closeAria": "Close",
+    "commentPlaceholder": "Add a comment…",
+    "comments": "{count} comment | {count} comments",
+    "delete": {
+      "message": "Delete “{name}”? This can't be undone.",
+      "title": "Delete lead?"
+    },
+    "deleteLead": "Delete lead",
+    "errors": {
+      "delete": "Couldn't delete lead"
+    },
+    "noComments": "No comments yet.",
+    "panelAria": "Lead details",
+    "unknownAuthor": "Unknown",
+    "titleField": "Title",
+    "formSubmission": "Form submission"
+  },
+  "owner": {
+    "unassigned": "No owner"
+  },
+  "priority": {
+    "high": "High",
+    "low": "Low",
+    "medium": "Medium"
+  },
+  "seedStages": {
+    "lost": "Lost",
+    "meetingSet": "Meeting set",
+    "negotiation": "Negotiation",
+    "newLead": "New lead",
+    "won": "Won"
+  },
+  "stages": {
+    "add": "Add stage",
+    "back": "Back",
+    "colorAria": "Color",
+    "colors": {
+      "amber": "Amber",
+      "blue": "Blue",
+      "gray": "Gray",
+      "green": "Green",
+      "orange": "Orange",
+      "purple": "Purple",
+      "red": "Red"
+    },
+    "delete": {
+      "confirm": "Delete stage",
+      "message": "Leads in “{name}” will move to the first stage.",
+      "title": "Delete stage?"
+    },
+    "lost": "Lost",
+    "moveDown": "Move down",
+    "moveDownAria": "Move stage down",
+    "moveUp": "Move up",
+    "moveUpAria": "Move stage up",
+    "namePlaceholder": "Stage name",
+    "newTitle": "New stage",
+    "seedNameHint": "The five stages a new install starts with are shown in the interface language. Rename one here and that name is used everywhere instead.",
+    "thisStage": "This stage",
+    "title": "Stages",
+    "won": "Won"
+  },
+  "toast": {
+    "commentAdded": "Comment added",
+    "leadCreated": "Lead created",
+    "leadMoved": "Lead moved",
+    "saved": "Saved",
+    "stageCreated": "Stage created",
+    "stageDeleted": "Stage deleted",
+    "stageUpdated": "Stage updated",
+    "stagesReordered": "Order changed",
+    "leadDeleted": "Lead deleted"
+  }
+}

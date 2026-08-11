@@ -1,0 +1,257 @@
+{
+  "actions": {
+    "refresh": "Odśwież",
+    "refreshing": "Odświeżanie…"
+  },
+  "config": {
+    "availableFields": "Dostępne pola",
+    "loadFailed": "Nie udało się wczytać list",
+    "loadingLists": "Ładowanie list…",
+    "noLists": "Brak list. Najpierw zapisz ustawienia połączenia.",
+    "subscribers": "{count} subskrybent | {count} subskrybenci | {count} subskrybentów"
+  },
+  "discord": {
+    "config": {
+      "events": {
+        "description": "Wybór zdarzeń CRM wysyłających powiadomienie na Discord.",
+        "label": "Zdarzenia",
+        "options": {
+          "contactCreated": "Nowy kontakt",
+          "formSubmitted": "Zgłoszenie formularza",
+          "leadCreated": "Nowy lead",
+          "leadDeleted": "Usunięcie leada",
+          "leadMoved": "Przeniesienie leada"
+        }
+      },
+      "template": {
+        "contactCreated": "Wiadomość: nowy kontakt",
+        "description": "Puste pole — wbudowany szablon domyślny.",
+        "formSubmitted": "Wiadomość: zgłoszenie",
+        "leadCreated": "Wiadomość: nowy lead",
+        "leadDeleted": "Wiadomość: usunięcie leada",
+        "leadMoved": "Wiadomość: przeniesienie leada"
+      },
+      "url": {
+        "description": "Adres z ustawień kanału Discord — Incoming Webhooks.",
+        "label": "Adres webhooka"
+      },
+      "username": {
+        "description": "Opcjonalne. Zastępuje domyślną nazwę webhooka przy każdej wiadomości.",
+        "label": "Nazwa wyświetlana"
+      }
+    },
+    "description": "Spersonalizowane wiadomości Discord przy wybranych zdarzeniach CRM.",
+    "displayName": "Discord",
+    "placeholders": {
+      "contactEmail": "E-mail kontaktu",
+      "contactId": "ID kontaktu",
+      "email": "Adres e-mail kontaktu",
+      "formName": "Tytuł formularza",
+      "formSlug": "Slug formularza",
+      "id": "ID kontaktu",
+      "name": "Nazwa wyświetlana kontaktu",
+      "newStageName": "Nazwa nowego etapu",
+      "oldStageName": "Nazwa poprzedniego etapu",
+      "priority": "Priorytet",
+      "stageName": "Nazwa bieżącego etapu",
+      "submissionId": "ID zgłoszenia",
+      "title": "Tytuł leada",
+      "value": "Wartość leada"
+    }
+  },
+  "errors": {
+    "load": "Nie udało się wczytać wtyczek",
+    "saveConfig": "Nie udało się zapisać konfiguracji",
+    "toggle": "Nie udało się zmienić stanu wtyczki"
+  },
+  "list": {
+    "configure": "Konfiguruj",
+    "disableAria": "Wyłącz wtyczkę {name}",
+    "disabled": "Wyłączona",
+    "empty": {
+      "message": "Zainstaluj wtyczki na serwerze, aby pojawiły się na tej liście.",
+      "title": "Brak wtyczek"
+    },
+    "enableAria": "Włącz wtyczkę {name}",
+    "enabled": "Włączona",
+    "enableToConfigure": "Włącz wtyczkę, aby edytować jej ustawienia.",
+    "installed": "Zainstalowano {date}",
+    "subtitle": "Zarządzanie zainstalowanymi wtyczkami i ich konfiguracją.",
+    "title": "Wtyczki"
+  },
+  "listmonk": {
+    "config": {
+      "password": {
+        "label": "Hasło"
+      },
+      "url": {
+        "description": "Adres bazowy instancji Listmonk.",
+        "label": "Adres serwera"
+      },
+      "user": {
+        "label": "Nazwa użytkownika"
+      }
+    },
+    "description": "Dodaje nowe kontakty i zgłoszenia z formularzy do list w Listmonk.",
+    "displayName": "Newsletter Listmonk",
+    "nav": "Newsletter",
+    "status": {
+      "blocklisted": "Zablokowany",
+      "subscriber": "Subskrybent",
+      "subscribed": "Zasubskrybowany"
+    },
+    "tooltip": {
+      "lists": "Zasubskrybowane do: {lists}",
+      "status": "Stan: {status}"
+    }
+  },
+  "toast": {
+    "disabled": "Wtyczka {name} została wyłączona.",
+    "enabled": "Wtyczka {name} została włączona."
+  },
+  "webhook": {
+    "config": {
+      "secret": {
+        "description": "Opcjonalne. Wysyłane w nagłówku X-Webhook-Secret.",
+        "label": "Sekret w nagłówku"
+      },
+      "url": {
+        "description": "Każde zdarzenie CRM trafia pod ten adres jako żądanie POST w formacie JSON.",
+        "label": "Adres endpointu"
+      }
+    },
+    "description": "Wysyła zdarzenia CRM jako żądania POST w formacie JSON.",
+    "displayName": "Webhook"
+  },
+  "aiCompose": {
+    "displayName": "AI Compose",
+    "description": "Sugestie odpowiedzi generowane przez AI. Użyj własnego klucza API (kompatybilny z OpenAI).",
+    "nav": "AI Compose",
+    "title": "Ustawienia AI Compose",
+    "subtitle": "Skonfiguruj dostawcę AI, aby generować szkice odpowiedzi w panelu poczty.",
+    "provider": {
+      "title": "Dostawca",
+      "baseUrl": {
+        "label": "Adres URL",
+        "description": "Endpoint kompatybilny z OpenAI. Użyj https://api.openai.com/v1 dla OpenAI lub własnego endpointu."
+      },
+      "apiKey": {
+        "label": "Klucz API",
+        "description": "Twój tajny klucz. Przechowywany zaszyfrowany, nigdy nie jest zwracany po zapisaniu.",
+        "placeholder": "sk-…"
+      },
+      "saveButton": "Zapisz ustawienia",
+      "saving": "Zapisywanie…"
+    },
+    "models": {
+      "title": "Modele",
+      "fetchButton": "Pobierz modele",
+      "fetching": "Pobieranie…",
+      "allowList": {
+        "label": "Dozwolone modele",
+        "description": "Modele dostępne dla użytkowników w panelu komponowania. Pozostaw puste, aby zezwolić na wszystkie od dostawcy."
+      },
+      "defaultModel": {
+        "label": "Domyślny model",
+        "description": "Używany, gdy użytkownik nie wybiera modelu."
+      }
+    },
+    "systemPrompt": {
+      "title": "Prompt systemowy",
+      "label": "Własny prompt systemowy",
+      "description": "Zastąp wbudowaną instrukcję. Pozostaw puste, aby użyć domyślnej."
+    },
+    "status": {
+      "keyConfigured": "Klucz API zapisany",
+      "keyMissing": "Klucz API nie skonfigurowany",
+      "saved": "Ustawienia zapisane"
+    },
+    "errors": {
+      "load": "Nie można wczytać ustawień",
+      "save": "Nie można zapisać ustawień",
+      "fetchModels": "Nie można pobrać modeli od dostawcy"
+    }
+  },
+  "pokelo": {
+    "displayName": "Baza wiedzy Pokelo",
+    "description": "Wzbogaca AI Compose o wiedzę firmową z Pokelo (odpowiedzi mailowe i kampanie Listmonk).",
+    "nav": "Pokelo",
+    "title": "Ustawienia Pokelo",
+    "subtitle": "Podłącz projekt Pokelo, żeby AI Compose korzystał z firmowej bazy wiedzy. Zobacz",
+    "connection": {
+      "title": "Połączenie",
+      "baseUrl": {
+        "label": "Adres Pokelo",
+        "description": "Bazowy URL API. Domyślnie https://rag.bearly.pro/v1."
+      },
+      "token": {
+        "label": "Token MCP",
+        "description": "Token z Pokelo (zwykle zaczyna się od mcp_). Przechowywany zaszyfrowany, nigdy nie jest zwracany po zapisaniu.",
+        "placeholder": "mcp_…"
+      },
+      "saveButton": "Zapisz połączenie",
+      "saving": "Zapisywanie…"
+    },
+    "project": {
+      "title": "Projekty",
+      "description": "Wybierz jeden lub więcej projektów Pokelo (np. CRM, Finsly, Pokelo). Przy kilku AI Compose sam wybiera, które przeszukać przy danym szkicu — i może dociągnąć drugi projekt dla kontekstu marki.",
+      "label": "Powiązane projekty",
+      "empty": "Brak projektów dla tego tokenu. Odśwież lub sprawdź zakres tokenu.",
+      "needToken": "Najpierw zapisz token, żeby wczytać projekty.",
+      "refreshButton": "Odśwież projekty",
+      "refreshing": "Odświeżanie…",
+      "saveButton": "Zapisz projekty"
+    },
+    "status": {
+      "tokenConfigured": "Token zapisany",
+      "tokenMissing": "Brak tokenu",
+      "saved": "Ustawienia zapisane",
+      "autoSelected": "Wybrano jedyny dostępny projekt: {name}"
+    },
+    "errors": {
+      "load": "Nie można wczytać ustawień",
+      "save": "Nie można zapisać ustawień",
+      "fetchProjects": "Nie można wczytać projektów Pokelo"
+    }
+  },
+  "mcp": {
+    "displayName": "Serwer MCP",
+    "description": "Udostępnia narzędzia CRM (tylko do odczytu) agentom AI poprzez MCP.",
+    "nav": "MCP",
+    "title": "Serwer MCP",
+    "subtitle": "Wygeneruj token dostępu i połącz agenta. Przejdź do listy wtyczek.",
+    "pluginsLink": "Lista wtyczek",
+    "endpoint": {
+      "title": "Adres",
+      "description": "Wklej ten adres do klienta agenta."
+    },
+    "token": {
+      "title": "Token",
+      "description": "Token wyświetla się jednokrotnie po wygenerowaniu lub rotacji. Przechowywany jest tylko prefiks.",
+      "prefixLabel": "Token",
+      "createdAt": "Wygenerowany {date}",
+      "none": "Brak tokena. Wygeneruj jeden, aby zacząć.",
+      "revealedWarning": "Skopiuj token teraz—nie będzie pokazywany ponownie.",
+      "revokeTitle": "Odwołaj token",
+      "revokeConfirm": "Agenty utracimy dostęp do czasu wygenerowania nowego tokena."
+    },
+    "actions": {
+      "copy": "Kopiuj",
+      "generate": "Wygeneruj",
+      "rotate": "Rotuj",
+      "revoke": "Odwołaj"
+    },
+    "connect": {
+      "title": "Połączenie",
+      "description": "Zastąp placeholder swoim tokenem.",
+      "claude": "Claude Code",
+      "cursor": "Cursor",
+      "generic": "HTTP"
+    },
+    "errors": {
+      "load": "Nie udało się wczytać tokena",
+      "rotate": "Nie udało się wygenerować tokena",
+      "revoke": "Nie udało się odwołać tokena"
+    }
+  }
+}

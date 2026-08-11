@@ -1,0 +1,34 @@
+packages:
+  - apps/*
+  - packages/*
+allowBuilds:
+  '@scarf/scarf': true
+  esbuild: true
+  vue-demi: true
+  # Approve msw's build script. An undeclared build script only warns locally
+  # (TTY) but is a hard ERR_PNPM_IGNORED_BUILDS in CI (non-TTY) that fails the
+  # `pnpm install --frozen-lockfile` image build before any test runs.
+  msw: true
+
+# pnpm 11: overrides live here (package.json#pnpm is ignored).
+overrides:
+  # Prefer monorepo host packages over registry (also shields against npm lag).
+  '@khirby/plugin-sdk': 'workspace:*'
+  '@khirby/plugin-host': 'workspace:*'
+  drizzle-orm: '>=0.45.2'
+  '@fastify/static': '10.1.3'
+  find-my-way: '>=9.6.1'
+  fastify: '5.11.2'
+  lodash: '>=4.17.24'
+  undici: '>=7.29.0'
+  hono: '4.13.1'
+  '@modelcontextprotocol/node>hono': '4.13.1'
+  '@hono/node-server>hono': '4.13.1'
+  'brace-expansion@1.1.16': '1.1.18'
+  'brace-expansion@2.1.2': '2.1.4'
+  'brace-expansion@5.0.7': '5.0.9'
+  'js-yaml@3.15.0': '3.15.1'
+  'js-yaml@4.3.0': '4.3.1'
+  fast-uri: '>=3.1.5'
+  postcss: '>=8.5.23'
+  esbuild: '>=0.24.3'

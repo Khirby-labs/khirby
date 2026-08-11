@@ -1,0 +1,106 @@
+# Docker Swarm / Komodo — Khirby
+#
+# Image: bearlypro/khirby:latest
+# (nginx SPA + NestJS API, port 80 — Traefik on external `proxy` network)
+#
+#   cp docker/crm.env.example docker/crm.env
+#   docker stack deploy --with-registry-auth --env-file docker/crm.env \
+#     -c docker/docker-stack.yml khirby
+
+services:
+  khirby-postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-crm}
+      POSTGRES_USER: ${POSTGRES_USER:-crm}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_INITDB_ARGS: '--encoding=UTF-8 --lc-collate=C --lc-ctype=C'
+    volumes:
+      - ${DATA_PATH:-/srv/container-data/khirby}/db:/var/lib/postgresql/data
+    networks:
+      - khirby-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-crm} -d ${POSTGRES_DB:-crm}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.storage == hdd
+          - node.labels.tier == always-on
+
+  khirby-redis:
+    image: redis:7-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - ${DATA_PATH:-/srv/container-data/khirby}/redis:/data
+    networks:
+      - khirby-network
+    healthcheck:
+      test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+      placement:
+        constraints:
+          - node.labels.storage == hdd
+          - node.labels.tier == always-on
+
+  app:
+    image: bearlypro/khirby:latest
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      DATABASE_URL: postgres://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD}@khirby-postgres:5432/${POSTGRES_DB:-crm}
+      REDIS_URL: redis://khirby-redis:6379
+      SESSION_SECRET: ${SESSION_SECRET}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+      CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
+      MAIL_SECRETS_KEY: ${MAIL_SECRETS_KEY:-}
+      GOOGLE_MAIL_CLIENT_ID: ${GOOGLE_MAIL_CLIENT_ID:-}
+      GOOGLE_MAIL_CLIENT_SECRET: ${GOOGLE_MAIL_CLIENT_SECRET:-}
+      AI_COMPOSE_SECRETS_KEY: ${AI_COMPOSE_SECRETS_KEY:-}
+      POKELO_SECRETS_KEY: ${POKELO_SECRETS_KEY:-}
+    networks:
+      - proxy
+      - khirby-network
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1/api/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 120s
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
+        delay: 10s
+        max_attempts: 5
+        window: 120s
+      update_config:
+        order: start-first
+        failure_action: rollback
+      labels:
+        - 'traefik.enable=true'
+        - 'traefik.docker.network=proxy'
+        - 'traefik.http.routers.khirby.rule=Host(`${APP_URL}`)'
+        - 'traefik.http.routers.khirby.entrypoints=websecure'
+        - 'traefik.http.routers.khirby.tls.certresolver=cloudflare'
+        - 'traefik.http.services.khirby.loadbalancer.server.port=80'
+
+networks:
+  proxy:
+    external: true
+
+  khirby-network:
+    driver: overlay
+    attachable: true

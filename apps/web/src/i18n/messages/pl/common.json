@@ -1,0 +1,53 @@
+{
+  "actions": {
+    "add": "Dodaj",
+    "cancel": "Anuluj",
+    "close": "Zamknij",
+    "create": "Utwórz",
+    "creating": "Tworzenie…",
+    "delete": "Usuń",
+    "deleting": "Usuwanie…",
+    "edit": "Edytuj",
+    "retry": "Spróbuj ponownie",
+    "save": "Zapisz",
+    "saved": "Zapisano",
+    "saving": "Zapisywanie…"
+  },
+  "datePicker": {
+    "calendarLabel": "Kalendarz",
+    "clear": "Wyczyść",
+    "nav": {
+      "nextMonth": "Następny miesiąc",
+      "prevMonth": "Poprzedni miesiąc"
+    },
+    "placeholder": "Wybierz datę",
+    "presets": {
+      "last7": "Ostatnie 7 dni",
+      "last30": "Ostatnie 30 dni",
+      "last90": "Ostatnie 90 dni",
+      "prevMonth": "Poprzedni miesiąc",
+      "thisMonth": "Ten miesiąc"
+    },
+    "range": {
+      "ariaValue": "Od {from} do {to}",
+      "placeholder": "Wybierz zakres dat"
+    }
+  },
+  "dialog": {
+    "fallbackTitle": "Okno"
+  },
+  "form": {
+    "required": "Wymagane",
+    "selectPlaceholder": "Wybierz…"
+  },
+  "pagination": {
+    "goToPage": "Przejdź do strony {page}",
+    "next": "Dalej",
+    "pageOf": "Strona {current} z {total}",
+    "prev": "Wstecz"
+  },
+  "state": {
+    "loading": "Ładowanie…",
+    "noData": "Brak danych"
+  }
+}

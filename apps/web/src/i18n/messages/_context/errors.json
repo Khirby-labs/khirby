@@ -1,0 +1,4 @@
+{
+  "notFound.title": "Headline of the 404 page, under the literal '404' (which is a number, not copy, and stays in markup). Says the address does not exist. ≤4 words.",
+  "notFound.back": "Link back into the app from that page. '/' lands on the contact list, so name that destination rather than a dashboard the app does not have. The ← glyph stays in markup. ≤4 words. This page renders before any session exists, so nothing here may depend on the signed-in user."
+}

@@ -1,0 +1,190 @@
+{
+  "analytics": {
+    "byForm": {
+      "columns": {
+        "form": "Formularz",
+        "submissions": "Zgłoszenia"
+      },
+      "empty": {
+        "message": "Poszerz zakres dat lub wyczyść filtr formularza, aby zobaczyć aktywność.",
+        "title": "Brak zgłoszeń w tym zakresie"
+      },
+      "title": "Według formularza"
+    },
+    "daily": {
+      "barTitle": "{date}: {count} zgłoszenie | {date}: {count} zgłoszenia | {date}: {count} zgłoszeń",
+      "title": "Zgłoszenia dzienne"
+    },
+    "filters": {
+      "allForms": "Wszystkie formularze",
+      "form": "Formularz",
+      "range": "Zakres dat"
+    },
+    "stats": {
+      "activeForms": "Aktywne formularze",
+      "total": "Wszystkie zgłoszenia"
+    },
+    "title": "Analityka formularzy"
+  },
+  "detail": {
+    "discard": {
+      "confirm": "Odrzuć zmiany",
+      "message": "Formularz ma niezapisane zmiany. Opuszczenie strony teraz je odrzuci.",
+      "title": "Odrzucić zmiany?"
+    },
+    "endpointToken": "Token endpointu:",
+    "general": {
+      "active": "Aktywny",
+      "kind": "Typ",
+      "name": "Nazwa",
+      "slug": "Slug",
+      "slugHint": "Małe litery, cyfry i łączniki",
+      "title": "Ogólne"
+    },
+    "replaceFields": {
+      "confirm": "Zamień pola",
+      "message": "Zastosowanie szablonu zamieni wszystkie pola tego formularza.",
+      "title": "Zamienić wszystkie pola?"
+    },
+    "save": "Zapisz zmiany",
+    "schema": {
+      "addField": "Dodaj pole",
+      "apply": "Zastosuj",
+      "applyTemplate": "Zastosuj szablon",
+      "applyTemplatePlaceholder": "Zastosuj szablon…",
+      "emailHint": "Zgłoszenia są dopasowywane do kontaktów po adresie e-mail, więc formularz z polami musi zawierać wymagane pole {code}.",
+      "empty": {
+        "message": "Dodaj pole lub zastosuj szablon, aby zacząć budować formularz.",
+        "title": "Brak pól"
+      },
+      "fieldName": "Nazwa pola",
+      "fieldNamePlaceholder": "np. first_name",
+      "label": "Etykieta",
+      "labelEn": "Etykieta (EN)",
+      "labelEnPlaceholder": "np. Full name",
+      "labelPl": "Etykieta (PL)",
+      "labelPlPlaceholder": "np. Imię i nazwisko",
+      "labelPlaceholder": "np. Imię i nazwisko",
+      "moveDownAria": "Przesuń pole {position} w dół",
+      "moveUpAria": "Przesuń pole {position} w górę",
+      "options": "Opcje (rozdzielone przecinkami)",
+      "optionsPlaceholder": "np. Mały, Średni, Duży",
+      "remove": "Usuń",
+      "removeAria": "Usuń pole {position}",
+      "required": "Wymagane",
+      "title": "Pola formularza",
+      "type": "Typ"
+    },
+    "submissions": {
+      "columns": {
+        "contact": "Kontakt",
+        "date": "Data",
+        "referer": "Źródło"
+      },
+      "empty": {
+        "message": "Zgłoszenia zebrane ze strony pojawią się tutaj.",
+        "title": "Brak zgłoszeń"
+      },
+      "title": "{count} zgłoszenie | {count} zgłoszenia | {count} zgłoszeń",
+      "viewContact": "Zobacz kontakt"
+    },
+    "unsavedChanges": "Niezapisane zmiany",
+    "validation": {
+      "duplicateFieldName": "Nazwa pola „{name}” powtarza się — nazwy pól muszą być unikalne.",
+      "emailFieldRequired": "Dodaj wymagane pole „{field}” — zgłoszenia są dopasowywane do kontaktów po adresie e-mail.",
+      "fieldNameRequired": "Każde pole musi mieć nazwę.",
+      "nameRequired": "Nazwa jest wymagana.",
+      "selectNeedsOptions": "Lista rozwijana „{name}” musi mieć co najmniej jedną opcję.",
+      "slugFormat": "Slug może zawierać tylko małe litery, cyfry i łączniki.",
+      "unnamedField": "bez nazwy"
+    }
+  },
+  "errors": {
+    "create": "Nie udało się utworzyć formularza",
+    "delete": "Nie udało się usunąć formularza",
+    "load": "Nie udało się wczytać formularza",
+    "loadList": "Nie udało się wczytać formularzy",
+    "loadStats": "Nie udało się wczytać analityki",
+    "save": "Nie udało się zapisać formularza"
+  },
+  "fieldType": {
+    "checkbox": "Pole wyboru",
+    "email": "E-mail",
+    "number": "Liczba",
+    "select": "Lista rozwijana",
+    "tel": "Telefon",
+    "text": "Tekst",
+    "textarea": "Długi tekst",
+    "url": "URL"
+  },
+  "integration": {
+    "copy": "Kopiuj",
+    "copyEndpoint": "Kopiuj adres endpointu",
+    "errors": {
+      "copy": "Nie udało się skopiować. Skopiuj tekst ręcznie."
+    },
+    "submitUrl": "Adres wysyłki:",
+    "tabsAria": "Przykłady integracji",
+    "title": "Integracja",
+    "toast": {
+      "copied": "Skopiowano",
+      "endpointCopied": "Adres endpointu skopiowany"
+    }
+  },
+  "kind": {
+    "contact": "Kontakt",
+    "feedback": "Opinie",
+    "waitlist": "Lista oczekujących",
+    "wishlist": "Lista życzeń"
+  },
+  "list": {
+    "analytics": "Analityka",
+    "columns": {
+      "kind": "Typ",
+      "name": "Nazwa",
+      "slug": "Slug",
+      "status": "Status",
+      "submissions": "Zgłoszenia"
+    },
+    "create": {
+      "active": "Aktywny",
+      "name": "Nazwa",
+      "slug": "Slug",
+      "slugHint": "Tylko małe litery, cyfry i łączniki",
+      "slugPlaceholder": "moj-formularz",
+      "template": "Szablon",
+      "title": "Nowy formularz"
+    },
+    "delete": {
+      "confirm": "Usuń formularz",
+      "message": "Usunąć „{name}”? Tej operacji nie można cofnąć. Zebrane zgłoszenia zostaną zachowane.",
+      "title": "Usunąć formularz?"
+    },
+    "empty": {
+      "action": "Utwórz formularz",
+      "message": "Utwórz formularz, aby zbierać zgłoszenia ze strony.",
+      "title": "Brak formularzy"
+    },
+    "status": {
+      "active": "Aktywny",
+      "inactive": "Nieaktywny"
+    },
+    "title": "Formularze"
+  },
+  "preview": {
+    "caption": "Podgląd na żywo — co widzą odwiedzający",
+    "empty": "Dodaj pole, aby zobaczyć podgląd.",
+    "localeAria": "Język podglądu",
+    "localeEn": "EN",
+    "localePl": "PL",
+    "optionPlaceholder": "Opcja",
+    "submit": "Wyślij",
+    "untitledField": "Pole bez nazwy",
+    "untitledForm": "Formularz bez nazwy"
+  },
+  "toast": {
+    "created": "Formularz utworzony",
+    "deleted": "Formularz usunięty",
+    "saved": "Formularz zapisany"
+  }
+}

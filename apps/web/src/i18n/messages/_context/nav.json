@@ -1,0 +1,23 @@
+{
+  "workspace.contacts": "Sidebar item + page title for the contact list. Noun, plural, 1 word. Narrow sidebar — must fit.",
+  "workspace.pipeline": "Sidebar item + page title for the sales pipeline (kanban board of leads). Glossary: stays 'pipeline' in Polish.",
+  "workspace.boards": "Sidebar item + page title for work boards (projects/tasks kanban). Noun, plural. Glossary: boards → Boards (product name stays English).",
+  "workspace.forms": "Sidebar item + page title for web forms embedded on the customer's own site. Noun, plural.",
+
+  "settings.general": "Settings sub-nav item: appearance, language, password, account. Noun, 1 word.",
+  "settings.members": "Settings sub-nav item: the people who can log into this CRM. Glossary: member → użytkownik.",
+  "settings.roles": "Settings sub-nav item: permission roles. Noun, plural.",
+  "settings.integrations": "Settings sub-nav item listing installed plugins. Glossary: plugin → wtyczka. Plural.",
+  "settings.mail": "Settings sub-nav item for the company mailbox (IMAP+SMTP) configuration. 1 word.",
+
+  "workspace.mail": "Sidebar item + page title for the shared company inbox (email threads). 1 word. Polish: 'Poczta'.",
+
+  "quickCreate.contact": "Entry in the '+ New' menu — creates a contact. Imperative-ish short phrase, ≤3 words.",
+  "quickCreate.lead": "Entry in the '+ New' menu — creates a pipeline lead. Glossary: lead stays 'lead' and inflects.",
+  "quickCreate.form": "Entry in the '+ New' menu — creates a form. ≤3 words.",
+
+  "commandGroup.navigate": "Command palette group heading over destinations you can jump to. Uppercase-styled by CSS, so give sentence case. 1 word.",
+  "commandGroup.plugins": "Command palette group heading over enabled plugin pages. 1 word, plural.",
+  "commandGroup.create": "Command palette group heading over create actions. 1 word.",
+  "commandGroup.contacts": "Command palette group heading over contact search hits. 1 word, plural. Glossary: contacts → kontakty."
+}

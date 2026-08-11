@@ -1,0 +1,53 @@
+{
+  "actions": {
+    "add": "Add",
+    "cancel": "Cancel",
+    "close": "Close",
+    "create": "Create",
+    "creating": "Creating…",
+    "delete": "Delete",
+    "deleting": "Deleting…",
+    "edit": "Edit",
+    "retry": "Retry",
+    "save": "Save",
+    "saved": "Saved",
+    "saving": "Saving…"
+  },
+  "datePicker": {
+    "calendarLabel": "Calendar",
+    "clear": "Clear",
+    "nav": {
+      "nextMonth": "Next month",
+      "prevMonth": "Previous month"
+    },
+    "placeholder": "Select a date",
+    "presets": {
+      "last7": "Last 7 days",
+      "last30": "Last 30 days",
+      "last90": "Last 90 days",
+      "prevMonth": "Last month",
+      "thisMonth": "This month"
+    },
+    "range": {
+      "ariaValue": "From {from} to {to}",
+      "placeholder": "Select a date range"
+    }
+  },
+  "dialog": {
+    "fallbackTitle": "Dialog"
+  },
+  "form": {
+    "required": "Required",
+    "selectPlaceholder": "Select…"
+  },
+  "pagination": {
+    "goToPage": "Go to page {page}",
+    "next": "Next",
+    "pageOf": "Page {current} of {total}",
+    "prev": "Previous"
+  },
+  "state": {
+    "loading": "Loading…",
+    "noData": "No data"
+  }
+}

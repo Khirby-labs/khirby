@@ -1,0 +1,10 @@
+{
+  "documentTitle": "The browser tab's title, not visible in the page. {page} is the current route's own name (already translated) and {app} is the product name, which is a brand and never translated. Only the separator is a decision — its glyph and spacing are typographic, so they belong to the locale rather than to markup. Keep it short; a tab truncates.",
+  "login": "Tab title of the sign-in screen. A noun in Polish ('Logowanie'), not the button's imperative — this names a page, it does not ask for an action. ≤2 words.",
+  "notFound": "Tab title of the 404 screen. Same string role as errors.notFound.title, which is the heading INSIDE that page; kept separate because a tab title may need to be shorter than a heading. ≤3 words.",
+
+  "contactDetail": "Breadcrumb leaf for one contact's page (parent: Contacts). Noun, SINGULAR — it names one record. 1 word.",
+  "pipelineStages": "Breadcrumb leaf for the pipeline stage editor (parent: Pipeline). Glossary: stage → etap. Plural.",
+  "formsAnalytics": "Breadcrumb leaf for form submission statistics (parent: Forms). 1 word.",
+  "formBuilder": "Breadcrumb leaf for the form field editor (parent: Forms). ≤2 words. It is where you build a form's fields, not where you fill one in."
+}

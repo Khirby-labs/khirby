@@ -1,0 +1,257 @@
+{
+  "actions": {
+    "refresh": "Refresh",
+    "refreshing": "Refreshing…"
+  },
+  "config": {
+    "availableFields": "Available fields",
+    "loadFailed": "Couldn't load lists",
+    "loadingLists": "Loading lists…",
+    "noLists": "No lists found. Save your connection settings first.",
+    "subscribers": "{count} subscriber | {count} subscribers"
+  },
+  "discord": {
+    "config": {
+      "events": {
+        "description": "Select which CRM events trigger a Discord notification.",
+        "label": "Events",
+        "options": {
+          "contactCreated": "New contact",
+          "formSubmitted": "Form submitted",
+          "leadCreated": "New lead",
+          "leadDeleted": "Lead deleted",
+          "leadMoved": "Lead moved"
+        }
+      },
+      "template": {
+        "contactCreated": "New contact message",
+        "description": "Leave empty to keep the built-in default.",
+        "formSubmitted": "Form submitted message",
+        "leadCreated": "New lead message",
+        "leadDeleted": "Lead deleted message",
+        "leadMoved": "Lead moved message"
+      },
+      "url": {
+        "description": "Create this URL in Discord under Channel settings → Incoming Webhooks.",
+        "label": "Webhook URL"
+      },
+      "username": {
+        "description": "Optional. Replaces the webhook's default display name on each message.",
+        "label": "Display name"
+      }
+    },
+    "description": "Sends personalized Discord messages for selected CRM events.",
+    "displayName": "Discord",
+    "placeholders": {
+      "contactEmail": "Contact email",
+      "contactId": "Contact ID",
+      "email": "Contact email address",
+      "formName": "Form title",
+      "formSlug": "Form slug",
+      "id": "Contact ID",
+      "name": "Contact display name",
+      "newStageName": "New stage name",
+      "oldStageName": "Previous stage name",
+      "priority": "Priority",
+      "stageName": "Current stage name",
+      "submissionId": "Submission ID",
+      "title": "Lead title",
+      "value": "Lead value"
+    }
+  },
+  "errors": {
+    "load": "Couldn't load plugins",
+    "saveConfig": "Couldn't save the configuration",
+    "toggle": "Couldn't change the plugin's state"
+  },
+  "list": {
+    "configure": "Configure",
+    "disableAria": "Disable {name}",
+    "disabled": "Disabled",
+    "empty": {
+      "message": "Install plugins on the server to see them here.",
+      "title": "No plugins installed"
+    },
+    "enableAria": "Enable {name}",
+    "enabled": "Enabled",
+    "enableToConfigure": "Enable this plugin to edit its settings.",
+    "installed": "Installed {date}",
+    "subtitle": "Manage installed plugins and their configuration.",
+    "title": "Plugins"
+  },
+  "listmonk": {
+    "config": {
+      "password": {
+        "label": "Password"
+      },
+      "url": {
+        "description": "Base URL of the Listmonk instance.",
+        "label": "Server URL"
+      },
+      "user": {
+        "label": "Username"
+      }
+    },
+    "description": "Adds new contacts and form submissions to Listmonk lists.",
+    "displayName": "Listmonk newsletter",
+    "nav": "Newsletter",
+    "status": {
+      "blocklisted": "Blocked",
+      "subscriber": "Subscriber",
+      "subscribed": "Subscribed"
+    },
+    "tooltip": {
+      "lists": "Subscribed to: {lists}",
+      "status": "Status: {status}"
+    }
+  },
+  "toast": {
+    "disabled": "{name} is now disabled.",
+    "enabled": "{name} is now enabled."
+  },
+  "webhook": {
+    "config": {
+      "secret": {
+        "description": "Optional. Sent as the X-Webhook-Secret header.",
+        "label": "Secret header"
+      },
+      "url": {
+        "description": "Every CRM event is sent to this address as a JSON POST request.",
+        "label": "Endpoint URL"
+      }
+    },
+    "description": "Sends CRM events as JSON POST requests.",
+    "displayName": "Webhook"
+  },
+  "aiCompose": {
+    "displayName": "AI Compose",
+    "description": "AI-powered reply draft suggestions. Bring your own API key (OpenAI-compatible).",
+    "nav": "AI Compose",
+    "title": "AI Compose settings",
+    "subtitle": "Configure your AI provider to generate reply drafts inside the mail panel.",
+    "provider": {
+      "title": "Provider",
+      "baseUrl": {
+        "label": "Base URL",
+        "description": "OpenAI-compatible endpoint. Use https://api.openai.com/v1 for OpenAI, or your own endpoint."
+      },
+      "apiKey": {
+        "label": "API Key",
+        "description": "Your secret key. Stored encrypted, never returned after saving.",
+        "placeholder": "sk-…"
+      },
+      "saveButton": "Save settings",
+      "saving": "Saving…"
+    },
+    "models": {
+      "title": "Models",
+      "fetchButton": "Fetch models",
+      "fetching": "Fetching…",
+      "allowList": {
+        "label": "Allowed models",
+        "description": "Models that users can select in the compose panel. Leave empty to allow all from the provider."
+      },
+      "defaultModel": {
+        "label": "Default model",
+        "description": "Used when the user does not pick one."
+      }
+    },
+    "systemPrompt": {
+      "title": "System prompt",
+      "label": "Custom system prompt",
+      "description": "Override the built-in instruction. Leave empty for the default."
+    },
+    "status": {
+      "keyConfigured": "API key saved",
+      "keyMissing": "API key not set",
+      "saved": "Settings saved"
+    },
+    "errors": {
+      "load": "Couldn't load settings",
+      "save": "Couldn't save settings",
+      "fetchModels": "Couldn't fetch models from the provider"
+    }
+  },
+  "pokelo": {
+    "displayName": "Pokelo Knowledge Base",
+    "description": "Enriches AI Compose with firm knowledge from Pokelo (mail replies and Listmonk campaigns).",
+    "nav": "Pokelo",
+    "title": "Pokelo settings",
+    "subtitle": "Connect your Pokelo project so AI Compose can use the firm knowledge base. See the",
+    "connection": {
+      "title": "Connection",
+      "baseUrl": {
+        "label": "Pokelo URL",
+        "description": "API base URL. Default is https://rag.bearly.pro/v1."
+      },
+      "token": {
+        "label": "MCP token",
+        "description": "Token from Pokelo (usually starts with mcp_). Stored encrypted, never returned after saving.",
+        "placeholder": "mcp_…"
+      },
+      "saveButton": "Save connection",
+      "saving": "Saving…"
+    },
+    "project": {
+      "title": "Projects",
+      "description": "Select one or more Pokelo projects (e.g. CRM, Finsly, Pokelo). When several are selected, AI Compose picks which to search for each draft — and may pull a second project for extra brand context.",
+      "label": "Bound projects",
+      "empty": "No projects returned for this token. Refresh or check the token scope.",
+      "needToken": "Save a token first to load projects.",
+      "refreshButton": "Refresh projects",
+      "refreshing": "Refreshing…",
+      "saveButton": "Save projects"
+    },
+    "status": {
+      "tokenConfigured": "Token saved",
+      "tokenMissing": "Token not set",
+      "saved": "Settings saved",
+      "autoSelected": "Selected the only available project: {name}"
+    },
+    "errors": {
+      "load": "Couldn't load settings",
+      "save": "Couldn't save settings",
+      "fetchProjects": "Couldn't load Pokelo projects"
+    }
+  },
+  "mcp": {
+    "displayName": "MCP server",
+    "description": "Exposes read-only CRM tools to external AI agents over MCP.",
+    "nav": "MCP",
+    "title": "MCP server",
+    "subtitle": "Generate an access token and connect an AI agent. See the plugin list.",
+    "pluginsLink": "Plugin list",
+    "endpoint": {
+      "title": "Endpoint",
+      "description": "Paste this URL into your agent client."
+    },
+    "token": {
+      "title": "Token",
+      "description": "The token is shown once after generating or rotating it. Only a prefix is stored for display.",
+      "prefixLabel": "Token",
+      "createdAt": "Generated {date}",
+      "none": "No token yet. Generate one to get started.",
+      "revealedWarning": "Copy the token now—it won't be shown again.",
+      "revokeTitle": "Revoke token",
+      "revokeConfirm": "Agents will lose access until you generate a new token."
+    },
+    "actions": {
+      "copy": "Copy",
+      "generate": "Generate",
+      "rotate": "Rotate",
+      "revoke": "Revoke"
+    },
+    "connect": {
+      "title": "Connect",
+      "description": "Replace the placeholder with your token.",
+      "claude": "Claude Code",
+      "cursor": "Cursor",
+      "generic": "HTTP"
+    },
+    "errors": {
+      "load": "Couldn't load token",
+      "rotate": "Couldn't generate token",
+      "revoke": "Couldn't revoke token"
+    }
+  }
+}

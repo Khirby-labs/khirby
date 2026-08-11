@@ -1,0 +1,22 @@
+{
+  "list.title": "Page heading of the screen listing the Listmonk lists this CRM is wired to. A DIFFERENT screen from the live Listmonk list browser (plugins.listmonk.lists.title) — the two must never share a key. ≤3 words. Glossary: newsletter stays 'newsletter'.",
+  "list.columns.listmonkId": "Table column header: the list's numeric id inside Listmonk. Keep the brand name and the technical 'ID'. ≤3 words.",
+  "list.columns.name": "Table column header: the name this CRM shows for the list. 1 word. CSS uppercases headers, so give sentence case.",
+  "list.columns.syncedAt": "Table column header: when contacts were last synced with this list. ≤2 words.",
+  "list.never": "Value in that column when no sync has ever run. 1 word.",
+  "list.empty": "Shown in the table body when no list has been wired up yet. ≤4 words.",
+
+  "list.delete.title": "Title of the delete confirmation for one wired list. A question, ≤4 words. Polish uses the infinitive ('Usunąć…?'). This screen used to hand-roll its own modal — it now goes through useConfirm.",
+  "list.delete.message": "Body of that confirmation. {name} is the list's display name and must be wrapped in the locale's own quote marks (Polish „…”, English “…”). Say that the action cannot be undone. Replaces a sentence that was split across three DOM nodes.",
+  "list.delete.confirm": "The destructive button in that confirmation. Names the action AND the object — never a bare 'OK'. ≤3 words.",
+
+  "add.title": "Heading of the form below the table that wires up another Listmonk list. Polish is a noun phrase, not an imperative. ≤4 words.",
+  "add.listId": "Field label for the numeric id of the list in Listmonk. Required — the asterisk is rendered separately. ≤4 words.",
+  "add.name": "Field label for the name this CRM will show. Required — the asterisk is rendered separately. ≤2 words.",
+  "add.submit": "Submit button of that form. Imperative, ≤3 words.",
+  "add.submitting": "Label that button shows while the request is in flight. Ends with an ellipsis character. ≤2 words.",
+
+  "errors.load": "Fallback in the error banner when the wired lists could not be fetched and the server gave no message. No trailing period.",
+  "errors.add": "Fallback under the form when wiring up a list failed and the server gave no message. No trailing period.",
+  "errors.delete": "Fallback in the delete toast when the server gave no message. No trailing period."
+}

@@ -1,0 +1,93 @@
+{
+  "create": {
+    "copyFrom": "Skopiuj uprawnienia z",
+    "copyFromAria": "Skopiuj uprawnienia z roli",
+    "copyFromHint": "Kopiuje dostęp do modułów z wybranej roli. Można go później zmienić.",
+    "copyNone": "Od zera",
+    "description": "Nadaj roli nazwę, opisz jej przeznaczenie i opcjonalnie skopiuj dostęp do modułów z innej roli.",
+    "submit": "Utwórz rolę",
+    "title": "Nowa rola"
+  },
+  "delete": {
+    "action": "Usuń rolę",
+    "message": "Rola „{name}” zostanie usunięta, a użytkownicy z tą rolą stracą jej dostęp. Tej operacji nie można cofnąć.",
+    "title": "Usunąć rolę?"
+  },
+  "detail": {
+    "grantAll": "Przyznaj wszystkie",
+    "moduleCount": "{granted}/{total} moduł | {granted}/{total} moduły | {granted}/{total} modułów",
+    "modulesHeading": "Dostęp do modułów",
+    "noDescription": "Brak opisu",
+    "revokeAll": "Odbierz wszystkie",
+    "save": "Zapisz zmiany"
+  },
+  "discard": {
+    "all": "Niezapisane zmiany uprawnień zostaną utracone po opuszczeniu strony.",
+    "confirm": "Odrzuć zmiany",
+    "one": "Niezapisane zmiany w roli „{name}” zostaną utracone.",
+    "title": "Odrzucić zmiany?"
+  },
+  "edit": {
+    "action": "Edytuj rolę",
+    "description": "Zmiana nazwy i opisu roli „{name}”.",
+    "protectedHint": "Nazw ról systemowych nie można zmieniać.",
+    "title": "Edycja roli"
+  },
+  "empty": {
+    "noneMessage": "Utwórz pierwszą rolę, aby przydzielać uprawnienia.",
+    "noneTitle": "Brak ról",
+    "selectMessage": "Wybierz rolę z listy, aby edytować jej uprawnienia.",
+    "selectTitle": "Wybierz rolę"
+  },
+  "errors": {
+    "create": "Nie udało się utworzyć roli",
+    "delete": "Nie udało się usunąć roli",
+    "load": "Nie udało się wczytać ról: {message}.",
+    "reasonUnknown": "serwer nie podał przyczyny",
+    "save": "Nie udało się zapisać roli"
+  },
+  "form": {
+    "description": "Opis",
+    "descriptionPlaceholder": "Opis (opcjonalnie)",
+    "descriptionTooLong": "Opis może mieć najwyżej {max} znaków.",
+    "name": "Nazwa",
+    "nameExample": "np. Kierownik sprzedaży",
+    "namePlaceholder": "Nazwa roli",
+    "nameRequired": "Podaj nazwę roli.",
+    "nameTooLong": "Nazwa roli może mieć najwyżej {max} znaków."
+  },
+  "list": {
+    "deleteAria": "Usuń rolę {name}",
+    "editAria": "Edytuj rolę {name}",
+    "heading": "Rola ({count}) | Role ({count}) | Ról ({count})",
+    "new": "Nowa rola",
+    "protectedHint": "Nie można usunąć roli systemowej",
+    "unsaved": "Niezapisane zmiany"
+  },
+  "permissions": {
+    "grantAria": "Przyznaj dostęp do modułu {module}",
+    "resource": {
+      "contacts": "Kontakty",
+      "forms": "Formularze",
+      "integrations": "Integracje",
+      "leads": "Leady",
+      "newsletter": "Newsletter",
+      "roles": "Role",
+      "settings": "Ustawienia",
+      "boards": "Boards",
+      "users": "Użytkownicy"
+    }
+  },
+  "seed": {
+    "superAdmin": {
+      "description": "Pełny dostęp do wszystkiego"
+    }
+  },
+  "toast": {
+    "copyFailed": "Rola utworzona, ale nie udało się skopiować uprawnień.",
+    "copyFailedReason": "Rola utworzona, ale nie udało się skopiować uprawnień: {message}",
+    "created": "Utworzono rolę",
+    "deleted": "Usunięto rolę",
+    "saved": "Zapisano rolę"
+  }
+}

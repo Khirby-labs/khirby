@@ -1,0 +1,146 @@
+{
+  "settings": {
+    "title": "Mail",
+    "subtitle": "Connect your company mailbox via IMAP, SMTP, or Google.",
+    "enabledLabel": "Enable mailbox",
+    "enabledHint": "Activates IMAP sync and enables sending via SMTP.",
+    "lastSync": "Last sync",
+    "testConnection": "Test connection",
+    "testing": "Testing…",
+    "testOk": "Connection successful",
+    "testFailed": "Connection failed",
+    "passwordHint": "Leave blank to keep the current password.",
+    "backfillDays": "Initial backfill (days)",
+    "noSecretsKey": "MAIL_SECRETS_KEY is not configured on the server. Passwords cannot be stored and the mailbox cannot be enabled. Set a 32-byte hex key in your environment and restart the API.",
+    "status": {
+      "disconnected": "Disconnected",
+      "connected": "Connected",
+      "reconnecting": "Reconnecting…",
+      "error": "Connection error"
+    },
+    "identity": {
+      "title": "Identity",
+      "fromName": "Sender name",
+      "fromAddress": "From address",
+      "name": "Mailbox label"
+    },
+    "imap": {
+      "title": "IMAP (incoming mail)",
+      "host": "Host",
+      "hostPlaceholder": "imap.example.com",
+      "port": "Port",
+      "user": "Username",
+      "password": "Password",
+      "secure": "Use TLS / SSL (port 993)",
+      "secureHint": "On for port 993. Off for port 143 (STARTTLS)."
+    },
+    "smtp": {
+      "title": "SMTP (outgoing mail)",
+      "host": "Host",
+      "hostPlaceholder": "smtp.example.com",
+      "port": "Port",
+      "user": "Username",
+      "password": "Password",
+      "secure": "Use TLS / SSL (port 465)",
+      "secureHint": "On for port 465. Off for port 587 (STARTTLS)."
+    },
+    "google": {
+      "title": "Google",
+      "hint": "Send and receive email using your Google account with secure OAuth.",
+      "connect": "Connect Google account",
+      "disconnect": "Disconnect Google account",
+      "connectedAs": "Connected as {email}",
+      "connectedFlash": "Google account connected.",
+      "errorFlash": "Couldn't connect Google account.",
+      "hostsManaged": "Gmail hosts are managed automatically."
+    },
+    "errors": {
+      "required": "This field is required."
+    }
+  },
+  "inbox": {
+    "title": "Inbox",
+    "empty": "No threads yet",
+    "emptyHint": "Received and sent messages will appear here once the mailbox is configured.",
+    "refresh": "Refresh",
+    "settings": "Mailbox settings",
+    "selectThread": "Select a conversation to read it here."
+  },
+  "panel": {
+    "empty": "No correspondence yet",
+    "emptyHint": "Messages with this contact will appear here.",
+    "compose": "New message",
+    "cancelCompose": "Cancel",
+    "backToList": "Back to list",
+    "correspondenceTitle": "Correspondence"
+  },
+  "thread": {
+    "noSubject": "(no subject)",
+    "unknownContact": "Unknown sender",
+    "messageCount": "{n} message | {n} messages",
+    "delete": {
+      "action": "Delete",
+      "title": "Delete conversation?",
+      "message": "Delete “{subject}”? This conversation will be permanently removed from the CRM inbox. This can't be undone.",
+      "confirm": "Delete thread",
+      "deleting": "Deleting…"
+    }
+  },
+  "direction": {
+    "inbound": "Received",
+    "outbound": "Sent"
+  },
+  "message": {
+    "to": "To",
+    "failed": "Failed",
+    "pending": "Pending",
+    "retry": "Retry",
+    "retrying": "Retrying…",
+    "attachmentsNote": "Attachments not shown in v1."
+  },
+  "compose": {
+    "subject": "Subject",
+    "body": "Message",
+    "send": "Send",
+    "sending": "Sending…"
+  },
+  "reply": {
+    "title": "Reply",
+    "placeholder": "Write your reply…",
+    "send": "Send reply",
+    "sending": "Sending…"
+  },
+  "toast": {
+    "mailboxSaved": "Mailbox settings saved.",
+    "sent": "Message sent.",
+    "googleDisconnected": "Google account disconnected.",
+    "deleted": "Conversation deleted.",
+    "captured": "Contact created and thread linked"
+  },
+  "errors": {
+    "loadMailbox": "Failed to load mailbox settings.",
+    "saveMailbox": "Failed to save mailbox settings.",
+    "testFailed": "Connection test failed.",
+    "loadThreads": "Failed to load messages.",
+    "loadThread": "Failed to load thread.",
+    "send": "Failed to send message.",
+    "googleOAuth": "Google authentication failed. Try again.",
+    "googleDisconnect": "Couldn't disconnect Google account.",
+    "delete": "Couldn't delete the conversation.",
+    "capture": "Couldn't add the sender as a contact. Try again"
+  },
+  "aiSuggest": {
+    "generate": "Generate draft",
+    "generating": "Generating…",
+    "instructionPlaceholder": "Optional instruction…",
+    "error": "Couldn't generate a draft"
+  },
+  "capture": {
+    "banner": "This sender isn't in the CRM. Add them to link this thread.",
+    "cta": "Add contact and lead",
+    "title": "Contact from email",
+    "hint": "Copy the name from the message below if needed.",
+    "messageHint": "First message",
+    "submit": "Create contact"
+  }
+}

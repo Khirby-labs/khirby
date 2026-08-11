@@ -1,0 +1,93 @@
+{
+  "create": {
+    "copyFrom": "Copy permissions from",
+    "copyFromAria": "Copy permissions from a role",
+    "copyFromHint": "Copies the source role's module access. It can be adjusted afterwards.",
+    "copyNone": "Start empty",
+    "description": "Name the role, describe what it's for, and optionally copy another role's module access as a starting point.",
+    "submit": "Create role",
+    "title": "Create role"
+  },
+  "delete": {
+    "action": "Delete role",
+    "message": "“{name}” will be deleted and members holding it lose its access. This can't be undone.",
+    "title": "Delete role?"
+  },
+  "detail": {
+    "grantAll": "Grant all",
+    "moduleCount": "{granted}/{total} module | {granted}/{total} modules",
+    "modulesHeading": "Module access",
+    "noDescription": "No description",
+    "revokeAll": "Revoke all",
+    "save": "Save changes"
+  },
+  "discard": {
+    "all": "Unsaved permission changes will be lost if you leave.",
+    "confirm": "Discard changes",
+    "one": "Unsaved changes to “{name}” will be lost.",
+    "title": "Discard changes?"
+  },
+  "edit": {
+    "action": "Edit role",
+    "description": "Change the name and description of “{name}”.",
+    "protectedHint": "System role names can't be changed.",
+    "title": "Edit role"
+  },
+  "empty": {
+    "noneMessage": "Create the first role to start handing out permissions.",
+    "noneTitle": "No roles yet",
+    "selectMessage": "Choose a role from the list to edit its permissions.",
+    "selectTitle": "Select a role"
+  },
+  "errors": {
+    "create": "Couldn't create the role",
+    "delete": "Couldn't delete the role",
+    "load": "Couldn't load roles: {message}.",
+    "reasonUnknown": "the server gave no reason",
+    "save": "Couldn't save the role"
+  },
+  "form": {
+    "description": "Description",
+    "descriptionPlaceholder": "Description (optional)",
+    "descriptionTooLong": "Description must be {max} characters or fewer.",
+    "name": "Name",
+    "nameExample": "e.g. Sales manager",
+    "namePlaceholder": "Role name",
+    "nameRequired": "Role name is required.",
+    "nameTooLong": "Role name must be {max} characters or fewer."
+  },
+  "list": {
+    "deleteAria": "Delete role {name}",
+    "editAria": "Edit role {name}",
+    "heading": "Role ({count}) | Roles ({count})",
+    "new": "New role",
+    "protectedHint": "System roles can't be deleted",
+    "unsaved": "Unsaved changes"
+  },
+  "permissions": {
+    "grantAria": "Grant access to {module}",
+    "resource": {
+      "contacts": "Contacts",
+      "forms": "Forms",
+      "integrations": "Integrations",
+      "leads": "Leads",
+      "newsletter": "Newsletter",
+      "roles": "Roles",
+      "settings": "Settings",
+      "boards": "Boards",
+      "users": "Members"
+    }
+  },
+  "seed": {
+    "superAdmin": {
+      "description": "Full access to everything"
+    }
+  },
+  "toast": {
+    "copyFailed": "Role created, but copying its permissions failed.",
+    "copyFailedReason": "Role created, but copying its permissions failed: {message}",
+    "created": "Role created",
+    "deleted": "Role deleted",
+    "saved": "Role saved"
+  }
+}

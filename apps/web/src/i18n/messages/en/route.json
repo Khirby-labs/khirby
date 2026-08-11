@@ -1,0 +1,9 @@
+{
+  "contactDetail": "Contact",
+  "documentTitle": "{page} · {app}",
+  "login": "Sign in",
+  "notFound": "Page not found",
+  "pipelineStages": "Stages",
+  "formsAnalytics": "Analytics",
+  "formBuilder": "Form builder"
+}

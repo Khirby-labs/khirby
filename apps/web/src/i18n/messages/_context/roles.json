@@ -1,0 +1,76 @@
+{
+  "list.heading": "Heading above the role list in the left rail, e.g. 'Roles (4)'. PLURAL on {count} — Polish needs three forms. {count} is already formatted by n(). CSS uppercases it, so give sentence case. Replaces a heading that was split into a word plus a separate '(n)' node.",
+  "list.new": "Icon button above the role list, and the action inside the empty state. Opens the create dialog. ≤3 words — it is also the button's aria-label and title.",
+  "list.unsaved": "aria-label and title of the small • dot marking a role with unsaved permission changes. The dot itself stays in markup. ≤2 words.",
+  "list.editAria": "aria-label of the pencil button on a role row. {name} is that role's name, so the label is unique per row.",
+  "list.deleteAria": "aria-label of the bin button on a role row. {name} is that role's name, so the label is unique per row.",
+  "list.protectedHint": "title of the bin button when it is disabled because the role is built in and cannot be removed. No trailing period.",
+
+  "detail.noDescription": "Shown in place of the description when a role has none. Not an error — just absent. Rendered in italics. ≤2 words.",
+  "detail.modulesHeading": "Small heading above the module checklist. ≤3 words. CSS uppercases it.",
+  "detail.moduleCount": "Fraction next to that heading: how many of the CRM's modules this role may manage. ONE message — never split the fraction. {granted} and {total} are both numbers; PLURAL on {total}, so Polish needs three forms.",
+  "detail.grantAll": "Text button that grants the role every module. Imperative, ≤2 words.",
+  "detail.revokeAll": "Text button next to it that takes every module away. Imperative, ≤2 words. The · between them stays in markup.",
+  "detail.save": "Primary button at the bottom of the detail pane; commits the pending module grants. Imperative, ≤2 words. Was Title Case ('Save Changes') before the migration.",
+
+  "permissions.grantAria": "aria-label of one module's checkbox. {module} is a module label from permissions.resource.*, already translated. Says that ticking it gives this role access.",
+  "permissions.resource.contacts": "Label of the 'contacts' module in the access checklist. The raw token comes from PERMISSION_RESOURCES and stays the value; this is only its label. Noun, plural, 1 word — CSS 'capitalize' was doing this job before and does not produce correct Polish.",
+  "permissions.resource.forms": "Label of the 'forms' module. Noun, plural, 1 word. Glossary: form → formularz.",
+  "permissions.resource.leads": "Label of the 'leads' module. Noun, plural, 1 word. Glossary: lead stays 'lead' in Polish and inflects.",
+  "permissions.resource.newsletter": "Label of the 'newsletter' module. Noun, 1 word. Glossary: newsletter stays 'newsletter'.",
+  "permissions.resource.settings": "Label of the 'settings' module. Noun, plural, 1 word. Glossary: settings → ustawienia.",
+  "permissions.resource.integrations": "Label of the 'integrations' module — plugins and outside services. Noun, plural, 1 word. Glossary: integrations → integracje.",
+  "permissions.resource.roles": "Label of the 'roles' module, i.e. this very screen. Noun, plural, 1 word.",
+  "permissions.resource.users": "Label of the 'users' module — the member list. Noun, plural, 1 word. Glossary: member/user → użytkownik.",
+  "permissions.resource.boards": "Label of the 'boards' module (work kanban). Noun, plural, 1 word.",
+
+  "empty.noneTitle": "Empty-state title when no role has been defined yet. ≤3 words.",
+  "empty.noneMessage": "Body under it. One sentence saying what a role is for: handing out permissions.",
+  "empty.selectTitle": "Empty-state title in the detail pane when roles exist but none is selected. ≤3 words.",
+  "empty.selectMessage": "Body under it. One sentence telling the reader to pick a row on the left, and what they can then do.",
+
+  "edit.action": "Label of the pencil action: its title attribute. Imperative, ≤3 words.",
+  "edit.title": "Title of the edit dialog. Polish is a noun phrase ('Edycja…'), English an imperative — a heading, not a button. ≤3 words.",
+  "edit.description": "Sub-title of that dialog. {name} is the role being edited and must be wrapped in the locale's own quote marks (Polish „…”, English “…”). It replaced &quot; entities in the old template.",
+  "edit.protectedHint": "Note under the name field when the role is built in: its name is fixed, the description is not. One sentence.",
+
+  "form.name": "Field label for a role's name, in both dialogs. 1 word.",
+  "form.namePlaceholder": "Placeholder in the name input of the edit dialog. ≤2 words.",
+  "form.nameExample": "Placeholder in the name input of the create dialog — an example of a role someone would create. Starts with the locale's 'e.g.' abbreviation.",
+  "form.description": "Field label for a role's description, in both dialogs. 1 word.",
+  "form.descriptionPlaceholder": "Placeholder in both description inputs. Says the field may be left empty. ≤3 words.",
+  "form.nameRequired": "Validation error when the name field was left empty. One sentence.",
+  "form.nameTooLong": "Validation error when the typed name is over the limit. {max} is that limit — never write the number into the message.",
+  "form.descriptionTooLong": "Validation error when the typed description is over the limit. {max} is that limit — never write the number into the message.",
+
+  "create.title": "Title of the create dialog. Polish is a noun phrase, English an imperative. ≤3 words.",
+  "create.description": "Sub-title of that dialog. Names the three things it does: name the role, describe it, optionally copy another role's module access. Polish stays impersonal.",
+  "create.copyFrom": "Field label of the select that picks a role to copy module access from. ≤4 words.",
+  "create.copyFromHint": "Hint under that select: what is copied, and that it can be changed later. Polish stays impersonal — no 'You can'.",
+  "create.copyFromAria": "aria-label of that same select. Screen-reader only; says what is being chosen.",
+  "create.copyNone": "The select's first option — create the role with no permissions at all. ≤2 words.",
+  "create.submit": "Submit button of the create dialog. Imperative, ≤3 words.",
+
+  "delete.action": "Label of the destructive action: the bin button's title, and the confirm button of its dialog. Names the action AND the object — never a bare 'OK'. Imperative, ≤3 words.",
+  "delete.title": "Title of the delete confirmation. A question, ≤4 words. Polish uses the infinitive ('Usunąć…?').",
+  "delete.message": "Body of that confirmation. {name} identifies the role and must be wrapped in the locale's own quote marks. Two consequences: members holding the role lose its access, and the action cannot be undone.",
+
+  "discard.title": "Title of the confirmation shown when unsaved permission changes would be lost — on switching role, and on leaving the page. A question, ≤3 words. Polish uses the infinitive.",
+  "discard.one": "Body of that confirmation when switching to another role. {name} is the role whose edits are pending, wrapped in the locale's own quote marks.",
+  "discard.all": "Body of the same confirmation when navigating away from the page entirely, where no single role can be named. Polish stays impersonal — no 'You have'.",
+  "discard.confirm": "The confirm button of that dialog. Names what happens: the edits go away. Imperative, ≤3 words.",
+
+  "toast.saved": "Toast after the pending module grants were stored. Past tense, ≤3 words.",
+  "toast.created": "Toast after a new role was created. Past tense, ≤3 words.",
+  "toast.deleted": "Toast after a role was removed. Past tense, ≤3 words.",
+  "toast.copyFailed": "Toast when the role itself was created but copying the source role's module access failed, and the server gave no reason. Says both halves — the role exists, the copy did not happen.",
+  "toast.copyFailedReason": "Same situation, but the server did give a reason: {message} is its text, appended after a colon. One message, not fragments.",
+
+  "errors.load": "Error banner above the whole page when the role list could not be fetched. {message} is the server's own reason, inserted into the sentence — keep it as one message, never as fragments around the value.",
+  "errors.save": "Fallback in the save toast when the server gave no message. No trailing period.",
+  "errors.create": "Fallback in the create dialog when the server gave no message. No trailing period.",
+  "errors.delete": "Fallback in the delete toast when the server gave no message. No trailing period.",
+  "errors.reasonUnknown": "Used as {message} in errors.load when the failure carried no server text at all. A sentence fragment that has to read naturally after a colon — lower case, no trailing period.",
+
+  "seed.superAdmin.description": "Description of the one role the API seeds on first boot, shown under its name in the role detail panel. The database keeps the English seed and is never rewritten; this key is used only while the row still matches it, so an operator who edits the description sees their own words instead (ADR-0011). A noun phrase, no trailing period — it sits where user-written descriptions sit. The role's NAME ('super-admin') is an identifier and is never translated."
+}

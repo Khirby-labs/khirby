@@ -1,0 +1,153 @@
+{
+  "board": {
+    "emptyColumn": "Upuść taska tutaj albo kliknij, by utworzyć",
+    "emptyColumnCreateAria": "Utwórz taska w statusie {status}",
+    "newTask": "Nowy task",
+    "newTaskTitle": "Nowy task",
+    "titlePlaceholder": "Tytuł taska"
+  },
+  "filters": {
+    "allAssignees": "Wszyscy opiekunowie",
+    "allModules": "Wszystkie moduły",
+    "allPriorities": "Wszystkie priorytety",
+    "allStatuses": "Wszystkie statusy",
+    "priority": "Priorytet"
+  },
+  "list": {
+    "assignees": "Opiekunowie",
+    "dueDate": "Termin",
+    "id": "ID",
+    "module": "Moduł",
+    "priority": "Priorytet",
+    "status": "Status",
+    "title": "Tytuł"
+  },
+  "module": {
+    "new": "Nowy moduł",
+    "namePlaceholder": "Nazwa modułu"
+  },
+  "my": {
+    "empty": {
+      "message": "Tu pojawią się taski przypisane do tego konta.",
+      "title": "Brak przypisanych tasków"
+    },
+    "title": "Moje taski"
+  },
+  "priority": {
+    "high": "Wysoki",
+    "low": "Niski",
+    "medium": "Średni",
+    "urgent": "Pilny"
+  },
+  "project": {
+    "delete": {
+      "message": "Usunąć projekt {name}? Moduły i taski wewnątrz też zostaną usunięte.",
+      "title": "Usunąć projekt?"
+    },
+    "editKey": "Zmień klucz projektu…",
+    "kanban": "Tablica",
+    "key": "Klucz projektu",
+    "keyHint": "Krótki klucz do ID tasków (np. FIN → FIN-01). Puste = z nazwy projektu.",
+    "keyPlaceholder": "Klucz (FIN)",
+    "list": "Lista",
+    "statuses": "Statusy",
+    "new": "Nowy projekt",
+    "namePlaceholder": "Nazwa projektu"
+  },
+  "statuses": {
+    "add": "Dodaj status",
+    "backlog": "Backlog",
+    "colorAria": "Kolor statusu",
+    "colors": {
+      "amber": "Bursztynowy",
+      "blue": "Niebieski",
+      "gray": "Szary",
+      "green": "Zielony",
+      "orange": "Pomarańczowy",
+      "purple": "Fioletowy",
+      "red": "Czerwony"
+    },
+    "delete": {
+      "confirm": "Usuń status",
+      "message": "Usunąć status „{name}”? Można usunąć tylko puste statusy.",
+      "title": "Usunąć status?"
+    },
+    "done": "Done",
+    "canceled": "Canceled",
+    "hint": "Te kolumny widać na tablicach wszystkich modułów w tym projekcie. Każdy projekt ma własny zestaw. Taski w Canceled znikają automatycznie po 7 dniach.",
+    "moveDown": "W dół",
+    "moveDownAria": "Przenieś status w dół",
+    "moveUp": "W górę",
+    "moveUpAria": "Przenieś status w górę",
+    "nameAria": "Nazwa statusu",
+    "namePlaceholder": "Nazwa statusu",
+    "newTitle": "Nowy status"
+  },
+  "sidebar": {
+    "myTasks": "Moje taski",
+    "projects": "Projekty"
+  },
+  "task": {
+    "activity": "Aktywność",
+    "addComment": "Dodaj komentarz",
+    "addSubtask": "Dodaj subtask",
+    "assignees": "Opiekunowie",
+    "back": "Wróć",
+    "commentPlaceholder": "Napisz komentarz (markdown)…",
+    "comments": "Komentarze",
+    "copied": "Skopiowano",
+    "copyId": "Kopiuj ID taska",
+    "delete": "Usuń taska",
+    "deleteConfirm": {
+      "confirm": "Usuń taska",
+      "message": "Usunąć {id} „{title}”? Tej operacji nie da się cofnąć.",
+      "title": "Usunąć taska?"
+    },
+    "canceledHint": "Ten task jest anulowany — zostanie trwale usunięty po 7 dniach w tym statusie.",
+    "description": "Opis",
+    "dueDate": "Termin",
+    "lead": "Powiązany lead",
+    "leadPlaceholder": "ID leada (opcjonalnie)",
+    "noActivity": "Brak aktywności.",
+    "noAssignees": "Brak członków do przypisania.",
+    "noComments": "Brak komentarzy.",
+    "noSubtasks": "Brak subtasków.",
+    "pageTitle": "Task",
+    "priority": "Priorytet",
+    "status": "Status",
+    "subtasks": "Subtaski",
+    "tags": "Tagi",
+    "title": "Tytuł"
+  },
+  "markdown": {
+    "bold": "Pogrubienie",
+    "checklist": "Checklist",
+    "code": "Kod inline",
+    "codeBlock": "Blok kodu",
+    "heading": "Nagłówek",
+    "hint": "Markdown · pasek albo ⌘/Ctrl+B I E K · ⌘/Ctrl+Enter zapisz · Esc anuluj",
+    "italic": "Kursywa",
+    "link": "Link",
+    "list": "Lista",
+    "ordered": "Lista numerowana",
+    "phBold": "pogrubienie",
+    "phCode": "kod",
+    "phHeading": "Nagłówek",
+    "phItalic": "kursywa",
+    "phItem": "punkt",
+    "phLink": "tekst",
+    "phTask": "task",
+    "placeholder": "Kliknij, aby dodać opis…",
+    "toolbar": "Formatowanie"
+  },
+  "errors": {
+    "createProject": "Nie udało się utworzyć projektu",
+    "createTask": "Nie udało się utworzyć taska",
+    "invalidKey": "Klucz projektu musi mieć co najmniej 2 litery lub cyfry",
+    "load": "Nie udało się wczytać task boardu",
+    "move": "Nie udało się przenieść taska",
+    "save": "Nie udało się zapisać",
+    "deleteStatus": "Nie udało się usunąć statusu — może mieć jeszcze taski",
+    "deleteTask": "Nie udało się usunąć taska"
+  }
+}

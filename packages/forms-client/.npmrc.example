@@ -1,0 +1,4 @@
+# Copy to your landing project as .npmrc (or merge these lines).
+# Public npm scope for Khirby forms packages.
+
+@khirby:registry=https://registry.npmjs.org

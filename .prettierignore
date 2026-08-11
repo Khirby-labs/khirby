@@ -1,0 +1,7 @@
+**/dist/**
+**/coverage/**
+**/node_modules/**
+drizzle/**
+pnpm-lock.yaml
+*.md
+.claude/worktrees/

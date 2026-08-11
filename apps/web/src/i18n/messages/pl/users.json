@@ -1,0 +1,71 @@
+{
+  "create": {
+    "description": "Utwórz konto z adresem e-mail i hasłem początkowym. Role można przypisać później.",
+    "password": "Hasło",
+    "submit": "Dodaj użytkownika",
+    "title": "Nowy użytkownik"
+  },
+  "delete": {
+    "action": "Usuń użytkownika",
+    "message": "Użytkownik „{email}” zostanie usunięty. Tej operacji nie można cofnąć.",
+    "title": "Usunąć użytkownika?"
+  },
+  "detail": {
+    "assignAll": "Przypisz wszystkie",
+    "created": "Utworzono {date}",
+    "noRoles": "Brak zdefiniowanych ról.",
+    "removeAll": "Usuń wszystkie",
+    "roleCount": "{assigned}/{total} rola | {assigned}/{total} role | {assigned}/{total} ról",
+    "rolesHeading": "Role",
+    "save": "Zapisz zmiany",
+    "self": "Konto własne"
+  },
+  "discard": {
+    "all": "Niezapisane zmiany ról zostaną utracone po opuszczeniu strony.",
+    "confirm": "Odrzuć zmiany",
+    "one": "Niezapisane zmiany ról użytkownika „{email}” zostaną utracone.",
+    "title": "Odrzucić zmiany?"
+  },
+  "edit": {
+    "action": "Edytuj użytkownika",
+    "description": "Zmiana adresu e-mail lub hasła użytkownika „{email}”.",
+    "newPassword": "Nowe hasło",
+    "passwordHint": "Pozostaw puste, aby zachować obecne hasło.",
+    "title": "Edycja użytkownika"
+  },
+  "empty": {
+    "noneMessage": "Dodaj pierwszego użytkownika, aby ktoś mógł korzystać z CRM.",
+    "noneTitle": "Brak użytkowników",
+    "selectMessage": "Wybierz użytkownika z listy, aby zarządzać jego rolami.",
+    "selectTitle": "Wybierz użytkownika"
+  },
+  "errors": {
+    "create": "Nie udało się utworzyć użytkownika",
+    "delete": "Nie udało się usunąć użytkownika",
+    "load": "Nie udało się wczytać użytkowników: {message}.",
+    "reasonUnknown": "serwer nie podał przyczyny",
+    "save": "Nie udało się zapisać użytkownika"
+  },
+  "form": {
+    "email": "E-mail",
+    "emailPlaceholder": "jan{'@'}example.com",
+    "emailRequired": "Podaj adres e-mail.",
+    "passwordHint": "Co najmniej {min} znaków.",
+    "passwordMin": "Hasło musi mieć co najmniej {min} znaków.",
+    "passwordPlaceholder": "Co najmniej {min} znaków"
+  },
+  "toast": {
+    "added": "Dodano użytkownika",
+    "deleted": "Usunięto użytkownika",
+    "saved": "Zapisano użytkownika"
+  },
+  "list": {
+    "deleteAria": "Usuń użytkownika {email}",
+    "editAria": "Edytuj użytkownika {email}",
+    "heading": "Użytkownik ({count}) | Użytkownicy ({count}) | Użytkowników ({count})",
+    "new": "Nowy użytkownik",
+    "noRoles": "Brak ról",
+    "selfDeleteHint": "Nie można usunąć własnego konta",
+    "unsaved": "Niezapisane zmiany"
+  }
+}

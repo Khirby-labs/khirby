@@ -1,0 +1,22 @@
+{
+  "name": "crm-plugin-hello",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Example community plugin for Khirby (event + Nest + Vue)",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "keywords": [
+    "khirby-plugin"
+  ],
+  "exports": {
+    ".": "./src/index.ts",
+    "./web": "./src/web/index.ts"
+  },
+  "peerDependencies": {
+    "@khirby/plugin-host": "^1.0.0",
+    "@khirby/plugin-sdk": "^1.0.0",
+    "@nestjs/common": "*",
+    "vue": "^3",
+    "vue-router": "^4"
+  }
+}

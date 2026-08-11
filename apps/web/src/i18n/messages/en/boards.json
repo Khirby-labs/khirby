@@ -1,0 +1,153 @@
+{
+  "board": {
+    "emptyColumn": "Drop a task here or click to create one",
+    "emptyColumnCreateAria": "Create a task in {status}",
+    "newTask": "New task",
+    "newTaskTitle": "New task",
+    "titlePlaceholder": "Task title"
+  },
+  "filters": {
+    "allAssignees": "All assignees",
+    "allModules": "All modules",
+    "allPriorities": "All priorities",
+    "allStatuses": "All statuses",
+    "priority": "Priority"
+  },
+  "list": {
+    "assignees": "Assignees",
+    "dueDate": "Due date",
+    "id": "ID",
+    "module": "Module",
+    "priority": "Priority",
+    "status": "Status",
+    "title": "Title"
+  },
+  "module": {
+    "new": "New module",
+    "namePlaceholder": "Module name"
+  },
+  "my": {
+    "empty": {
+      "message": "Tasks assigned to this account appear here.",
+      "title": "No assigned tasks"
+    },
+    "title": "My tasks"
+  },
+  "priority": {
+    "high": "High",
+    "low": "Low",
+    "medium": "Medium",
+    "urgent": "Urgent"
+  },
+  "project": {
+    "delete": {
+      "message": "Delete project {name}? Modules and tasks inside it are removed too.",
+      "title": "Delete project?"
+    },
+    "editKey": "Change project key…",
+    "kanban": "Board",
+    "key": "Project key",
+    "keyHint": "Short key for task IDs (e.g. FIN → FIN-01). Leave blank to derive from the name.",
+    "keyPlaceholder": "Key (FIN)",
+    "list": "List",
+    "statuses": "Statuses",
+    "new": "New project",
+    "namePlaceholder": "Project name"
+  },
+  "statuses": {
+    "add": "Add status",
+    "backlog": "Backlog",
+    "colorAria": "Status color",
+    "colors": {
+      "amber": "Amber",
+      "blue": "Blue",
+      "gray": "Gray",
+      "green": "Green",
+      "orange": "Orange",
+      "purple": "Purple",
+      "red": "Red"
+    },
+    "delete": {
+      "confirm": "Delete status",
+      "message": "Delete status “{name}”? Only empty statuses can be removed.",
+      "title": "Delete status?"
+    },
+    "done": "Done",
+    "canceled": "Canceled",
+    "hint": "These columns appear on every module board in this project. Each project has its own set. Tasks in Canceled are removed automatically after 7 days.",
+    "moveDown": "Move down",
+    "moveDownAria": "Move status down",
+    "moveUp": "Move up",
+    "moveUpAria": "Move status up",
+    "nameAria": "Status name",
+    "namePlaceholder": "Status name",
+    "newTitle": "New status"
+  },
+  "sidebar": {
+    "myTasks": "My tasks",
+    "projects": "Projects"
+  },
+  "task": {
+    "activity": "Activity",
+    "addComment": "Add comment",
+    "addSubtask": "Add subtask",
+    "assignees": "Assignees",
+    "back": "Back",
+    "commentPlaceholder": "Write a comment (markdown supported)…",
+    "comments": "Comments",
+    "copied": "Copied",
+    "copyId": "Copy task ID",
+    "delete": "Delete task",
+    "deleteConfirm": {
+      "confirm": "Delete task",
+      "message": "Delete {id} “{title}”? This cannot be undone.",
+      "title": "Delete task?"
+    },
+    "canceledHint": "This task is canceled — it will be permanently deleted after 7 days in this status.",
+    "description": "Description",
+    "dueDate": "Due date",
+    "lead": "Linked lead",
+    "leadPlaceholder": "Lead ID (optional)",
+    "noActivity": "No activity yet.",
+    "noAssignees": "No members to assign.",
+    "noComments": "No comments yet.",
+    "noSubtasks": "No subtasks yet.",
+    "pageTitle": "Task",
+    "priority": "Priority",
+    "status": "Status",
+    "subtasks": "Subtasks",
+    "tags": "Tags",
+    "title": "Title"
+  },
+  "markdown": {
+    "bold": "Bold",
+    "checklist": "Checklist",
+    "code": "Inline code",
+    "codeBlock": "Code block",
+    "heading": "Heading",
+    "hint": "Markdown · ⌘/Ctrl+Enter to save · Esc to cancel",
+    "italic": "Italic",
+    "link": "Link",
+    "list": "Bullet list",
+    "ordered": "Numbered list",
+    "phBold": "bold",
+    "phCode": "code",
+    "phHeading": "Heading",
+    "phItalic": "italic",
+    "phItem": "item",
+    "phLink": "text",
+    "phTask": "task",
+    "placeholder": "Click to add a description…",
+    "toolbar": "Formatting"
+  },
+  "errors": {
+    "createProject": "Couldn't create project",
+    "createTask": "Couldn't create task",
+    "invalidKey": "Project key needs at least 2 letters or digits",
+    "load": "Couldn't load task board",
+    "move": "Couldn't move task",
+    "save": "Couldn't save",
+    "deleteStatus": "Couldn't delete status — it may still have tasks",
+    "deleteTask": "Couldn't delete task"
+  }
+}

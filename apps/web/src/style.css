@@ -1,0 +1,311 @@
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens — "Honey & Graphite" (see docs/DESIGN-SYSTEM.md).
+ * Color tokens are raw RGB triplets so Tailwind alpha modifiers work (bg-accent/15).
+ * Borders carry their own alpha, so they are full rgba() values.
+ * NEVER hardcode colors in views — add a token here + tailwind.config.ts instead.
+ */
+:root {
+  /*
+   * Tells the browser which way its OWN widgets should be drawn — scrollbars, the
+   * file-input button, autofill, `<input type=checkbox>` fallbacks. Without it the
+   * UA paints them for a light page on top of graphite (this is why the old native
+   * date input's calendar glyph stayed black on dark). Date inputs are gone (ADR-0012),
+   * but every remaining native control inherits the fix.
+   */
+  color-scheme: dark;
+
+  /* Surfaces — elevation is light: lighter = closer to the user */
+  --surface-base: 18 20 23; /* #121417 app background */
+  --surface-panel: 26 29 33; /* #1A1D21 sidebar, cards, tables */
+  --surface-elevated: 34 38 43; /* #22262B modals, dropdowns, kanban cards */
+  --surface-hover: 38 42 48; /* #262A30 hover fill */
+  --surface-input: 14 16 19; /* #0E1013 inputs — recessed, darker than panel */
+  --surface-raise: rgba(237, 234, 226, 0.05);
+  --surface-raise2: rgba(237, 234, 226, 0.09);
+
+  /* Text — warm off-whites, never pure #fff */
+  --text-primary: 237 234 226; /* #EDEAE2 */
+  --text-secondary: 201 198 190; /* #C9C6BE */
+  --text-muted: 143 148 156; /* #8F949C */
+  --text-ghost: 99 103 110; /* #63676E */
+
+  /* Brand accent — honey. CTA, focus, selection, active nav ONLY. */
+  --accent: 227 161 60; /* #E3A13C */
+  --accent-hover: 239 178 84; /* #EFB254 — hover lightens on dark UI */
+  --accent-ink: 26 20 8; /* #1A1408 text on accent fills */
+
+  /* Borders — warm-white alphas */
+  --border-subtle: rgba(237, 234, 226, 0.06);
+  --border-default: rgba(237, 234, 226, 0.09);
+  --border-strong: rgba(237, 234, 226, 0.15);
+
+  /* Semantic status — warning is orange, NOT honey */
+  --success: 116 185 138; /* #74B98A */
+  --warning: 217 127 62; /* #D97F3E */
+  --danger: 224 96 85; /* #E06055 */
+  --info: 111 149 201; /* #6F95C9 */
+
+  /* Pipeline stage palette — dots, card edges, chips only */
+  --stage-blue: 111 149 201; /* #6F95C9 */
+  --stage-amber: 215 164 69; /* #D7A445 */
+  --stage-orange: 221 128 70; /* #DD8046 */
+  --stage-green: 116 185 138; /* #74B98A */
+  --stage-red: 224 96 85; /* #E06055 */
+  --stage-purple: 167 139 201; /* #A78BC9 */
+  --stage-gray: 143 148 156; /* #8F949C */
+}
+
+/*
+ * Light theme — same token names, re-tuned values (never a naive inversion).
+ * Selected by useTheme() stamping data-theme on <html>; dark is the default above.
+ * Honey darkens for AA contrast on paper; hover states darken instead of lighten.
+ */
+:root[data-theme='light'] {
+  color-scheme: light;
+
+  --surface-base: 244 243 239; /* #F4F3EF warm paper */
+  --surface-panel: 255 255 255; /* #FFFFFF cards on paper */
+  --surface-elevated: 251 250 247; /* #FBFAF7 modals, dropdowns */
+  --surface-hover: 236 234 228; /* #ECEAE4 */
+  --surface-input: 249 248 244; /* #F9F8F4 recessed wells */
+  --surface-raise: rgba(30, 27, 18, 0.05);
+  --surface-raise2: rgba(30, 27, 18, 0.09);
+
+  --text-primary: 28 27 23; /* #1C1B17 ink */
+  --text-secondary: 71 69 61; /* #47453D */
+  --text-muted: 110 108 100; /* #6E6C64 */
+  --text-ghost: 154 151 141; /* #9A978D */
+
+  --accent: 154 105 15; /* #9A690F honey darkened for 4.5:1 on paper */
+  --accent-hover: 125 85 10; /* #7D550A — hover darkens on light UI */
+  --accent-ink: 255 252 245; /* #FFFCF5 text on honey fills */
+
+  --border-subtle: rgba(30, 27, 18, 0.08);
+  --border-default: rgba(30, 27, 18, 0.12);
+  --border-strong: rgba(30, 27, 18, 0.22);
+
+  --success: 39 122 74; /* #277A4A */
+  --warning: 158 87 21; /* #9E5715 */
+  --danger: 178 56 46; /* #B2382E */
+  --info: 52 98 158; /* #34629E */
+
+  --stage-blue: 74 114 168; /* #4A72A8 */
+  --stage-amber: 158 118 26; /* #9E761A */
+  --stage-orange: 170 92 40; /* #AA5C28 */
+  --stage-green: 55 130 90; /* #37825A */
+  --stage-red: 178 70 60; /* #B2463C */
+  --stage-purple: 118 92 162; /* #765CA2 */
+  --stage-gray: 108 112 118; /* #6C7076 */
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family:
+    'Geist Variable',
+    Inter,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  background: rgb(var(--surface-base));
+  color: rgb(var(--text-primary));
+}
+
+/* Data is data: mono always ships tabular digits */
+.font-mono,
+code,
+kbd {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Global honey focus ring — never disable outlines elsewhere */
+:focus-visible {
+  outline: 2px solid rgb(var(--accent));
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--border-strong);
+}
+
+@layer components {
+  .crm-card {
+    @apply bg-surface-panel border border-border rounded-xl;
+  }
+
+  .crm-panel {
+    @apply bg-surface-panel border border-border-subtle rounded-xl;
+  }
+
+  .btn-primary {
+    @apply px-4 py-2 bg-accent hover:bg-accent-hover text-accent-ink text-sm font-semibold rounded-md transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .btn-ghost {
+    @apply px-4 py-2 bg-surface-raise hover:bg-surface-raise2 border border-border text-text-secondary text-sm font-medium rounded-md transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .btn-danger {
+    @apply px-4 py-2 bg-transparent hover:bg-danger/10 border border-danger/40 hover:border-danger/60 text-danger text-sm font-medium rounded-md transition-colors duration-150 disabled:opacity-40 disabled:pointer-events-none;
+  }
+
+  .crm-input {
+    @apply w-full px-3 py-2 bg-surface-input border border-border text-text-primary placeholder-text-ghost text-sm rounded-md focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent/30 transition-colors duration-150;
+  }
+
+  .crm-label {
+    @apply block text-xs font-semibold text-text-muted mb-1.5 uppercase tracking-wider;
+  }
+
+  .crm-page-header {
+    @apply flex items-center justify-between gap-4 flex-wrap mb-6;
+  }
+
+  .crm-page-title {
+    @apply text-lg font-semibold text-text-primary tracking-tight;
+  }
+
+  .crm-error {
+    @apply text-sm text-danger bg-danger/10 border border-danger/40 rounded-lg px-4 py-3;
+  }
+
+  .crm-empty {
+    @apply text-center py-16 text-text-ghost text-sm;
+  }
+
+  .badge-high {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-danger/15 text-danger;
+  }
+
+  .badge-medium {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-warning/15 text-warning;
+  }
+
+  .badge-low {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-raise2 text-text-muted;
+  }
+
+  /*
+   * Calendar — AppDatePicker / AppDateRangePicker (ADR-0012).
+   *
+   * Cell state lives in Reka's `data-*` attributes. These are written as plain
+   * attribute selectors here rather than as `data-[…]:` utilities in the template on
+   * purpose: several states set the same property (a selected day is also today, is
+   * also hovered), and in a class string the winner would depend on Tailwind's
+   * variant sort. In source order it depends on the order below, which is readable.
+   *
+   * The single and range cells are deliberately independent classes. Sharing a base
+   * and overriding it would put two `[data-selected]` rules of equal specificity in
+   * a race decided by which file Tailwind emitted first.
+   */
+  .crm-cal-nav {
+    @apply inline-flex h-7 w-7 items-center justify-center rounded-md text-text-muted transition-colors hover:bg-surface-raise hover:text-text-primary disabled:opacity-30 disabled:pointer-events-none;
+  }
+
+  .crm-cal-heading {
+    @apply text-sm font-semibold text-text-primary;
+  }
+
+  .crm-cal-weekday {
+    @apply pb-1.5 text-center text-[11px] font-semibold uppercase tracking-wider text-text-ghost;
+  }
+
+  /* Single date */
+  .crm-cal-day {
+    @apply relative flex h-9 w-9 cursor-pointer select-none items-center justify-center rounded-md text-sm text-text-secondary transition-colors;
+  }
+  .crm-cal-day:hover {
+    @apply bg-surface-raise text-text-primary;
+  }
+  .crm-cal-day[data-today] {
+    @apply font-semibold ring-1 ring-inset ring-border-strong;
+  }
+  .crm-cal-day[data-outside-view] {
+    @apply text-text-ghost;
+  }
+  .crm-cal-day[data-unavailable] {
+    @apply text-text-ghost line-through;
+  }
+  .crm-cal-day[data-selected] {
+    @apply bg-accent font-semibold text-accent-ink;
+  }
+  .crm-cal-day[data-disabled] {
+    @apply pointer-events-none opacity-40;
+  }
+
+  /* Date range — middle days form a band, the ends carry the accent fill */
+  .crm-cal-day-range {
+    @apply relative flex h-9 w-9 cursor-pointer select-none items-center justify-center rounded-none text-sm text-text-secondary transition-colors;
+  }
+  .crm-cal-day-range:hover {
+    @apply bg-surface-raise text-text-primary;
+  }
+  .crm-cal-day-range[data-today] {
+    @apply font-semibold ring-1 ring-inset ring-border-strong;
+  }
+  .crm-cal-day-range[data-outside-view] {
+    @apply text-text-ghost;
+  }
+  .crm-cal-day-range[data-unavailable] {
+    @apply text-text-ghost line-through;
+  }
+  .crm-cal-day-range[data-highlighted],
+  .crm-cal-day-range[data-selected] {
+    @apply bg-accent-subtle text-text-primary;
+  }
+  .crm-cal-day-range[data-selection-start],
+  .crm-cal-day-range[data-selection-end],
+  .crm-cal-day-range[data-highlighted-start],
+  .crm-cal-day-range[data-highlighted-end] {
+    @apply bg-accent font-semibold text-accent-ink;
+  }
+  .crm-cal-day-range[data-selection-start],
+  .crm-cal-day-range[data-highlighted-start] {
+    @apply rounded-l-md;
+  }
+  .crm-cal-day-range[data-selection-end],
+  .crm-cal-day-range[data-highlighted-end] {
+    @apply rounded-r-md;
+  }
+  .crm-cal-day-range[data-disabled] {
+    @apply pointer-events-none opacity-40;
+  }
+}

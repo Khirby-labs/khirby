@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html data-theme="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CRM</title>
+    <script>
+      // Pre-paint theme resolution — keep in sync with src/composables/useTheme.ts
+      (function () {
+        var theme = 'dark';
+        try {
+          var pref = localStorage.getItem('crm-theme') || 'system';
+          theme =
+            pref === 'system'
+              ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+              : pref;
+        } catch (e) {
+          /* storage/matchMedia unavailable — stay dark */
+        }
+        document.documentElement.dataset.theme = theme;
+      })();
+      // Pre-paint locale — keep in sync with src/composables/useLocale.ts.
+      // Stamps <html lang> before the bundle loads so assistive tech and the
+      // browser never see the wrong language (the attribute used to be a
+      // hardcoded lang="pl" on an English UI).
+      (function () {
+        var supported = ['pl', 'en'];
+        var lang = 'en';
+        try {
+          var stored = localStorage.getItem('crm-locale');
+          if (supported.indexOf(stored) !== -1) {
+            lang = stored;
+          } else {
+            var prefs = (navigator.languages || [navigator.language || '']).slice();
+            for (var i = 0; i < prefs.length; i++) {
+              var primary = String(prefs[i]).toLowerCase().split('-')[0];
+              if (supported.indexOf(primary) !== -1) {
+                lang = primary;
+                break;
+              }
+            }
+          }
+        } catch (e) {
+          /* storage unavailable — stay on the fallback locale */
+        }
+        document.documentElement.lang = lang;
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="app"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

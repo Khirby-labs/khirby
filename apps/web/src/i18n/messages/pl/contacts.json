@@ -1,0 +1,100 @@
+{
+  "detail": {
+    "back": "Kontakty",
+    "editHint": "Zmień nazwę lub telefon poniżej. E-mail jest zablokowany, dopóki go nie odblokujesz.",
+    "unlockEmail": "Odblokuj e-mail",
+    "lockEmail": "Zablokuj e-mail",
+    "emailConfirm": {
+      "confirm": "Zmień e-mail",
+      "message": "Zaktualizować kontakt z „{from}” na „{to}”? Poczta i synchronizacja będą używać nowego adresu.",
+      "title": "Zmienić e-mail?"
+    },
+    "errors": {
+      "emailTaken": "Inny kontakt już używa tego e-maila",
+      "load": "Nie udało się wczytać kontaktu",
+      "save": "Nie udało się zapisać kontaktu"
+    },
+    "fields": {
+      "email": "E-mail",
+      "name": "Nazwa",
+      "phone": "Telefon"
+    },
+    "formFallback": "Formularz {id}",
+    "leads": "{count} lead | {count} leady | {count} leadów",
+    "listmonk": {
+      "status": "Status",
+      "statusDisabled": "Wyłączony",
+      "statusEnabled": "Włączony",
+      "subscriberId": "ID subskrybenta",
+      "syncedAt": "Ostatnia synchronizacja"
+    },
+    "bool": {
+      "no": "Nie",
+      "yes": "Tak"
+    },
+    "metadata": "Pozostałe dane",
+    "newsletter": "Newsletter",
+    "namePlaceholder": "Nazwa kontaktu",
+    "noLeads": "Brak leadów w pipeline.",
+    "noName": "Brak nazwy",
+    "noSubmissions": "Brak zgłoszeń z formularzy.",
+    "phonePlaceholder": "Numer telefonu",
+    "source": "Źródło: {url}",
+    "submissions": "{count} zgłoszenie | {count} zgłoszenia | {count} zgłoszeń",
+    "unknownStage": "Bez etapu"
+  },
+  "list": {
+    "columns": {
+      "createdAt": "Dodano",
+      "email": "E-mail",
+      "name": "Nazwa",
+      "newsletter": "Newsletter",
+      "phone": "Telefon"
+    },
+    "create": {
+      "email": "E-mail",
+      "name": "Nazwa",
+      "phone": "Telefon",
+      "title": "Dodaj kontakt"
+    },
+    "delete": {
+      "confirm": "Usuń kontakt",
+      "message": "„{name}” zostanie trwale usunięty. Tej operacji nie można cofnąć.",
+      "title": "Usunąć kontakt?"
+    },
+    "empty": {
+      "filteredMessage": "Żaden kontakt nie pasuje do tych filtrów. Wyczyść je, żeby zobaczyć całą listę.",
+      "filteredTitle": "Brak wyników",
+      "noneMessage": "Dodaj kontakt ręcznie lub zsynchronizuj subskrybentów z Listmonk.",
+      "noneTitle": "Brak kontaktów"
+    },
+    "errors": {
+      "create": "Nie udało się utworzyć kontaktu",
+      "delete": "Nie udało się usunąć kontaktu",
+      "load": "Nie udało się wczytać kontaktów",
+      "sync": "Nie udało się zsynchronizować z Listmonk"
+    },
+    "filters": {
+      "added": "Dodano",
+      "addedPlaceholder": "Dowolne daty",
+      "clear": "Wyczyść filtry",
+      "form": "Formularz",
+      "formAny": "Dowolny formularz",
+      "newsletter": "Newsletter",
+      "newsletterAny": "Dowolny status",
+      "newsletterMissing": "Bez syncu",
+      "newsletterSynced": "W Listmonk",
+      "phone": "Telefon",
+      "phoneAny": "Wszystkie",
+      "phoneNo": "Bez telefonu",
+      "phoneYes": "Z telefonem"
+    },
+    "resultCount": "{count} kontakt | {count} kontakty | {count} kontaktów",
+    "sync": {
+      "action": "Zsynchronizuj z Listmonk",
+      "result": "Zsynchronizowano {total} subskrybenta — nowych: {imported}, zaktualizowanych: {updated}. | Zsynchronizowano {total} subskrybentów — nowych: {imported}, zaktualizowanych: {updated}. | Zsynchronizowano {total} subskrybentów — nowych: {imported}, zaktualizowanych: {updated}.",
+      "running": "Synchronizacja…"
+    },
+    "title": "Kontakty"
+  }
+}

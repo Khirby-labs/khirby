@@ -1,0 +1,10 @@
+{
+  "plugins": [
+    { "package": "@khirby/plugin-webhook", "version": "^1.0.0" },
+    { "package": "@khirby/plugin-discord", "version": "^1.0.0" },
+    { "package": "@khirby/plugin-listmonk", "version": "^1.1.0", "web": true },
+    { "package": "@khirby/plugin-mcp", "version": "^1.0.0" },
+    { "package": "@khirby/plugin-ai-compose", "version": "^1.0.0" },
+    { "package": "@khirby/plugin-pokelo", "version": "^1.0.0" }
+  ]
+}

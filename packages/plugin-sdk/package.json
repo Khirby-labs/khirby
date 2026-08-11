@@ -1,0 +1,38 @@
+{
+  "name": "@khirby/plugin-sdk",
+  "version": "1.0.1",
+  "description": "Khirby Plugin SDK — interfaces and types for building CRM plugins",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^10.0.0 || ^11.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": {
+      "optional": true
+    }
+  },
+  "keywords": [
+    "khirby",
+    "plugin-sdk"
+  ],
+  "license": "UNLICENSED"
+}

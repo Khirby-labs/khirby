@@ -1,0 +1,81 @@
+# Local full stack (split api + web). Not for Swarm — use docker-stack.yml there.
+#   pnpm docker:up
+
+services:
+  api:
+    image: khirby-api:local
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    environment:
+      DATABASE_URL: postgres://crm:crm@db:5432/crm
+      REDIS_URL: redis://redis:6379
+      SESSION_SECRET: ${SESSION_SECRET:-dev-secret-change-in-prod-min-32-chars}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-changeme123}
+      NODE_ENV: ${NODE_ENV:-production}
+      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
+      PORT: 3000
+    command: sh -c "node dist/apps/api/src/migrate.js && node dist/apps/api/src/main.js"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - '${API_PORT:-3000}:3000'
+    restart: unless-stopped
+    healthcheck:
+      # 127.0.0.1, not localhost: alpine resolves localhost to ::1 first,
+      # but the API binds IPv4 — so localhost fails the check while the API is up.
+      test: ['CMD-SHELL', 'wget -qO- http://127.0.0.1:3000/api/health || exit 1']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  web:
+    image: khirby-web:local
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.web
+    ports:
+      - '${WEB_PORT:-80}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: crm
+      POSTGRES_PASSWORD: crm
+      POSTGRES_DB: crm
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U crm -d crm']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:

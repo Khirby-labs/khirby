@@ -1,0 +1,19 @@
+# Normalize line endings: text files are LF in the repo and in the working
+# tree on every OS. Prevents Windows CRLF from leaking into commits and keeps
+# diffs clean between Windows devs and the Linux CI runner.
+* text=auto eol=lf
+
+# Lockfile is generated — keep LF, mark as generated for cleaner diffs/reviews.
+pnpm-lock.yaml linguist-generated=true text eol=lf
+
+# Binary assets — never touch line endings.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.webp binary
+*.woff  binary
+*.woff2 binary
+*.ttf  binary
+*.eot  binary

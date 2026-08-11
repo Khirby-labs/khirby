@@ -1,0 +1,36 @@
+{
+  "name": "@khirby/payload-forms",
+  "version": "0.1.0",
+  "description": "Payload CMS plugin \u2014 CRM Forms collection + block for Khirby public forms",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "payload": "^3.0.0"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "devDependencies": {
+    "payload": "3.86.0",
+    "typescript": "^5.5.0"
+  }
+}

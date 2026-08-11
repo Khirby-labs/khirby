@@ -1,0 +1,109 @@
+.bcf-root {
+  --bcf-fg: #111;
+  --bcf-muted: #666;
+  --bcf-border: #d0d0d0;
+  --bcf-error: #c62828;
+  --bcf-accent: #111;
+  --bcf-bg: transparent;
+  --bcf-radius: 6px;
+  --bcf-gap: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--bcf-gap);
+  color: var(--bcf-fg);
+  background: var(--bcf-bg);
+}
+
+.bcf-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.bcf-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.bcf-req {
+  color: var(--bcf-error);
+}
+
+.bcf-input,
+.bcf-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--bcf-border);
+  border-radius: var(--bcf-radius);
+  font: inherit;
+  background: #fff;
+  color: inherit;
+}
+
+.bcf-input:focus,
+.bcf-textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--bcf-accent) 35%, transparent);
+  outline-offset: 1px;
+}
+
+.bcf-input--error {
+  border-color: var(--bcf-error);
+}
+
+.bcf-textarea {
+  resize: vertical;
+  min-height: 6rem;
+}
+
+.bcf-field--checkbox .bcf-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.bcf-checkbox {
+  margin-top: 0.15rem;
+}
+
+.bcf-error {
+  color: var(--bcf-error);
+  font-size: 0.8125rem;
+}
+
+.bcf-success {
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+.bcf-loading {
+  color: var(--bcf-muted);
+  margin: 0;
+}
+
+.bcf-submit {
+  align-self: flex-start;
+  padding: 0.7rem 1.25rem;
+  border: none;
+  border-radius: var(--bcf-radius);
+  background: var(--bcf-accent);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bcf-submit:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.bcf-hp {
+  position: absolute;
+  left: -10000px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}

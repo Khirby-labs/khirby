@@ -1,0 +1,15 @@
+---
+description: After every commit, create or refresh ADRs when the change is architecturally significant
+alwaysApply: true
+---
+
+# ADR check after commit
+
+After creating a git commit (and before considering the push/session done):
+
+1. **Ask:** did this commit introduce or change an architectural choice (storage, auth, plugin contract, cross-cutting UI/API convention, deliberate constraint)?
+2. **If yes and no ADR yet:** run `/adr` (or create a numbered ADR in `docs/adr/`) and update `docs/adr/README.md`. Prefer committing the ADR in the same push or immediately after.
+3. **If an existing ADR is affected:** check that its status/index still match reality (supersede rather than rewrite Accepted decisions).
+4. **If no:** say so briefly — do not invent ADRs for routine UI/bugfix commits.
+
+Do not skip this check because the user did not mention ADRs. Leaving an untracked ADR (or an index row without the file, or vice versa) after a feature commit is a miss.

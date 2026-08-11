@@ -1,0 +1,40 @@
+{
+  "title": "Settings",
+  "navLabel": "Settings sections",
+  "account": {
+    "title": "Account"
+  },
+  "appearance": {
+    "title": "Appearance",
+    "themeLabel": "Theme",
+    "theme": {
+      "system": "System",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "systemHintDark": "Follows your system setting — currently dark.",
+    "systemHintLight": "Follows your system setting — currently light.",
+    "fixedHintDark": "Dark theme on this device, regardless of system setting.",
+    "fixedHintLight": "Light theme on this device, regardless of system setting."
+  },
+  "language": {
+    "title": "Language",
+    "groupLabel": "Interface language",
+    "hint": "Saved on the account and used on every device. Data you enter is never translated."
+  },
+  "password": {
+    "title": "Change password",
+    "current": "Current password",
+    "new": "New password",
+    "confirm": "Confirm new password",
+    "hint": "At least 8 characters.",
+    "submit": "Change password",
+    "success": "Password changed",
+    "errors": {
+      "currentRequired": "Enter your current password.",
+      "tooShort": "Use at least 8 characters.",
+      "mismatch": "Passwords do not match.",
+      "failed": "Failed to change password"
+    }
+  }
+}

@@ -1,0 +1,100 @@
+{
+  "detail": {
+    "back": "Contacts",
+    "editHint": "Update name or phone below. Email stays locked until you unlock it.",
+    "unlockEmail": "Unlock email",
+    "lockEmail": "Lock email",
+    "emailConfirm": {
+      "confirm": "Change email",
+      "message": "Update this contact from “{from}” to “{to}”? Mail and sync use the new address after that.",
+      "title": "Change email?"
+    },
+    "errors": {
+      "emailTaken": "Another contact already uses this email",
+      "load": "Couldn't load contact",
+      "save": "Couldn't save contact"
+    },
+    "fields": {
+      "email": "Email",
+      "name": "Name",
+      "phone": "Phone"
+    },
+    "formFallback": "Form {id}",
+    "leads": "{count} lead | {count} leads",
+    "listmonk": {
+      "status": "Status",
+      "statusDisabled": "Disabled",
+      "statusEnabled": "Enabled",
+      "subscriberId": "Subscriber ID",
+      "syncedAt": "Last synced"
+    },
+    "bool": {
+      "no": "No",
+      "yes": "Yes"
+    },
+    "metadata": "Other details",
+    "newsletter": "Newsletter",
+    "namePlaceholder": "Contact name",
+    "noLeads": "No pipeline leads yet.",
+    "noName": "No name",
+    "noSubmissions": "No form submissions yet.",
+    "phonePlaceholder": "Phone number",
+    "source": "Source: {url}",
+    "submissions": "{count} submission | {count} submissions",
+    "unknownStage": "No stage"
+  },
+  "list": {
+    "columns": {
+      "createdAt": "Added",
+      "email": "Email",
+      "name": "Name",
+      "newsletter": "Newsletter",
+      "phone": "Phone"
+    },
+    "create": {
+      "email": "Email",
+      "name": "Name",
+      "phone": "Phone",
+      "title": "Add contact"
+    },
+    "delete": {
+      "confirm": "Delete contact",
+      "message": "“{name}” will be deleted permanently. This can't be undone.",
+      "title": "Delete contact?"
+    },
+    "empty": {
+      "filteredMessage": "Nothing matches these filters. Clear them to see all contacts.",
+      "filteredTitle": "No matches",
+      "noneMessage": "Add a contact manually, or sync subscribers from Listmonk.",
+      "noneTitle": "No contacts"
+    },
+    "errors": {
+      "create": "Couldn't create contact",
+      "delete": "Couldn't delete contact",
+      "load": "Couldn't load contacts",
+      "sync": "Couldn't sync from Listmonk"
+    },
+    "filters": {
+      "added": "Added",
+      "addedPlaceholder": "Any dates",
+      "clear": "Clear filters",
+      "form": "Form",
+      "formAny": "Any form",
+      "newsletter": "Newsletter",
+      "newsletterAny": "Any status",
+      "newsletterMissing": "Not synced",
+      "newsletterSynced": "In Listmonk",
+      "phone": "Phone",
+      "phoneAny": "Any",
+      "phoneNo": "No phone",
+      "phoneYes": "Has phone"
+    },
+    "resultCount": "{count} contact | {count} contacts",
+    "sync": {
+      "action": "Sync from Listmonk",
+      "result": "Synced {total} subscriber — {imported} new, {updated} updated. | Synced {total} subscribers — {imported} new, {updated} updated.",
+      "running": "Syncing…"
+    },
+    "title": "Contacts"
+  }
+}

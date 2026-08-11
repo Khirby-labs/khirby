@@ -1,0 +1,4 @@
+# Files copied into fresh git worktrees created for multi-agent fan-out.
+# Gitignored secrets/config the app needs to run but that git won't carry over.
+# One glob per line (gitignore-style).
+.env

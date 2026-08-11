@@ -1,0 +1,32 @@
+{
+  "title": "Page heading of the Settings console (/settings). Noun, 1 word.",
+  "navLabel": "aria-label of the Settings sub-navigation rail. Screen-reader only, names the region.",
+
+  "appearance.title": "Panel heading above the theme picker. Noun, 1 word.",
+  "appearance.themeLabel": "aria-label of the theme radiogroup. Screen-reader only, 1 word.",
+  "appearance.theme.system": "Theme option: follow the operating system. Fits a narrow radio tile, ≤1 word.",
+  "appearance.theme.light": "Theme option: always the light theme. Fits a narrow radio tile, ≤1 word.",
+  "appearance.theme.dark": "Theme option: always the dark theme. Fits a narrow radio tile, ≤1 word.",
+  "appearance.systemHintDark": "Hint under the theme picker when 'System' is selected AND the OS currently resolves to dark. One full sentence. Do not interpolate the theme name — write the sentence out, so adjectives can agree.",
+  "appearance.systemHintLight": "Same as appearance.systemHintDark, but the OS currently resolves to light.",
+  "appearance.fixedHintDark": "Hint under the theme picker when the user pinned the dark theme, overriding the OS. Mentions that it applies to this device only. One full sentence.",
+  "appearance.fixedHintLight": "Same as appearance.fixedHintDark, but the light theme is pinned.",
+
+  "language.title": "Panel heading above the language picker. Noun, 1 word.",
+  "language.groupLabel": "aria-label of the language radiogroup. Screen-reader only, ≤2 words.",
+  "language.hint": "Hint under the language picker. Two short sentences: the choice is stored ON THE ACCOUNT so every device the operator signs in on follows it (it used to be device-only, before users.locale existed), and data the user enters is never translated. This is a promise about scope, so be precise, not chatty.",
+
+  "password.title": "Panel heading of the change-password form. Noun phrase.",
+  "password.current": "Field label: the password the user has right now.",
+  "password.new": "Field label: the password they want instead.",
+  "password.confirm": "Field label: retype the new password.",
+  "password.hint": "Hint under the new-password field stating the minimum length (8 characters). One short sentence.",
+  "password.submit": "Submit button of the change-password form. Imperative, ≤3 words.",
+  "password.success": "Confirmation shown next to the button after a successful change. ≤3 words, past tense. A ✓ glyph is rendered separately in markup — do not include it.",
+  "password.errors.currentRequired": "Field error: the current-password field was left empty. Says what to do.",
+  "password.errors.tooShort": "Field error: the new password is under 8 characters. Says what to do.",
+  "password.errors.mismatch": "Field error: the two new-password fields differ.",
+  "password.errors.failed": "Banner error when the API rejects the change for an unknown reason. No trailing period (it sits alone in an error box).",
+
+  "account.title": "Panel heading above the user's own email address, read-only. Noun, 1 word."
+}

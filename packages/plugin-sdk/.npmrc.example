@@ -1,0 +1,4 @@
+# Copy into an external plugin project as .npmrc (or merge these lines).
+# Public npm scope for Khirby authoring packages.
+
+@khirby:registry=https://registry.npmjs.org
