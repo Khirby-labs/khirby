@@ -1,6 +1,6 @@
 # @khirby/forms-client
 
-Low-level SDK for Khirby **public forms**.
+Low-level SDK for Khirby **public forms**. Docs: [forms-client](https://khirby.com/docs/forms/forms-client) · [Landing forms](https://khirby.com/docs/forms/)
 
 CRM is the source of truth for field schema. This package only talks to:
 

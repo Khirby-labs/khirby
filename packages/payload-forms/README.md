@@ -1,6 +1,6 @@
 # @khirby/payload-forms
 
-Payload CMS plugin for Khirby public forms.
+Payload CMS plugin for Khirby public forms. Docs: [payload-forms](https://khirby.com/docs/forms/payload-forms) · [Landing forms](https://khirby.com/docs/forms/)
 
 **What it does**
 

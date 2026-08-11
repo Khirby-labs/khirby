@@ -1,5 +1,7 @@
 # PLUGINS.md — Creating Khirby Plugins
 
+> **Public guide:** [Plugins docs](https://khirby.com/docs/plugins/) · [Create a plugin](https://khirby.com/docs/plugins/create) · [Install](https://khirby.com/docs/plugins/install)
+
 This guide explains how to build, test, configure, install, and distribute plugins
 for Khirby. Architecture: [ADR-0016](adr/0016-npm-community-plugins.md).
 In-repo first-party plugins still follow [ADR-0006](adr/0006-plugins-consumed-as-ts-source.md)

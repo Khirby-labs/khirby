@@ -1,5 +1,7 @@
 # Deploy — Khirby
 
+> **Public guide:** [Self-hosted installation](https://khirby.com/docs/guide/self-hosted) · [Getting started](https://khirby.com/docs/guide/getting-started)
+
 Image: **`bearlypro/khirby:latest`** (nginx SPA + NestJS API on port **80**).  
 Published by GitHub Actions on `v*.*.*` tags (also `bearlypro/khirby:<tag>`).
 

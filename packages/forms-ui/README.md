@@ -1,6 +1,6 @@
 # @khirby/forms-ui
 
-React UI for Khirby public forms.
+React UI for Khirby public forms. Docs: [forms-ui](https://khirby.com/docs/forms/forms-ui) · [Landing forms](https://khirby.com/docs/forms/)
 
 - Fetches field schema from CRM at runtime (`getForm`)
 - Renders inputs for CRM field types

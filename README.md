@@ -5,6 +5,9 @@ Self-hosted, single-tenant CRM — NestJS API, Vue 3 SPA, PostgreSQL, Redis, plu
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 [![Node 22+](https://img.shields.io/badge/Node-22%2B-green.svg)](https://nodejs.org/)
 [![pnpm 11](https://img.shields.io/badge/pnpm-11-blue.svg)](https://pnpm.io/)
+[![Docker Hub](https://img.shields.io/badge/Docker-bearlypro%2Fkhirby-blue.svg)](https://hub.docker.com/r/bearlypro/khirby)
+
+**Documentation:** [Getting started](https://khirby.com/docs/guide/getting-started) · [Self-hosted install](https://khirby.com/docs/guide/self-hosted) · [Plugins](https://khirby.com/docs/plugins/) · [Landing forms](https://khirby.com/docs/forms/) · [All docs](https://khirby.com/docs/)
 
 ## Quick start
 
@@ -16,7 +19,7 @@ pnpm migrate
 pnpm dev               # API :3000 + Web :5173
 ```
 
-Production image: **`bearlypro/khirby:latest`** — see [docs/DEPLOY.md](./docs/DEPLOY.md).
+Production image: **`bearlypro/khirby:latest`** — [self-hosted guide](https://khirby.com/docs/guide/self-hosted) (Compose + env). Hub: [bearlypro/khirby](https://hub.docker.com/r/bearlypro/khirby).
 
 ## Stack
 
@@ -43,6 +46,8 @@ See [`.env.example`](./.env.example). Minimum for local:
 | `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Bootstrap admin |
 | `CORS_ORIGIN` | Dev default `http://localhost:5173`; required allowlist in production |
 
+Full production env list: [Self-hosted installation](https://khirby.com/docs/guide/self-hosted).
+
 ## Scripts
 
 | Command | Description |
@@ -63,7 +68,7 @@ apps/web          Vue SPA
 packages/         @khirby/* (plugin-sdk, plugin-host, types, forms-*)
 plugins/          Optional/local: npm-vendored or ./scripts/checkout-plugins.sh (gitignored)
 docker/           Dockerfiles, nginx, Swarm/Compose
-docs/             ADRs, deploy, plugin author guide
+docs/             Internal ADRs, journal, design system (not the public site)
 ```
 
 First-party plugins install from **npm** via [`plugins.manifest.json`](./plugins.manifest.json) (`pnpm sync:plugins`). Docker builds do not copy a host `plugins/` tree — sources are vendored from `node_modules` for Nest compile. Plugin authors can clone [Khirby-labs/plugins](https://github.com/Khirby-labs/plugins) with `./scripts/checkout-plugins.sh` and set `KHIRBY_PLUGINS_WORKSPACE=1` to link locally.
@@ -77,7 +82,9 @@ Published from this repo (npm):
 
 ## Plugins
 
-Implement `CrmPlugin` from `@khirby/plugin-sdk`; Nest plugins use `@khirby/plugin-host` only (never import `apps/api`). Guide: [docs/PLUGINS.md](./docs/PLUGINS.md).
+Implement `CrmPlugin` from `@khirby/plugin-sdk`; Nest plugins use `@khirby/plugin-host` only (never import `apps/api`).
+
+Public guide: [Create a plugin](https://khirby.com/docs/plugins/create) · [Install a plugin](https://khirby.com/docs/plugins/install)
 
 List packages in `plugins.manifest.json` (with a semver `version`; set `"web": true` when the package exports `./web`). Then `pnpm sync:plugins && pnpm install` — do not hand-edit plugin deps in `package.json`.
 
@@ -85,10 +92,11 @@ List packages in `plugins.manifest.json` (with a semver `version`; set `"web": t
 
 | Doc | |
 | --- | - |
-| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | Request flow & design |
-| [docs/DEPLOY.md](./docs/DEPLOY.md) | Swarm / Compose |
-| [docs/DESIGN-SYSTEM.md](./docs/DESIGN-SYSTEM.md) | Web UI tokens |
-| [AGENTS.md](./AGENTS.md) | Agent conventions |
+| [Getting started](https://khirby.com/docs/guide/getting-started) | Public product docs (start here) |
+| [Self-hosted](https://khirby.com/docs/guide/self-hosted) | Docker Compose deploy |
+| [Plugins](https://khirby.com/docs/plugins/) | Authors & operators |
+| [Landing forms](https://khirby.com/docs/forms/) | `@khirby/forms-*` |
+| [docs/](./docs/) | Internal (ADRs, journal, design system) |
 
 ## License
 

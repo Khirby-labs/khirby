@@ -21,7 +21,7 @@ registry install required.
 Bump `version` in this `package.json` (and `@khirby/plugin-host` if shipping both), then:
 
 ```bash
-./scripts/publish-plugin-packages.sh crm-plugins@1.0.0
+./scripts/publish-plugin-packages.sh khirby-plugins@1.0.0
 ```
 
-See [docs/PLUGINS.md](../../docs/PLUGINS.md) and ADR-0016.
+See [Create a plugin](https://khirby.com/docs/plugins/create) and ADR-0016.
