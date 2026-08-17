@@ -46,11 +46,18 @@ of a task. An agent finishing a substantial piece of work should invoke it itsel
    If yes, run `/incident`. Especially capture your own slips.
 
 6. **Report to Linear** (skip if the session has no issue):
-   - Look up the team's statuses with `list_issue_statuses` — statuses are
-     per-team, never hardcode names. Find the "In Review" (or nearest review) state.
-   - Post a summary comment on the issue (`save_comment`): what shipped, the verify
-     evidence, and links to any new ADR/incident. Write real newlines, not `\n`.
-   - Move the issue to In Review (`save_issue` with the resolved status id).
+   Linear is reached through `.claude/scripts/linear.mjs`, never through MCP tools
+   (the project's MCP server is read-only; the script is the only write path and is
+   pinned to one team).
+   - Write the summary to a markdown file — what shipped, the verify evidence, and
+     links to any new ADR/incident — then post it:
+     `node .claude/scripts/linear.mjs comment --issue <ID> --body-file <report.md>`.
+     A file, not an argv string: that is what keeps real newlines out of `\n`.
+   - Move the issue to review:
+     `node .claude/scripts/linear.mjs status --issue <ID> --state "In Review"`.
+     Statuses are per-team and never hardcoded — if that state does not exist the
+     script exits 1 and lists the team's real states; pick the nearest review state
+     from that list rather than guessing.
 
 7. **Report back** to the user: devlog path, whether an ADR/incident was added, and
    the Linear update. Do **not** commit or push unless the user asks.

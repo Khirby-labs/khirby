@@ -14,9 +14,13 @@ ADR_DIR="$REPO_ROOT/docs/adr"
 ENV_FILE="$REPO_ROOT/.env"
 
 # ── Load token from .env ────────────────────────────────────────────────────
+# `grep` exits 1 when the variable is absent, and under `set -e` that killed the
+# whole script silently (exit 1, no output) — so a missing POKELO_TOKEN meant no
+# ADR at all instead of the documented "saved locally, publish skipped".
+# Keep the `|| true`: it is what makes the local-only path reachable.
 if [[ -f "$ENV_FILE" ]]; then
-  POKELO_TOKEN="${POKELO_TOKEN:-$(grep -E '^POKELO_TOKEN=' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"' ')}"
-  POKELO_PROJECT_ID="${POKELO_PROJECT_ID:-$(grep -E '^POKELO_PROJECT_ID=' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"' ')}"
+  POKELO_TOKEN="${POKELO_TOKEN:-$(grep -E '^POKELO_TOKEN=' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"' ' || true)}"
+  POKELO_PROJECT_ID="${POKELO_PROJECT_ID:-$(grep -E '^POKELO_PROJECT_ID=' "$ENV_FILE" | cut -d= -f2- | tr -d '"'"'"' ' || true)}"
 fi
 
 POKELO_TOKEN="${POKELO_TOKEN:-}"
@@ -80,31 +84,33 @@ if [[ -z "$POKELO_TOKEN" ]]; then
   exit 0
 fi
 
-CONTENT=$(cat "$FILEPATH")
 FULL_TITLE="${NEXT} — ${TITLE}"
 
-PAYLOAD=$(node -e "
-const c = process.argv[1];
-const t = process.argv[2];
-const pid = process.argv[3];
-const date = new Date().toISOString().slice(0,10);
-console.log(JSON.stringify({
-  jsonrpc: '2.0', id: 1,
-  method: 'tools/call',
-  params: {
-    name: 'create_adr',
-    arguments: { projectId: pid, title: t, contentMd: c, status: 'approved', decisionDate: date }
-  }
-}));
-" "$CONTENT" "$FULL_TITLE" "$POKELO_PROJECT_ID")
+# Node reads the ADR file itself, and the `-e` program stays on ONE line.
+# Both matter on Windows: the node shim (Volta) truncates every argument at its
+# first newline, so passing the markdown through argv silently delivered only the
+# first line — curl then posted a body Pokelo rejected as "Parse error".
+# Do not "tidy" this back into a multi-line -e with the content as an argument;
+# keep the file path (single-line) as the argument instead.
+PAYLOAD_FILE=$(mktemp)
+trap 'rm -f "$PAYLOAD_FILE"' EXIT
+node -e "const fs=require('fs');const c=fs.readFileSync(process.argv[1],'utf8');const t=process.argv[2];const pid=process.argv[3];const date=new Date().toISOString().slice(0,10);console.log(JSON.stringify({jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'create_adr',arguments:{projectId:pid,title:t,contentMd:c,status:'approved',decisionDate:date}}}));" "$FILEPATH" "$FULL_TITLE" "$POKELO_PROJECT_ID" > "$PAYLOAD_FILE"
 
+# --data @file, not --data "$PAYLOAD": the body is kilobytes of JSON and must not
+# travel through Windows argument conversion.
 RESPONSE=$(curl -s -X POST "$POKELO_BASE/mcp" \
   -H "Authorization: Bearer $POKELO_TOKEN" \
   -H "Content-Type: application/json" \
   -H "Accept: application/json, text/event-stream" \
-  -d "$PAYLOAD")
+  --data @"$PAYLOAD_FILE")
 
-DOC_ID=$(echo "$RESPONSE" | grep -o '"documentId":"[^"]*"' | head -1 | cut -d'"' -f4)
+# Pokelo answers with an SSE stream whose payload is JSON *inside* a text field,
+# so the id arrives as \"documentId\":\"…\" — a pattern anchored on plain quotes
+# never matched and every successful publish was reported as a failure. Anchor on
+# the key name and take the UUID that follows; works escaped or not.
+# The `|| true` is the other half: same `set -e` + grep trap as the .env read
+# above — without it a missing id kills the script before it can print why.
+DOC_ID=$(printf '%s' "$RESPONSE" | grep -oE 'documentId[\\":]*[0-9a-fA-F-]{36}' | head -1 | grep -oE '[0-9a-fA-F-]{36}' || true)
 
 if [[ -n "$DOC_ID" ]]; then
   echo "✅  ADR saved locally:  $FILEPATH"

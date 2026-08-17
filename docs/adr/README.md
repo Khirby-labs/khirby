@@ -40,3 +40,4 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0028](0028-mcp-contacts-leads-write.md) | MCP contacts/leads create + update (no delete) | Accepted |
 | [0029](0029-public-docs-on-landing.md) | Public product docs live on the landing site | Accepted |
 | [0030](0030-first-party-plugins-from-npm.md) | First-party plugins install from npm (out of monorepo) | Accepted |
+| [0031](0031-linear-writes-go-through-a-repo-script-mcp-stays-read-only.md) | Linear writes go through a repo script, MCP stays read-only | Accepted |

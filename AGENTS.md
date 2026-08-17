@@ -155,4 +155,8 @@ function makeChain(returnValue?: unknown) {
 - Do not install packages in sub-packages directly; use `pnpm add -w` or workspace protocol
 - Do not add `Authorization` headers in frontend — `credentials: 'include'` handles auth via cookie
 - Do not hardcode UI colors or install styled component libraries (PrimeVue, Vuetify…) — use design tokens + headless Reka UI/shadcn-vue; see `docs/DESIGN-SYSTEM.md` and ADR-0007
+- Do not write to Linear through MCP tools — the server in `.mcp.json` is the
+  read-only endpoint on purpose; use `node .claude/scripts/linear.mjs`
+  (`get` / `create` / `comment` / `status` / `labels`), which is pinned to the team
+  in `.claude/linear.json` and reads `LINEAR_API_KEY` from `.env` itself
 - Do not gate role/role-assignment **mutations** with `@RequirePermission('roles','manage')` — that reopens privilege escalation; use `@RequireSuperAdmin()` (reads keep `roles:manage`); see ADR-0009

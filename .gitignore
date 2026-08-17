@@ -20,6 +20,7 @@ apps/api/tsconfig.tsbuildinfo
 # agentic state markers (local, written by .claude/scripts)
 .claude/.verify-ok.json
 .claude/.ledger-state.json
+.claude/.linear-meta.json
 .claude/worktrees/
 .omc/
 .playwright-mcp/

@@ -11,6 +11,9 @@
 
 ## Task flow
 - Tasks live in Linear. Start work with /task <issue-id>; finish with /wrap.
+- Linear access goes through `.claude/scripts/linear.mjs` (key in `.env` as
+  `LINEAR_API_KEY`, team pinned in `.claude/linear.json`). The MCP server in
+  `.mcp.json` is the read-only endpoint — it cannot and must not write.
 - Branch names come from Linear's suggestion (keeps auto-linking).
 - Definition of done is mechanical: /verify must pass (typecheck+lint+tests).
   Paste the evidence, never claim it.

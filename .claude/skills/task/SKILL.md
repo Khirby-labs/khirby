@@ -12,20 +12,32 @@ the human with the open findings. Never push past an exhausted budget.
 
 ## Stage 0 — Intake & spec gate
 
-1. Fetch the issue from Linear (`get_issue`). Save the description to a scratch
-   file and run the structural gate:
+Linear is reached through `.claude/scripts/linear.mjs` — never through MCP tools
+(the project's MCP server is read-only by design; writes go through the script,
+which is pinned to one team). Run `node .claude/scripts/linear.mjs` with no
+arguments for the command list.
+
+1. Fetch the issue and save its body to a scratch file in one step, then run the
+   structural gate:
+   `node .claude/scripts/linear.mjs get --issue <ID> --body-file <scratch-file>`
    `node .claude/scripts/spec-lint.mjs <scratch-file>`
+   Keep the printed `branchName` — step 5 needs it.
 2. If spec-lint fails OR the criteria are present but not measurable: **ask,
-   don't guess** — post the concrete questions as a comment on the issue
-   (`save_comment`), tell the user, and stop the pipeline here.
+   don't guess** — write the concrete questions to a markdown file, post them with
+   `linear.mjs comment --issue <ID> --body-file <questions.md>`, tell the user, and
+   stop the pipeline here.
 3. **Classify the tier** (record it in the plan file header):
    - **S** — one obvious 1–2 file fix, zero design decisions.
    - **M** — one module, a few files, clear ACs.
    - **L** — multiple modules / schema / anything touching auth, RBAC, or
      public endpoints (these are NEVER S — `tier-guard.mjs` enforces this).
-4. Set the issue to In Progress: resolve statuses via `list_issue_statuses`
-   (statuses are per-team — never hardcode names), then `save_issue`.
-5. Create the branch **from Linear's suggested branch name** (keeps auto-linking).
+4. Set the issue to In Progress:
+   `node .claude/scripts/linear.mjs status --issue <ID> --state "In Progress"`.
+   States are per-team, so never assume a name: if the state does not exist the
+   script exits 1 and prints the team's actual states — pick from that list
+   (`linear.mjs meta` shows them any time).
+5. Create the branch **from Linear's suggested branch name** (the `branchName`
+   from step 1 — keeps auto-linking).
 
 ## Stage 1 — Plan from code, task, and memory (M/L; S skips to stage 3)
 
