@@ -27,7 +27,10 @@ exit=0
 
 ## Obszar zmian (code map)
 
-- `.claude/scripts/lib/sensitive.mjs` — podmiana wpisu w tablicy `SENSITIVE`
+| Ścieżka | Co się zmienia |
+| --- | --- |
+| `.claude/scripts/lib/sensitive.mjs` | podmiana wpisu w tablicy `SENSITIVE` |
+| `.claude/scripts/tier-guard.mjs` | test przy zmienionej liście ścieżek wrażliwych |
 
 ## Kryteria akceptacji
 

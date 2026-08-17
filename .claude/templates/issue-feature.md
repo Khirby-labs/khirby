@@ -10,7 +10,7 @@
 
 ## Obszar zmian (code map)
 
-<!-- Po jednej linii na plik: `- ścieżka — co się w nim zmieni`. Każda ścieżka musi istnieć na dysku; nowe pliki podaj jako `- katalog/ (nowy plik: nazwa.ts) — …`, gdzie katalog istnieje. -->
+<!-- Jedna pozycja na plik, listą (`- ścieżka — co się w nim zmieni`) albo tabelą `| Ścieżka | Co się zmienia |`. W obu formach ścieżka jest pierwsza i musi istnieć na dysku; nowe pliki podaj jako `katalog/ (nowy plik: nazwa.ts)`, gdzie katalog istnieje. -->
 
 ## Kryteria akceptacji
 

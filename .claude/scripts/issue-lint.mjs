@@ -132,9 +132,32 @@ if (sections['## Kryteria akceptacji'] !== undefined) {
 }
 
 // ── code map: every path must exist on disk ─────────────────────────────────
-const mapLines = lines('## Obszar zmian (code map)').filter((l) => /^[-*]\s/.test(l));
+// Two accepted shapes, because the section is read by humans as often as by this
+// script: a bullet list (`- path — what changes`) or a two-column table
+// (`| path | what changes |`). Both carry the same information; only the path
+// extraction differs, so everything downstream stays shared.
+const TABLE_SEPARATOR = /^\|[\s:|-]+\|?\s*$/;
+
+/** First cell of a table row, or null for the header/separator rows. */
+function tableCell(line) {
+  const cells = line
+    .replace(/^\|/, '')
+    .replace(/\|\s*$/, '')
+    .split('|');
+  return cells.length ? cells[0].trim() : null;
+}
+
+const sectionLines = lines('## Obszar zmian (code map)');
+const separatorAt = sectionLines.findIndex((l) => TABLE_SEPARATOR.test(l));
+// Rows at or above the separator are the table head; a table without a separator
+// is not a table at all, so nothing is skipped in the bullet-list case.
+const mapLines = sectionLines.filter(
+  (l, i) => /^[-*]\s/.test(l) || (l.startsWith('|') && separatorAt !== -1 && i > separatorAt),
+);
 if (sections['## Obszar zmian (code map)'] !== undefined && !mapLines.length)
-  gaps.push('## Obszar zmian (code map): no `- path — what changes` lines');
+  gaps.push(
+    '## Obszar zmian (code map): no change sites — use `- path — what changes` lines or a `| path | what changes |` table',
+  );
 
 const mapped = [];
 for (const l of mapLines) {
@@ -142,8 +165,8 @@ for (const l of mapLines) {
   // spaces, while everything after it (a description, a `(nowy plik: x.ts)`
   // annotation) does — splitting on the dash instead swallowed the annotation
   // into the path and reported a bogus "does not exist".
-  const raw = l
-    .replace(/^[-*]\s*/, '')
+  const cell = l.startsWith('|') ? (tableCell(l) ?? '') : l.replace(/^[-*]\s*/, '');
+  const raw = cell
     .split(/\s+/)[0]
     .replace(/[`'"]/g, '')
     .replace(/[,;:]$/, '')
