@@ -51,11 +51,13 @@ describe('message bundles', () => {
    * wrong at 2 and 5 and reads as broken Polish rather than as a bug.
    */
   it('gives every plural message the right number of forms', () => {
-    const forms = (bundle: unknown) =>
-      (flatten(bundle).get('plugins.config.subscribers') as string).split('|').length;
+    const forms = (bundle: unknown, key: string) =>
+      (flatten(bundle).get(key) as string).split('|').length;
 
-    expect(forms(en)).toBe(2);
-    expect(forms(pl)).toBe(3);
+    for (const key of ['plugins.config.subscribers', 'marketplace.details.requiredCount']) {
+      expect(forms(en, key), `${key} (en)`).toBe(2);
+      expect(forms(pl, key), `${key} (pl)`).toBe(3);
+    }
   });
 
   it('does not leak Polish quotes into English copy', () => {

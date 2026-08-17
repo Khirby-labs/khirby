@@ -1,43 +1,44 @@
 {
-  "title": "Marketplace",
-  "subtitle": "Browse what this CRM can do and install a plugin in one click.",
   "allInstalled": "Everything in the catalog is already installed.",
-  "empty": {
-    "title": "The catalog is empty",
-    "message": "No plugin in the catalog is present in this build, so there is nothing to install yet."
-  },
-  "filter": {
-    "label": "Category",
-    "all": "All categories"
-  },
-  "category": {
-    "communication": "Communication",
-    "marketing": "Marketing",
-    "automation": "Automation",
-    "ai": "AI",
-    "integration": "Integrations",
-    "other": "Other"
-  },
   "card": {
+    "configure": "Configure",
     "details": "Details",
+    "disabled": "Installed, disabled",
     "install": "Install",
     "installing": "Installing…",
-    "installed": "Installed",
-    "disabled": "Installed, turned off",
-    "configure": "Configure"
+    "installed": "Installed"
+  },
+  "category": {
+    "ai": "AI",
+    "automation": "Automation",
+    "communication": "Communication",
+    "integration": "Integrations",
+    "marketing": "Marketing",
+    "other": "Other"
   },
   "details": {
-    "requiredConfig": "Needs configuring",
     "configureAfter": "Set these in Settings → Plugins after installing.",
-    "docs": "Read the documentation"
+    "docs": "Read the documentation",
+    "requiredConfig": "Needs configuring",
+    "requiredCount": "{count} setting to fill in | {count} settings to fill in"
   },
-  "toast": {
-    "installed": "{name} installed",
-    "alreadyInstalled": "That plugin is already installed",
-    "installFailed": "Install failed. Try again, or check the API log for the reason."
+  "empty": {
+    "message": "No plugin in the catalog is present in this build, so there is nothing to install yet.",
+    "title": "The catalog is empty"
   },
   "errors": {
-    "load": "Couldn't load the catalog",
-    "forbidden": "You need the integrations permission to manage plugins. Ask an administrator."
+    "forbidden": "You need the integrations permission to manage plugins. Ask an administrator.",
+    "load": "Couldn't load the catalog"
+  },
+  "filter": {
+    "all": "All categories",
+    "label": "Category"
+  },
+  "subtitle": "Browse what this CRM can do and install a plugin in one click.",
+  "title": "Marketplace",
+  "toast": {
+    "alreadyInstalled": "That plugin is already installed",
+    "installFailed": "Install failed. Try again, or check the API log for the reason.",
+    "installed": "{name} installed"
   }
 }

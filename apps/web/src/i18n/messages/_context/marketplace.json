@@ -16,7 +16,7 @@
   "card.install": "Primary button on a card for a plugin that is not installed. Imperative, 1 word.",
   "card.installing": "Same button while the request is in flight; the button is disabled. Ends with an ellipsis character.",
   "card.installed": "Status next to a green dot on a card for an installed and enabled plugin. Adjective agreeing with 'wtyczka' (feminine) in Polish. ≤2 words.",
-  "card.disabled": "Status on a card for a plugin that IS installed but has been switched off in Settings. Must not read as 'not installed' — the difference is the whole point, because re-installing is impossible. Adjective agreeing with 'wtyczka'.",
+  "card.disabled": "Status on a card for a plugin that IS installed but has been switched off in Settings. MUST keep the word installed — a bare 'Disabled' / 'Wyłączona' reads as 'not available' when scanning a grid, and re-installing is impossible because the row already exists. Do not shorten this to one word; the redundancy is the point. Adjective agreeing with 'wtyczka' (feminine).",
   "card.configure": "Link on an installed card leading to Settings → Plugins, where configuration lives. Imperative, 1 word.",
   "details.requiredConfig": "Heading in the modal above the list of config keys the plugin needs before it does anything. Short phrase, ≤3 words.",
   "details.configureAfter": "One sentence under that list: these are set in Settings → Plugins, after installing. Mirror the Settings navigation wording used elsewhere.",
@@ -25,5 +25,6 @@
   "toast.alreadyInstalled": "Toast when the server answers 409 — usually because another browser tab installed it first. States the fact; the card updates itself, so no action is asked for.",
   "toast.installFailed": "Toast for any other install failure. What happened plus where to look. No apology, no 'we'.",
   "errors.load": "Error banner when the catalog request fails. Noun phrase, no trailing period.",
-  "errors.forbidden": "Error banner when the session lacks the integrations permission. Says what is missing and who to ask, and never implies the catalog is empty."
+  "errors.forbidden": "Error banner when the session lacks the integrations permission. Says what is missing and who to ask, and never implies the catalog is empty.",
+  "details.requiredCount": "Count of required configuration keys, shown under the \"needs configuring\" heading in the details modal. PLURAL — {count} is the number. Polish needs three forms (one | few | many): 1 ustawienie, 2-4 ustawienia, 5+ ustawień."
 }

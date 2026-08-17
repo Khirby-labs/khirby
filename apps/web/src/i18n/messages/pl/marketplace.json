@@ -1,43 +1,44 @@
 {
-  "title": "Marketplace",
-  "subtitle": "Przegląd możliwości CRM-a i instalacja wtyczki jednym kliknięciem.",
   "allInstalled": "Wszystko z katalogu jest już zainstalowane.",
-  "empty": {
-    "title": "Katalog jest pusty",
-    "message": "Żadna wtyczka z katalogu nie występuje w tej wersji, więc nie ma czego zainstalować."
-  },
-  "filter": {
-    "label": "Kategoria",
-    "all": "Wszystkie kategorie"
-  },
-  "category": {
-    "communication": "Komunikacja",
-    "marketing": "Marketing",
-    "automation": "Automatyzacja",
-    "ai": "AI",
-    "integration": "Integracje",
-    "other": "Inne"
-  },
   "card": {
+    "configure": "Skonfiguruj",
     "details": "Szczegóły",
+    "disabled": "Zainstalowana, wyłączona",
     "install": "Zainstaluj",
     "installing": "Instalowanie…",
-    "installed": "Zainstalowana",
-    "disabled": "Zainstalowana, wyłączona",
-    "configure": "Skonfiguruj"
+    "installed": "Zainstalowana"
+  },
+  "category": {
+    "ai": "AI",
+    "automation": "Automatyzacja",
+    "communication": "Komunikacja",
+    "integration": "Integracje",
+    "marketing": "Marketing",
+    "other": "Inne"
   },
   "details": {
-    "requiredConfig": "Wymaga konfiguracji",
     "configureAfter": "Te wartości ustawia się po instalacji w Ustawieniach → Wtyczki.",
-    "docs": "Przeczytaj dokumentację"
+    "docs": "Przeczytaj dokumentację",
+    "requiredConfig": "Wymaga konfiguracji",
+    "requiredCount": "{count} ustawienie do uzupełnienia | {count} ustawienia do uzupełnienia | {count} ustawień do uzupełnienia"
   },
-  "toast": {
-    "installed": "Zainstalowano wtyczkę {name}",
-    "alreadyInstalled": "Ta wtyczka jest już zainstalowana",
-    "installFailed": "Instalacja się nie powiodła. Spróbuj ponownie lub sprawdź powód w logu API."
+  "empty": {
+    "message": "W tej wersji nie ma wtyczek z katalogu, więc nic nie można zainstalować.",
+    "title": "Katalog jest pusty"
   },
   "errors": {
-    "load": "Nie udało się wczytać katalogu",
-    "forbidden": "Zarządzanie wtyczkami wymaga uprawnienia do integracji. Poproś administratora."
+    "forbidden": "Zarządzanie wtyczkami wymaga uprawnienia do integracji. Poproś administratora.",
+    "load": "Nie udało się wczytać katalogu"
+  },
+  "filter": {
+    "all": "Wszystkie kategorie",
+    "label": "Kategoria"
+  },
+  "subtitle": "Przegląd możliwości CRM-a i instalacja wtyczki jednym kliknięciem.",
+  "title": "Marketplace",
+  "toast": {
+    "alreadyInstalled": "Ta wtyczka jest już zainstalowana",
+    "installFailed": "Instalacja się nie powiodła. Spróbuj ponownie lub sprawdź powód w logu API.",
+    "installed": "Zainstalowano wtyczkę {name}"
   }
 }

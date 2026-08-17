@@ -216,7 +216,7 @@ describe('MarketplaceView — installed and disabled', () => {
     const wrapper = mountView();
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Installed, turned off');
+    expect(wrapper.text()).toContain('Installed, disabled');
     expect(wrapper.findAll('button').some((b) => b.text() === 'Install')).toBe(false);
     expect(wrapper.find('a[href="/settings/integrations"]').exists()).toBe(true);
   });

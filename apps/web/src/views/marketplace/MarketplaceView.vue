@@ -132,6 +132,15 @@
           <h4 class="text-sm font-semibold text-text-primary">
             {{ t('marketplace.details.requiredConfig') }}
           </h4>
+          <p class="mt-1 text-xs text-text-ghost">
+            {{
+              t(
+                'marketplace.details.requiredCount',
+                { count: requiredKeys(selected).length },
+                requiredKeys(selected).length,
+              )
+            }}
+          </p>
           <ul class="mt-2 space-y-1">
             <li
               v-for="field in requiredKeys(selected)"
