@@ -17,6 +17,13 @@ docker/crm.env
 *.md
 docs
 agent-transcripts
+.hermes
+.omc
+.opencode
+.codex
+.gemini
+.claude
+.cursor
 
 plugins
 .tmp-plugins-repo

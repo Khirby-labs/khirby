@@ -23,6 +23,20 @@ apps/api/tsconfig.tsbuildinfo
 .claude/worktrees/
 .omc/
 .playwright-mcp/
+# local agent scratch — plans, notes, tool state (not repo memory)
+.hermes/
+.opencode/
+.codex/
+.gemini/
+.aider*
+agent-transcripts/
+docs/journal/plans/*
+!docs/journal/plans/template.md
+# editors / OS
+.idea/
+.vscode/
+*.swp
+*~
 # test artifacts
 **/coverage/
 **/test-results/
