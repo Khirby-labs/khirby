@@ -277,6 +277,17 @@ export class PluginRegistryService implements OnModuleInit {
   }
 
   /**
+   * Names this process actually loaded — the availability filter.
+   *
+   * A `plugins` row can outlive its code (a plugin dropped from the image), and a
+   * catalog entry can name something this build does not ship. Both must be kept
+   * off the Marketplace, where they would offer an install that cannot work.
+   */
+  loadedNames(): string[] {
+    return this.registeredPlugins.map((plugin) => plugin.name);
+  }
+
+  /**
    * Install a plugin that is present in this process but has no row.
    *
    * No code is loaded: the Nest module is already mounted, so all that moves is
