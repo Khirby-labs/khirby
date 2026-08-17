@@ -61,8 +61,17 @@ Template: [`docker/crm.env.example`](../docker/crm.env.example).
 | `GOOGLE_MAIL_CLIENT_ID` / `GOOGLE_MAIL_CLIENT_SECRET` | Optional — Gmail/Workspace OAuth |
 | `AI_COMPOSE_SECRETS_KEY` | 32-byte hex key — AI Compose |
 | `POKELO_SECRETS_KEY` | 32-byte hex key — Pokelo MCP token |
+| `MARKETPLACE_CATALOG_URL` | Optional. **Empty or unset = the Marketplace works from the catalog baked into the image and makes no network request at all** — the normal setup. Set it to a versioned JSON document to take the catalog from there instead; https is required in production. An unreachable, oversized, wrongly-typed or invalid document is ignored, the in-image copy is used, and one line is written to the log (ADR-0034) |
 
 `DATABASE_URL` / `REDIS_URL` are built by the stack (`khirby-postgres`, `khirby-redis`).
+
+### First start
+
+On a **first** start — when the `plugins` table is entirely empty — the API seeds
+the six native plugins so a new instance behaves as it always has. On every later
+start it installs nothing: from then on a row in `plugins` is what "installed"
+means, and plugins are added from the Marketplace (ADR-0032). Truncating the table
+by hand makes the next start seed it again.
 
 ---
 
