@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PluginRegistryService, NATIVE_PLUGIN_NAMES } from './plugin-registry.service';
 import { CrmPlugin, CrmEvent } from '@khirby/plugin-sdk';
 
@@ -453,6 +453,194 @@ describe('PluginRegistryService', () => {
       const result = await svc.disable('test_plugin');
       expect(result.enabled).toBe(false);
       expect(setMock).toHaveBeenCalledWith(expect.objectContaining({ enabled: false }));
+    });
+  });
+
+  describe('install', () => {
+    /**
+     * install() reads by name, then inserts and returns the row. `lookup` is what
+     * findByName sees, `inserted` what the insert returns.
+     */
+    function makeInstallDb(options: { lookup?: unknown[]; inserted?: unknown[] } = {}) {
+      const insertValues = jest.fn(() => ({
+        returning: () => makeChain(options.inserted ?? [makeRow()]),
+      }));
+      const deleteWhere = jest.fn(() => makeChain());
+
+      const db: any = {
+        $client: { unsafe: jest.fn() },
+        select: jest.fn(() => ({
+          from: () => ({ where: () => ({ limit: () => makeChain(options.lookup ?? []) }) }),
+        })),
+        insert: jest.fn(() => ({ values: insertValues })),
+        update: jest.fn(() => ({ set: jest.fn(() => ({ where: jest.fn(() => makeChain()) })) })),
+        delete: jest.fn(() => ({ where: deleteWhere })),
+      };
+
+      return { db, insertValues, deleteWhere };
+    }
+
+    it('creates an enabled row, runs onMigrate then onInit, and reports the plugin enabled', async () => {
+      const order: string[] = [];
+      const row = makeRow({ name: 'crm_hello', enabled: true });
+      const { db, insertValues } = makeInstallDb({ inserted: [row] });
+
+      const plugin = makePlugin({
+        name: 'crm_hello',
+        onMigrate: jest.fn().mockImplementation(async () => void order.push('migrate')),
+        onInit: jest.fn().mockImplementation(async () => void order.push('init')),
+      });
+      const svc = makeService([plugin], db);
+
+      await svc.install('crm_hello');
+
+      expect((insertValues.mock.calls[0] as any[])[0]).toEqual(
+        expect.objectContaining({ name: 'crm_hello', enabled: true }),
+      );
+      expect(order).toEqual(['migrate', 'init']);
+      // The point of the whole feature: usable in THIS process, no restart.
+      expect(svc.isEnabled('crm_hello')).toBe(true);
+    });
+
+    it('rejects a name this image does not ship, without writing anything', async () => {
+      const { db } = makeInstallDb();
+      const svc = makeService([], db);
+
+      await expect(svc.install('crm_nope')).rejects.toThrow(NotFoundException);
+      expect(db.insert).not.toHaveBeenCalled();
+    });
+
+    it('rejects an already-installed plugin as a conflict, without writing anything', async () => {
+      const { db } = makeInstallDb({ lookup: [makeRow({ name: 'crm_hello' })] });
+      const svc = makeService([makePlugin({ name: 'crm_hello' })], db);
+
+      await expect(svc.install('crm_hello')).rejects.toThrow(ConflictException);
+      expect(db.insert).not.toHaveBeenCalled();
+    });
+
+    /*
+     * Two clicks can cross between the pre-read and the insert. The unique index
+     * on `name` settles it, and the loser must read as "already installed" — not
+     * as a 500, which the SPA can only render as "something went wrong".
+     */
+    it('maps a unique-violation on insert to the same conflict as the pre-read', async () => {
+      const { db } = makeInstallDb();
+      db.insert = jest.fn(() => ({
+        values: () => ({
+          returning: () => Promise.reject(Object.assign(new Error('duplicate'), { code: '23505' })),
+        }),
+      }));
+
+      const svc = makeService([makePlugin({ name: 'crm_hello' })], db);
+      await expect(svc.install('crm_hello')).rejects.toThrow(ConflictException);
+    });
+
+    it('lets an unexpected database error through rather than calling it a conflict', async () => {
+      const { db } = makeInstallDb();
+      db.insert = jest.fn(() => ({
+        values: () => ({
+          returning: () => Promise.reject(Object.assign(new Error('disk full'), { code: '53100' })),
+        }),
+      }));
+
+      const svc = makeService([makePlugin({ name: 'crm_hello' })], db);
+      await expect(svc.install('crm_hello')).rejects.toThrow('disk full');
+    });
+
+    it('rolls the row back and builds no context when onMigrate rejects', async () => {
+      const row = makeRow({ name: 'crm_hello' });
+      const { db, deleteWhere } = makeInstallDb({ inserted: [row] });
+      const onInit = jest.fn();
+
+      const svc = makeService(
+        [
+          makePlugin({
+            name: 'crm_hello',
+            onMigrate: jest.fn().mockRejectedValue(new Error('bad schema')),
+            onInit,
+          }),
+        ],
+        db,
+      );
+
+      await expect(svc.install('crm_hello')).rejects.toThrow(BadRequestException);
+      expect(deleteWhere).toHaveBeenCalled();
+      expect(onInit).not.toHaveBeenCalled();
+      expect(svc.isEnabled('crm_hello')).toBe(false);
+    });
+  });
+
+  describe('enable', () => {
+    /** enable() reads by name, updates returning the row, and activates. */
+    function makeEnableDb(row: Record<string, unknown> | null, updated?: Record<string, unknown>) {
+      const setCalls: unknown[] = [];
+      const set = jest.fn((values: unknown) => {
+        setCalls.push(values);
+        return {
+          where: jest.fn(() => {
+            const chain: any = makeChain();
+            chain.returning = () => makeChain([updated ?? { ...row, enabled: true }]);
+            return chain;
+          }),
+        };
+      });
+
+      const db: any = {
+        $client: { unsafe: jest.fn() },
+        select: jest.fn(() => ({
+          from: () => ({ where: () => ({ limit: () => makeChain(row ? [row] : []) }) }),
+        })),
+        update: jest.fn(() => ({ set })),
+        delete: jest.fn(() => ({ where: jest.fn(() => makeChain()) })),
+      };
+
+      return { db, setCalls };
+    }
+
+    it('rzuca NotFoundException gdy plugin nie ma rekordu', async () => {
+      const { db } = makeEnableDb(null);
+      const svc = makeService([], db);
+      await expect(svc.enable('nie_ma')).rejects.toThrow(NotFoundException);
+    });
+
+    it('sets enabled, builds a context and calls onInit', async () => {
+      const onInit = jest.fn().mockResolvedValue(undefined);
+      const { db, setCalls } = makeEnableDb(
+        makeRow({ enabled: false }),
+        makeRow({ enabled: true, config: { A: '1' } }),
+      );
+
+      const svc = makeService([makePlugin({ onInit })], db);
+      const result = await svc.enable('test_plugin');
+
+      expect(setCalls[0]).toEqual(expect.objectContaining({ enabled: true }));
+      expect(onInit).toHaveBeenCalledWith(expect.objectContaining({ config: { A: '1' } }));
+      expect(svc.isEnabled('test_plugin')).toBe(true);
+      expect(result.enabled).toBe(true);
+    });
+
+    it('rolls enabled back to false and clears the context when onMigrate rejects', async () => {
+      const { db, setCalls } = makeEnableDb(
+        makeRow({ enabled: false }),
+        makeRow({ enabled: true }),
+      );
+      const onInit = jest.fn();
+
+      const svc = makeService(
+        [
+          makePlugin({
+            onMigrate: jest.fn().mockRejectedValue(new Error('bad schema')),
+            onInit,
+          }),
+        ],
+        db,
+      );
+
+      await expect(svc.enable('test_plugin')).rejects.toThrow(BadRequestException);
+      expect(setCalls[0]).toEqual(expect.objectContaining({ enabled: true }));
+      expect(setCalls[1]).toEqual(expect.objectContaining({ enabled: false }));
+      expect(onInit).not.toHaveBeenCalled();
+      expect(svc.isEnabled('test_plugin')).toBe(false);
     });
   });
 

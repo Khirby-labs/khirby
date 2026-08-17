@@ -276,6 +276,67 @@ export class PluginRegistryService implements OnModuleInit {
     return this.contexts.has(name);
   }
 
+  /**
+   * Install a plugin that is present in this process but has no row.
+   *
+   * No code is loaded: the Nest module is already mounted, so all that moves is
+   * the row plus the in-memory context. That is what lets a Marketplace install
+   * take effect without restarting the process while ADR-0016's ban on reloading
+   * a DynamicModule at runtime still holds.
+   */
+  async install(name: string) {
+    const plugin = this.registeredPlugins.find((p) => p.name === name);
+    // Not in this image — nothing to install, and nothing written.
+    if (!plugin) throw AppException.notFound('plugin', name);
+
+    const existing = await this.findByName(name);
+    if (existing) throw AppException.alreadyExists('plugin', 'name', name);
+
+    const [inserted] = await this.insertForInstall(plugin);
+
+    // A plugin whose schema will not apply must not be left installed: the
+    // operator would see it as active and every call into it would fail.
+    const ok = await this.activate(plugin, inserted);
+    if (!ok) {
+      await this.db.delete(plugins).where(eq(plugins.name, name));
+      this.contexts.delete(name);
+      throw AppException.badRequest(`Plugin ${name} migration failed`);
+    }
+
+    this.logger.log(`Plugin installed from marketplace: ${name} v${plugin.version}`);
+    return this.enrichRow(inserted);
+  }
+
+  /**
+   * The insert behind install(), with the race mapped onto the same conflict the
+   * pre-read produces.
+   *
+   * Two install clicks can cross between the pre-read and the write; `name` is
+   * unique, so one of them loses at the database. Postgres reports 23505, which
+   * would otherwise surface as a 500 — the SPA would show "something went wrong"
+   * for what is really "already installed".
+   */
+  private async insertForInstall(plugin: CrmPlugin) {
+    try {
+      return await this.db
+        .insert(plugins)
+        .values({
+          name: plugin.name,
+          displayName: plugin.displayName,
+          description: plugin.description ?? null,
+          version: plugin.version,
+          enabled: true,
+          config: {},
+        } as any)
+        .returning();
+    } catch (err) {
+      if ((err as { code?: string })?.code === '23505') {
+        throw AppException.alreadyExists('plugin', 'name', plugin.name);
+      }
+      throw err;
+    }
+  }
+
   async enable(name: string) {
     const row = await this.findByName(name);
     if (!row) throw AppException.notFound('plugin', name);
@@ -284,26 +345,21 @@ export class PluginRegistryService implements OnModuleInit {
       .set({ enabled: true, updatedAt: new Date() } as any)
       .where(eq(plugins.name, name))
       .returning();
-    // re-init context
+
     const plugin = this.registeredPlugins.find((p) => p.name === name);
     if (plugin) {
-      if (plugin.onMigrate) {
-        try {
-          await plugin.onMigrate((this.db as any).$client);
-        } catch (err) {
-          this.logger.error(`Plugin ${name} onMigrate failed: ${(err as Error).message}`);
-          // Roll back enable so the UI does not show a broken plugin as active.
-          await this.db
-            .update(plugins)
-            .set({ enabled: false, updatedAt: new Date() } as any)
-            .where(eq(plugins.name, name));
-          this.contexts.delete(name);
-          throw AppException.badRequest(`Plugin ${name} migration failed`);
-        }
+      // Same activate() as boot and install — the migrate → context → onInit
+      // sequence exists in one place instead of three.
+      const ok = await this.activate(plugin, updated);
+      if (!ok) {
+        // Roll back enable so the UI does not show a broken plugin as active.
+        await this.db
+          .update(plugins)
+          .set({ enabled: false, updatedAt: new Date() } as any)
+          .where(eq(plugins.name, name));
+        this.contexts.delete(name);
+        throw AppException.badRequest(`Plugin ${name} migration failed`);
       }
-      const ctx = this.buildContext(name, updated.config ?? {});
-      this.contexts.set(name, ctx);
-      if (plugin.onInit) await Promise.resolve(plugin.onInit(ctx)).catch(() => null);
     }
     return this.enrichRow(updated);
   }
