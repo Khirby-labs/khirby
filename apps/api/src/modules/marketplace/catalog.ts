@@ -141,5 +141,20 @@ export const LOCAL_CATALOG: CatalogDocument = {
       icon: 'plugins',
       docsUrl: 'https://khirby.com/docs/plugins/pokelo',
     },
+    /*
+     * The example plugin, and in V1 the only entry that is NOT part of the native
+     * set — so the only card a fresh instance shows with an Install button. It is
+     * what makes the install path demonstrable at all: without it every card would
+     * already be installed and the feature could not be exercised end to end.
+     */
+    {
+      package: 'crm-plugin-hello',
+      name: 'crm_hello',
+      version: '1.0.0',
+      category: 'automation',
+      vendor: 'Khirby',
+      icon: 'plugins',
+      docsUrl: 'https://khirby.com/docs/plugins/create',
+    },
   ],
 };

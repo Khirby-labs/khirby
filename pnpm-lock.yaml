@@ -140,6 +140,9 @@ importers:
       connect-redis:
         specifier: ^9.0.0
         version: 9.0.0(express-session@1.19.0)(redis@6.1.0)
+      crm-plugin-hello:
+        specifier: workspace:*
+        version: link:../../examples/crm-plugin-hello
       drizzle-orm:
         specifier: '>=0.45.2'
         version: 0.45.2(postgres@3.4.9)
@@ -258,6 +261,9 @@ importers:
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
+      crm-plugin-hello:
+        specifier: workspace:*
+        version: link:../../examples/crm-plugin-hello
       dompurify:
         specifier: ^3.4.12
         version: 3.4.12
@@ -328,6 +334,27 @@ importers:
       vue-tsc:
         specifier: ^2.1.0
         version: 2.2.12(typescript@5.9.3)
+
+  examples/crm-plugin-hello:
+    dependencies:
+      '@khirby/plugin-host':
+        specifier: workspace:*
+        version: link:../../packages/plugin-host
+      '@khirby/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+      '@nestjs/common':
+        specifier: '*'
+        version: 11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      vue:
+        specifier: ^3
+        version: 3.5.39(typescript@5.9.3)
+      vue-i18n:
+        specifier: ^11
+        version: 11.4.7(vue@3.5.39(typescript@5.9.3))
+      vue-router:
+        specifier: ^4
+        version: 4.6.4(vue@3.5.39(typescript@5.9.3))
 
   packages/forms-client:
     devDependencies:

@@ -253,5 +253,9 @@
       "rotate": "Couldn't generate token",
       "revoke": "Couldn't revoke token"
     }
+  },
+  "hello": {
+    "displayName": "Hello example",
+    "description": "A minimal example plugin: it writes a log line whenever a contact is created."
   }
 }

@@ -1,3 +1,4 @@
 [
-  "@khirby/plugin-listmonk"
+  "@khirby/plugin-listmonk",
+  "crm-plugin-hello"
 ]

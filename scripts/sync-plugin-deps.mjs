@@ -37,6 +37,16 @@ function resolveDepRange(entry) {
   if (!name || typeof name !== 'string') {
     throw new Error(`Invalid manifest entry: ${JSON.stringify(entry)}`);
   }
+  /*
+   * A `local` entry lives in this repository (examples/*) and is never published,
+   * so it is ALWAYS a workspace link — deliberately independent of
+   * KHIRBY_PLUGINS_WORKSPACE, which only governs the optional plugins/ checkout.
+   * A semver range here would send CI's `pnpm install --frozen-lockfile` to the
+   * registry looking for a package that does not exist there.
+   */
+  if (typeof entry.local === 'string' && entry.local) {
+    return 'workspace:*';
+  }
   if (process.env.KHIRBY_PLUGINS_WORKSPACE === '1' && workspacePluginDir(name)) {
     return 'workspace:*';
   }

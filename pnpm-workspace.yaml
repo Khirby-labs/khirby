@@ -1,6 +1,10 @@
 packages:
   - apps/*
   - packages/*
+  # In-repo plugin fixtures (crm-plugin-hello). Tracked in git and never published,
+  # so they resolve as workspace links in every environment — unlike plugins/, which
+  # is an optional checkout. ADR-0035 narrows ADR-0030 to cover exactly this case.
+  - examples/*
   # Optional local checkout (`./scripts/checkout-plugins.sh` + KHIRBY_PLUGINS_WORKSPACE=1).
   # Missing/empty plugins/ is ignored. `workspace:*` deps need this glob.
   - plugins/*

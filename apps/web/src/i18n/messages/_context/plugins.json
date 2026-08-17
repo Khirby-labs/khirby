@@ -133,5 +133,7 @@
   "pokelo.project.saveButton": "Button label to save the selected projects.",
   "pokelo.status.tokenConfigured": "Badge when an MCP token is already stored.",
   "pokelo.status.saved": "Brief success confirmation after settings are saved.",
-  "pokelo.status.autoSelected": "Hint when the only visible project was auto-bound. {name} is the project name."
+  "pokelo.status.autoSelected": "Hint when the only visible project was auto-bound. {name} is the project name.",
+  "hello.displayName": "Title of the example plugin's Marketplace card and of its own page. It is a demonstration fixture, not a product — the name should read as an example, not as a feature. 'Hello' stays English in both languages (it is the package name).",
+  "hello.description": "One sentence under that title: this plugin exists to show the install path working, and all it does is write a line to the log when a contact is created. Plain, no marketing."
 }

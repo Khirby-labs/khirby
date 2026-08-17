@@ -170,6 +170,7 @@ const PL_PROPER_NOUNS = new Set([
   'Pokelo',
   'Google',
   'Gmail',
+  'Hello', // package name of the example plugin (crm-plugin-hello)
 ]);
 
 const LETTER = 'A-Za-zÀ-ÖØ-öø-ÿĄĆĘŁŃÓŚŹŻąćęłńóśźż';
