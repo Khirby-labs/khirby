@@ -1,0 +1,43 @@
+{
+  "title": "Marketplace",
+  "subtitle": "Browse what this CRM can do and install a plugin in one click.",
+  "allInstalled": "Everything in the catalog is already installed.",
+  "empty": {
+    "title": "The catalog is empty",
+    "message": "No plugin in the catalog is present in this build, so there is nothing to install yet."
+  },
+  "filter": {
+    "label": "Category",
+    "all": "All categories"
+  },
+  "category": {
+    "communication": "Communication",
+    "marketing": "Marketing",
+    "automation": "Automation",
+    "ai": "AI",
+    "integration": "Integrations",
+    "other": "Other"
+  },
+  "card": {
+    "details": "Details",
+    "install": "Install",
+    "installing": "Installing…",
+    "installed": "Installed",
+    "disabled": "Installed, turned off",
+    "configure": "Configure"
+  },
+  "details": {
+    "requiredConfig": "Needs configuring",
+    "configureAfter": "Set these in Settings → Plugins after installing.",
+    "docs": "Read the documentation"
+  },
+  "toast": {
+    "installed": "{name} installed",
+    "alreadyInstalled": "That plugin is already installed",
+    "installFailed": "Install failed. Try again, or check the API log for the reason."
+  },
+  "errors": {
+    "load": "Couldn't load the catalog",
+    "forbidden": "You need the integrations permission to manage plugins. Ask an administrator."
+  }
+}

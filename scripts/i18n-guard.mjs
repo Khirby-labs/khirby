@@ -91,6 +91,9 @@ const I18N_ENFORCED = [
   'apps/web/src/components/ui/AppCalendar.vue',
   'apps/web/src/components/ui/AppDatePicker.vue',
   'apps/web/src/components/ui/AppDateRangePicker.vue',
+  // KBY-107 — Marketplace
+  'apps/web/src/views/marketplace/MarketplaceView.vue',
+  'apps/web/src/stores/marketplace.store.ts',
 ];
 
 /**
@@ -100,7 +103,10 @@ const I18N_ENFORCED = [
  * this repo* and missing from `en/` is a typo the fallback would hide, which is
  * exactly the closed, enumerable set the key rules allow a guard to check.
  */
-const KEY_DECLARING_SOURCES = ['plugins', 'packages'];
+// `examples` is here for the same reason: the fixture plugin declares
+// displayNameKey/descriptionKey and is built from this repository, so a typo in one
+// of its keys is a bug the literal fallback would hide.
+const KEY_DECLARING_SOURCES = ['plugins', 'packages', 'examples'];
 
 const DECLARED_KEY_FIELDS = ['labelKey', 'descriptionKey', 'displayNameKey', 'navLabelKey'];
 
@@ -171,6 +177,7 @@ const PL_PROPER_NOUNS = new Set([
   'Google',
   'Gmail',
   'Hello', // package name of the example plugin (crm-plugin-hello)
+  'Marketplace', // product surface name, established in Polish
 ]);
 
 const LETTER = 'A-Za-zÀ-ÖØ-öø-ÿĄĆĘŁŃÓŚŹŻąćęłńóśźż';

@@ -113,6 +113,13 @@ const staticRoutes: RouteRecordRaw[] = [
         },
       },
 
+      {
+        path: 'marketplace',
+        name: 'marketplace',
+        component: () => import('../views/marketplace/MarketplaceView.vue'),
+        meta: { titleKey: 'nav.extensions.marketplace' },
+      },
+
       // Settings console — admin area with its own sub-nav (Members/Roles/Plugins moved here)
       {
         path: 'settings',
