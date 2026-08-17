@@ -1,4 +1,4 @@
-# Bearly CRM Design System — "Honey & Graphite"
+# Khirby CRM Design System — "Honey & Graphite"
 
 > **Status:** v1.0 — adopted 2026-07-23. This file is the single source of truth for all UI work.
 > Any agent or developer touching `apps/web` MUST follow this spec. When a rule here conflicts
@@ -10,7 +10,7 @@
 
 ## 1. Philosophy
 
-Bearly CRM is a **work tool**, not a presentation. The UI is dark-first, layered graphite with a
+Khirby CRM is a **work tool**, not a presentation. The UI is dark-first, layered graphite with a
 single warm brand accent (honey amber). Three laws govern every screen:
 
 1. **Elevation is light.** Surfaces get *lighter* as they come closer to the user

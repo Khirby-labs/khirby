@@ -1,6 +1,9 @@
 packages:
   - apps/*
   - packages/*
+  # Optional local checkout (`./scripts/checkout-plugins.sh` + KHIRBY_PLUGINS_WORKSPACE=1).
+  # Missing/empty plugins/ is ignored. `workspace:*` deps need this glob.
+  - plugins/*
 allowBuilds:
   '@scarf/scarf': true
   esbuild: true

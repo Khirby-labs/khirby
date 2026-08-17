@@ -127,8 +127,8 @@ const TRANSLATABLE_ATTRS = [
  */
 const NOT_COPY = new Set([
   'CRM',
-  'Bearly',
-  'Bearly CRM',
+  'Khirby',
+  'Khirby CRM',
   'px',
   'ID',
   'URL',
@@ -147,7 +147,7 @@ const NOT_COPY = new Set([
  * the Title-Case check.
  */
 const PL_PROPER_NOUNS = new Set([
-  'Bearly',
+  'Khirby',
   'CRM',
   'Listmonk',
   'Polski',

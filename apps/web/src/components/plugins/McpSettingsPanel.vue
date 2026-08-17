@@ -159,14 +159,14 @@ const tokenPlaceholder = computed(
 
 const claudeSnippet = computed(
   () =>
-    `claude mcp add --transport http bearly-crm ${endpointUrl.value} \\\n  --header "Authorization: Bearer ${tokenPlaceholder.value}"`,
+    `claude mcp add --transport http khirby-crm ${endpointUrl.value} \\\n  --header "Authorization: Bearer ${tokenPlaceholder.value}"`,
 );
 
 const cursorSnippet = computed(() =>
   JSON.stringify(
     {
       mcpServers: {
-        'bearly-crm': {
+        'khirby-crm': {
           type: 'http',
           url: endpointUrl.value,
           headers: {

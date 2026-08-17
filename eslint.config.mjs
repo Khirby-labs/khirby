@@ -1,4 +1,4 @@
-// Flat ESLint config (ESLint 9) for the CRM Bearly monorepo.
+// Flat ESLint config (ESLint 9) for the CRM Khirby monorepo.
 // One config at the root covers apps/*, packages/*, plugins/*.
 // Intentionally pragmatic: this is the FIRST time the repo is linted, so the
 // rule set is kept lean (error-prevention over style) and a few rules are

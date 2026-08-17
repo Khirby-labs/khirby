@@ -6,9 +6,11 @@ function makeChain(result: any[] = []) {
   const chain: any = {};
   const _result = result;
 
-  ['from', 'where', 'limit', 'offset', 'groupBy', 'orderBy', 'leftJoin', 'innerJoin'].forEach((m) => {
-    chain[m] = jest.fn().mockReturnValue(chain);
-  });
+  ['from', 'where', 'limit', 'offset', 'groupBy', 'orderBy', 'leftJoin', 'innerJoin'].forEach(
+    (m) => {
+      chain[m] = jest.fn().mockReturnValue(chain);
+    },
+  );
 
   chain.then = (onFulfilled: any, onRejected: any) =>
     Promise.resolve(_result).then(onFulfilled, onRejected);
@@ -26,29 +28,33 @@ function buildDb() {
 
 describe('FormsStatsService', () => {
   let service: FormsStatsService;
+  let module: TestingModule;
   let db: ReturnType<typeof buildDb>;
 
   beforeEach(async () => {
     db = buildDb();
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        FormsStatsService,
-        { provide: DB_TOKEN, useValue: db },
-      ],
+    module = await Test.createTestingModule({
+      providers: [FormsStatsService, { provide: DB_TOKEN, useValue: db }],
     }).compile();
 
     service = module.get(FormsStatsService);
+  });
+
+  afterEach(async () => {
+    await module?.close();
   });
 
   it('returns aggregated stats', async () => {
     db.select
       .mockImplementationOnce(() => makeChain([{ count: 12 }]))
       .mockImplementationOnce(() => makeChain([{ count: 3 }]))
-      .mockImplementationOnce(() => makeChain([
-        { formId: 'f1', formName: 'Contact', count: 8 },
-        { formId: 'f2', formName: 'Waitlist', count: 4 },
-      ]));
+      .mockImplementationOnce(() =>
+        makeChain([
+          { formId: 'f1', formName: 'Contact', count: 8 },
+          { formId: 'f2', formName: 'Waitlist', count: 4 },
+        ]),
+      );
 
     const result = await service.getStats({});
 
@@ -63,10 +69,12 @@ describe('FormsStatsService', () => {
       .mockImplementationOnce(() => makeChain([{ count: 5 }]))
       .mockImplementationOnce(() => makeChain([{ count: 2 }]))
       .mockImplementationOnce(() => makeChain([{ formId: 'f1', formName: 'Contact', count: 5 }]))
-      .mockImplementationOnce(() => makeChain([
-        { day: '2026-07-14', count: 2 },
-        { day: '2026-07-15', count: 3 },
-      ]));
+      .mockImplementationOnce(() =>
+        makeChain([
+          { day: '2026-07-14', count: 2 },
+          { day: '2026-07-15', count: 3 },
+        ]),
+      );
 
     const result = await service.getStats({ daily: true });
 

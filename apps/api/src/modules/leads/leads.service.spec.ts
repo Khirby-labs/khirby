@@ -44,6 +44,7 @@ function buildDb() {
 
 describe('LeadsService', () => {
   let service: LeadsService;
+  let module: TestingModule;
   let db: ReturnType<typeof buildDb>;
   let stages: jest.Mocked<
     Pick<PipelineStagesService, 'ensureDefaults' | 'getFirstStage' | 'findById'>
@@ -63,7 +64,7 @@ describe('LeadsService', () => {
     };
     plugins = { emit: jest.fn() };
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         LeadsService,
         { provide: DB_TOKEN, useValue: db },
@@ -75,6 +76,10 @@ describe('LeadsService', () => {
     }).compile();
 
     service = module.get(LeadsService);
+  });
+
+  afterEach(async () => {
+    await module?.close();
   });
 
   describe('createFromSubmission', () => {

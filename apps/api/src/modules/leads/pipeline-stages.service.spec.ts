@@ -5,7 +5,7 @@ import { DB_TOKEN } from '../../core/database/database.module';
 
 function makeChain(result: any[] = []) {
   const chain: any = {};
-  ['from', 'where', 'limit', 'offset', 'values', 'set', 'returning', 'orderBy'].forEach(m => {
+  ['from', 'where', 'limit', 'offset', 'values', 'set', 'returning', 'orderBy'].forEach((m) => {
     chain[m] = jest.fn().mockReturnValue(chain);
   });
   chain.then = (onFulfilled: any, onRejected: any) =>
@@ -29,19 +29,21 @@ function buildDb() {
 
 describe('PipelineStagesService', () => {
   let service: PipelineStagesService;
+  let module: TestingModule;
   let db: ReturnType<typeof buildDb>;
 
   beforeEach(async () => {
     db = buildDb();
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        PipelineStagesService,
-        { provide: DB_TOKEN, useValue: db },
-      ],
+    module = await Test.createTestingModule({
+      providers: [PipelineStagesService, { provide: DB_TOKEN, useValue: db }],
     }).compile();
 
     service = module.get(PipelineStagesService);
+  });
+
+  afterEach(async () => {
+    await module?.close();
   });
 
   describe('ensureDefaults', () => {
@@ -108,9 +110,7 @@ describe('PipelineStagesService', () => {
 
   describe('reorder', () => {
     it('throws when stageIds count mismatch', async () => {
-      db.select.mockImplementationOnce(() => makeChain([
-        { id: 's1' }, { id: 's2' },
-      ]));
+      db.select.mockImplementationOnce(() => makeChain([{ id: 's1' }, { id: 's2' }]));
 
       await expect(service.reorder(['s1'])).rejects.toThrow(BadRequestException);
     });

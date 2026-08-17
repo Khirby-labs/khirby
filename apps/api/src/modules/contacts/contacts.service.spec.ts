@@ -57,16 +57,21 @@ function buildDb() {
 
 describe('ContactsService', () => {
   let service: ContactsService;
+  let module: TestingModule;
   let db: ReturnType<typeof buildDb>;
 
   beforeEach(async () => {
     db = buildDb();
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [ContactsService, { provide: DB_TOKEN, useValue: db }],
     }).compile();
 
     service = module.get(ContactsService);
+  });
+
+  afterEach(async () => {
+    await module?.close();
   });
 
   // ─── findAll ────────────────────────────────────────────────────────────────

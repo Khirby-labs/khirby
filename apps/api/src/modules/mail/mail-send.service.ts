@@ -274,7 +274,7 @@ export class MailSendService {
     return { messageId: msg.id };
   }
 
-  /** Prefer display name so clients show "Bearly CRM" instead of bare address. */
+  /** Prefer display name so clients show "Khirby CRM" instead of bare address. */
   private formatFrom(mailbox: { fromName: string; name: string; fromAddress: string }): string {
     const display = (mailbox.fromName || mailbox.name || '').trim();
     if (!display) return mailbox.fromAddress;

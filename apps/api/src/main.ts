@@ -141,9 +141,9 @@ async function bootstrap() {
   if (isDev) {
     const { DocumentBuilder, SwaggerModule } = await import('@nestjs/swagger');
     const config = new DocumentBuilder()
-      .setTitle('CRM Bearly API')
+      .setTitle('CRM Khirby API')
       .setDescription(
-        'REST API dla CRM Bearly. ' +
+        'REST API dla CRM Khirby. ' +
           'Uwierzytelnianie przez session cookie — najpierw POST /api/auth/login, ' +
           'cookie connect.sid zostanie ustawione automatycznie.',
       )

@@ -11,7 +11,20 @@ function makeChain(result: any[] = []) {
   const chain: any = {};
   const _result = result;
 
-  ['from', 'where', 'limit', 'offset', 'values', 'set', 'returning', 'onConflictDoNothing', 'leftJoin', 'innerJoin', 'groupBy', 'orderBy'].forEach(m => {
+  [
+    'from',
+    'where',
+    'limit',
+    'offset',
+    'values',
+    'set',
+    'returning',
+    'onConflictDoNothing',
+    'leftJoin',
+    'innerJoin',
+    'groupBy',
+    'orderBy',
+  ].forEach((m) => {
     chain[m] = jest.fn().mockReturnValue(chain);
   });
 
@@ -37,19 +50,21 @@ function buildDb() {
 
 describe('FormsService', () => {
   let service: FormsService;
+  let module: TestingModule;
   let db: ReturnType<typeof buildDb>;
 
   beforeEach(async () => {
     db = buildDb();
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        FormsService,
-        { provide: DB_TOKEN, useValue: db },
-      ],
+    module = await Test.createTestingModule({
+      providers: [FormsService, { provide: DB_TOKEN, useValue: db }],
     }).compile();
 
     service = module.get(FormsService);
+  });
+
+  afterEach(async () => {
+    await module?.close();
   });
 
   // ─── findAll ────────────────────────────────────────────────────────────────
@@ -203,8 +218,8 @@ describe('FormsService', () => {
     it('creates a form when slug is unique', async () => {
       const newForm = { id: 'f3', name: 'New Form', slug: 'new-form', schema: [], active: true };
 
-      db.select.mockImplementationOnce(() => makeChain([]));          // no slug conflict
-      db.insert.mockImplementationOnce(() => makeChain([newForm]));   // insert → new form
+      db.select.mockImplementationOnce(() => makeChain([])); // no slug conflict
+      db.insert.mockImplementationOnce(() => makeChain([newForm])); // insert → new form
 
       const result = await service.create({ name: 'New Form', slug: 'new-form', schema: [] });
       expect(result).toEqual(newForm);
@@ -215,14 +230,16 @@ describe('FormsService', () => {
       const existing = { id: 'f4', slug: 'dup-slug' };
       db.select.mockImplementationOnce(() => makeChain([existing]));
 
-      await expect(service.create({ name: 'Dup', slug: 'dup-slug', schema: [] }))
-        .rejects.toThrow(ConflictException);
+      await expect(service.create({ name: 'Dup', slug: 'dup-slug', schema: [] })).rejects.toThrow(
+        ConflictException,
+      );
     });
 
     it('rejects a non-empty schema without a required email field', async () => {
       await expect(
         service.create({
-          name: 'F', slug: 'f',
+          name: 'F',
+          slug: 'f',
           schema: [{ name: 'message', label: 'Message', type: 'textarea', required: true }],
         }),
       ).rejects.toThrow(BadRequestException);
@@ -231,11 +248,12 @@ describe('FormsService', () => {
 
     it('accepts a schema that has a required email field', async () => {
       const newForm = { id: 'fe', name: 'F', slug: 'f', schema: [], active: true };
-      db.select.mockImplementationOnce(() => makeChain([]));         // no slug conflict
-      db.insert.mockImplementationOnce(() => makeChain([newForm]));  // insert → new form
+      db.select.mockImplementationOnce(() => makeChain([])); // no slug conflict
+      db.insert.mockImplementationOnce(() => makeChain([newForm])); // insert → new form
 
       const result = await service.create({
-        name: 'F', slug: 'f',
+        name: 'F',
+        slug: 'f',
         schema: [{ name: 'email', label: 'Email', type: 'email', required: true }],
       });
       expect(result).toEqual(newForm);
@@ -250,7 +268,7 @@ describe('FormsService', () => {
       const updated = { ...existing, name: 'Updated' };
 
       db.select.mockImplementationOnce(() => makeChain([existing])); // findById
-      db.update.mockImplementationOnce(() => makeChain([updated]));  // update
+      db.update.mockImplementationOnce(() => makeChain([updated])); // update
 
       const result = await service.update('f5', { name: 'Updated' });
       expect(result).toEqual(updated);
@@ -268,7 +286,7 @@ describe('FormsService', () => {
       const conflicting = { id: 'f7', slug: 'slug-b' };
 
       db.select
-        .mockImplementationOnce(() => makeChain([existing]))    // findById
+        .mockImplementationOnce(() => makeChain([existing])) // findById
         .mockImplementationOnce(() => makeChain([conflicting])); // slug conflict check
 
       await expect(service.update('f6', { slug: 'slug-b' })).rejects.toThrow(ConflictException);

@@ -1,6 +1,6 @@
 # UI copy guide — Polish & English
 
-> Canonical source for **how** interface copy is written in Bearly CRM. Architecture lives in
+> Canonical source for **how** interface copy is written in Khirby CRM. Architecture lives in
 > `docs/adr/0011-i18n-architecture.md`; the enforceable subset is in `.claude/rules/i18n.md`.
 > The `copywriter` agent reads this file — keep it dense and decision-shaped, not chatty.
 

@@ -1,4 +1,4 @@
-import { Test } from '@nestjs/testing';
+import { Test, TestingModule } from '@nestjs/testing';
 import { GUARDS_METADATA } from '@nestjs/common/constants';
 import { RolesController } from './roles.controller';
 import { RolesService } from './roles.service';
@@ -8,6 +8,7 @@ import { PERMISSION_KEY, SUPER_ADMIN_KEY } from '../../core/rbac/require-permiss
 
 describe('RolesController', () => {
   let controller: RolesController;
+  let moduleRef: TestingModule;
   let service: jest.Mocked<RolesService>;
 
   beforeEach(async () => {
@@ -22,7 +23,7 @@ describe('RolesController', () => {
       removeFromUser: jest.fn(),
     };
 
-    const moduleRef = await Test.createTestingModule({
+    moduleRef = await Test.createTestingModule({
       controllers: [RolesController],
       providers: [{ provide: RolesService, useValue: serviceMock }],
     })
@@ -35,6 +36,10 @@ describe('RolesController', () => {
 
     controller = moduleRef.get(RolesController);
     service = moduleRef.get(RolesService);
+  });
+
+  afterEach(async () => {
+    await moduleRef?.close();
   });
 
   describe('guard wiring', () => {

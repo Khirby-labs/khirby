@@ -111,6 +111,7 @@ describe('syntheticMessageId', () => {
 
 describe('MailThreadService', () => {
   let service: MailThreadService;
+  let module: TestingModule;
   let db: ReturnType<typeof buildDb>;
   let events: { emit: jest.Mock };
   let leadsService: { createManual: jest.Mock };
@@ -119,7 +120,7 @@ describe('MailThreadService', () => {
     db = buildDb();
     events = { emit: jest.fn() };
     leadsService = { createManual: jest.fn() };
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         MailThreadService,
         { provide: DB_TOKEN, useValue: db },
@@ -128,6 +129,10 @@ describe('MailThreadService', () => {
       ],
     }).compile();
     service = module.get(MailThreadService);
+  });
+
+  afterEach(async () => {
+    await module?.close();
   });
 
   describe('resolveOpenLead', () => {

@@ -379,7 +379,10 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+  return new Promise((resolve) => {
+    const timer = setTimeout(resolve, ms);
+    timer.unref();
+  });
 }
 
 function waitUntil(condition: () => boolean): Promise<void> {
@@ -390,5 +393,6 @@ function waitUntil(condition: () => boolean): Promise<void> {
         resolve();
       }
     }, 500);
+    interval.unref();
   });
 }

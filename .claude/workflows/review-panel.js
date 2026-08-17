@@ -17,7 +17,7 @@ const planNote = planFile
   ? `The task plan (acceptance criteria, edge cases) is at ${planFile} — read it first.`
   : 'No plan file given — judge the diff on its own merits and repo conventions.'
 
-const COMMON = `You are one member of a blind review panel for Bearly CRM (NestJS + Vue 3 + Drizzle pnpm monorepo, repo root = cwd).
+const COMMON = `You are one member of a blind review panel for Khirby CRM (NestJS + Vue 3 + Drizzle pnpm monorepo, repo root = cwd).
 Review ONLY the changes: run \`git diff ${base}...HEAD\` plus \`git diff ${base}\` if the working tree is dirty, and \`git log ${base}..HEAD --oneline\` for intent. ${planNote}
 Ground rules: read AGENTS.md and the relevant .claude/rules/* for conventions; check docs/adr/README.md before calling a design choice a flaw — deliberate decisions (ADRs) are NOT findings. You cannot see the other reviewers. Only report findings you can pin to file:line. Skip style nits that prettier/eslint already enforce. An empty findings list is a perfectly good answer.`
 
@@ -101,7 +101,7 @@ phase('Verify')
 const verified = await parallel(
   unique.map((f, i) => () =>
     agent(
-      `Adversarially verify ONE review finding on the Bearly CRM diff (vs ${base}, repo root = cwd). Your default stance: REFUTE it. Confirm only with evidence.
+      `Adversarially verify ONE review finding on the Khirby CRM diff (vs ${base}, repo root = cwd). Your default stance: REFUTE it. Confirm only with evidence.
 Finding: ${f.file}:${f.line} [${f.severity}] ${f.desc}
 Repro hint: ${f.repro_hint || 'none given'}
 Method: read the code around ${f.file}:${f.line} and its callers; check docs/adr/ and AGENTS.md — a deliberate, documented choice refutes the finding; if testable, run a targeted check (e.g. \`npx jest <spec> --no-coverage\` from apps/api, or \`node <script>\` for tooling). Uncertain → confirmed=false. Matter of taste → confirmed=false.`,

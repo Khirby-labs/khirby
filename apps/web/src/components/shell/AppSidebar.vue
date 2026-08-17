@@ -34,7 +34,7 @@
       <span
         v-if="!collapsed"
         class="truncate text-sm font-semibold tracking-tight text-text-primary"
-        >Bearly CRM</span
+        >Khirby CRM</span
       >
     </div>
 

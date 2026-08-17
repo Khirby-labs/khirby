@@ -1,5 +1,5 @@
 /**
- * CRM Bearly Plugin SDK
+ * CRM Khirby Plugin SDK
  * Minimalne interfejsy potrzebne do pisania pluginów.
  */
 

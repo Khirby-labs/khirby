@@ -16,7 +16,7 @@ npm i @khirby/forms-ui
 # pulls in @khirby/forms-client
 ```
 
-Public guide: landing-site product docs (forms-ui). Source: **BearlyCRM** monorepo (`packages/forms-ui`).
+Public guide: landing-site product docs (forms-ui). Source: **KhirbyCRM** monorepo (`packages/forms-ui`).
 
 ```tsx
 import { CrmForm } from '@khirby/forms-ui'

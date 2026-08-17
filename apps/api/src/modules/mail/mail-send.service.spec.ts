@@ -64,6 +64,7 @@ const mockCreds = {
 
 describe('MailSendService', () => {
   let service: MailSendService;
+  let module: TestingModule;
   let db: ReturnType<typeof buildDb>;
   let mailboxSvc: jest.Mocked<Pick<MailboxService, 'getDecryptedCredentials'>>;
   let plugins: { emit: jest.Mock };
@@ -78,7 +79,7 @@ describe('MailSendService', () => {
     plugins = { emit: jest.fn() };
     events = { emit: jest.fn() };
 
-    const module: TestingModule = await Test.createTestingModule({
+    module = await Test.createTestingModule({
       providers: [
         MailSendService,
         { provide: DB_TOKEN, useValue: db },
@@ -90,6 +91,10 @@ describe('MailSendService', () => {
     }).compile();
 
     service = module.get(MailSendService);
+  });
+
+  afterEach(async () => {
+    await module?.close();
   });
 
   describe('createThread', () => {
