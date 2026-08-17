@@ -55,6 +55,7 @@ const USAGE = `commands (prefix with \`node .claude/scripts/\`):
   linear.mjs labels [--create]                     list / create the intake label set
   linear.mjs comment --issue X --body-file <md>    post a report (markdown from a file)
   linear.mjs status --issue X --state "In Review"  move the issue (state by name)
+  linear.mjs search --query "<words>"              look for a duplicate before creating
   ... any command + --dry-run                      print variables, send nothing`;
 const usage = (msg) => {
   console.error(`[linear] ${msg}\n${USAGE}`);
@@ -392,6 +393,64 @@ async function status() {
   );
 }
 
+// Duplicate check for /intake: creating issues automatically means creating
+// duplicates automatically unless something looks first. Scoring stays here (not
+// in the model) so the same words always give the same verdict.
+async function search() {
+  const q = flag('query') ?? usage('search needs --query "<words from the title>"');
+  const m = await resolveTeam();
+  const CAP = 100;
+  const data = await gql(
+    `query Search($key: String!, $first: Int!) {
+       issues(filter: { team: { key: { eq: $key } } }, first: $first, orderBy: updatedAt) {
+         nodes { identifier title url state { name type } }
+       }
+     }`,
+    { key: m.team.key, first: CAP },
+  );
+  if (!data) return;
+  const nodes = data.issues.nodes;
+  const open = nodes.filter((n) => !['completed', 'canceled'].includes(n.state.type));
+  // Paths carry the signal in their parts, so `.github/workflows` has to yield
+  // `github` and `workflows` as well as the whole token — otherwise a title full of
+  // file names looks unrelated to a query full of words, and a twin gets created.
+  const tokens = (s) => {
+    const out = new Set();
+    for (const whole of s
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}/._-]+/gu, ' ')
+      .split(/\s+/)
+      .filter(Boolean)) {
+      if (whole.length >= 4) out.add(whole);
+      for (const part of whole.split(/[/._-]+/)) if (part.length >= 4) out.add(part);
+    }
+    return out;
+  };
+  const want = tokens(q);
+  const scored = open
+    .map((n) => {
+      const have = tokens(n.title);
+      const shared = [...want].filter((t) => have.has(t));
+      return { ...n, score: want.size ? shared.length / want.size : 0, shared };
+    })
+    .filter((n) => n.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  console.log(`[linear] scanned ${nodes.length} issues (cap ${CAP}), ${open.length} still open`);
+  if (nodes.length === CAP)
+    console.log(`[linear] NOTE: hit the ${CAP}-issue cap — older issues were not scanned`);
+  if (!scored.length) {
+    console.log('[linear] no title overlap — nothing that looks like a duplicate');
+    return;
+  }
+  for (const n of scored)
+    console.log(
+      `  ${(n.score * 100).toFixed(0)}%  ${n.identifier} [${n.state.name}] ${n.title}\n         shared: ${n.shared.join(', ')} · ${n.url}`,
+    );
+  console.log('[linear] judge these before creating: comment on an existing issue beats a twin');
+}
+
 // ── dispatch ────────────────────────────────────────────────────────────────
 const commands = {
   meta: () => meta({ refresh: has('refresh') }),
@@ -400,6 +459,7 @@ const commands = {
   labels,
   comment,
   status,
+  search,
 };
 if (!commands[cmd]) usage(`unknown command: ${cmd ?? '(none)'}`);
 await commands[cmd]();

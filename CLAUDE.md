@@ -10,7 +10,9 @@
   System architecture & request flow: docs/ARCHITECTURE.md.
 
 ## Task flow
-- Tasks live in Linear. Start work with /task <issue-id>; finish with /wrap.
+- Tasks live in Linear. Write new ones with /intake (it drafts against the fixed
+  bug/feature template, checks every code-map path against disk, and creates the
+  issue). Start work with /task <issue-id>; finish with /wrap.
 - Linear access goes through `.claude/scripts/linear.mjs` (key in `.env` as
   `LINEAR_API_KEY`, team pinned in `.claude/linear.json`). The MCP server in
   `.mcp.json` is the read-only endpoint — it cannot and must not write.
