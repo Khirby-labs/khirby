@@ -215,6 +215,22 @@ export interface PluginConfigField {
   placeholders?: PluginConfigPlaceholder[];
 }
 
+/**
+ * A plugin present in this process that the operator has NOT installed — no row
+ * in the `plugins` table (ADR-0032). It carries the same localizable field set
+ * as an installed row, so a Marketplace card renders identically either side of
+ * the install: the SPA resolves `*Key` and falls back to the English literal.
+ */
+export interface AvailablePlugin {
+  name: string;
+  displayName: string;
+  displayNameKey?: string;
+  description: string | null;
+  descriptionKey?: string;
+  version: string;
+  configSchema: PluginConfigField[];
+}
+
 export interface Plugin {
   id: string;
   name: string;
