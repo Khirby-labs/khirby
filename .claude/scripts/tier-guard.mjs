@@ -8,6 +8,9 @@
 // Exit 0 = tier holds · exit 1 = tier must be raised (message says to what).
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+// The list lives in lib/sensitive.mjs so /intake proposes a tier from the very
+// same paths this script enforces. Never re-declare it here.
+import { CODE, EXEMPT, sensitiveHits as sensitiveHitsIn } from './lib/sensitive.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const args = process.argv.slice(2);
@@ -31,34 +34,26 @@ const changed = new Set([
   ...git('git ls-files --others --exclude-standard'),
 ]);
 
-// Areas that always mean L (auth/RBAC/schema/public surface/deploy).
-const SENSITIVE = [
-  /^apps\/api\/src\/core\/auth\//,
-  /^apps\/api\/src\/core\/database\/schema\.ts$/,
-  /^apps\/api\/src\/modules\/roles\//,
-  /public-forms/,
-  /^packages\/forms-client\//,
-  /^packages\/payload-forms\//,
-  /^docker\//,
-  /^\.gitlab-ci\.yml$/,
-];
-const CODE = /\.(ts|tsx|js|jsx|mjs|cjs|vue)$/i;
-const EXEMPT = /^(docs\/|\.claude\/)/;
-
 const files = [...changed].filter((f) => !EXEMPT.test(f));
-const sensitiveHits = files.filter((f) => SENSITIVE.some((re) => re.test(f)));
+const sensitiveHits = sensitiveHitsIn(files);
 const codeFiles = files.filter((f) => CODE.test(f));
 
 if (sensitiveHits.length && tier !== 'L') {
   console.log(`[tier-guard] RAISE TO L — diff touches sensitive areas at tier ${tier}:`);
   for (const f of sensitiveHits) console.log(`  - ${f}`);
-  console.log('Raise the tier in the plan file, then continue with the L stages (audit + panel; security reviewer mandatory).');
+  console.log(
+    'Raise the tier in the plan file, then continue with the L stages (audit + panel; security reviewer mandatory).',
+  );
   process.exit(1);
 }
 if (tier === 'S' && codeFiles.length > 2) {
-  console.log(`[tier-guard] RAISE TO M — tier S allows an obvious 1-2 file fix; diff has ${codeFiles.length} code files:`);
+  console.log(
+    `[tier-guard] RAISE TO M — tier S allows an obvious 1-2 file fix; diff has ${codeFiles.length} code files:`,
+  );
   for (const f of codeFiles) console.log(`  - ${f}`);
-  console.log('Raise to M: write a plan file, run the critic, and get plan approval before continuing.');
+  console.log(
+    'Raise to M: write a plan file, run the critic, and get plan approval before continuing.',
+  );
   process.exit(1);
 }
 console.log(`[tier-guard] tier ${tier} holds (${codeFiles.length} code files, 0 sensitive hits).`);
