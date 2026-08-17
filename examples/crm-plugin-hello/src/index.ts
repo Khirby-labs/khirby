@@ -81,7 +81,10 @@ export class HelloPlugin implements CrmPlugin {
 
   async onEvent(event: CrmEvent, ctx: PluginContext) {
     if (event.type === 'contact.created') {
-      ctx.log('contact.created %s', event.payload.email);
+      // Interpolated, not '%s' + arg: ctx.log forwards extra arguments to Nest's
+      // Logger, which reads them as a context label rather than substituting them,
+      // so the printf form printed the email on a second line of its own.
+      ctx.log(`contact.created ${event.payload.email}`);
     }
   }
 }
