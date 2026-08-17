@@ -1,12 +1,27 @@
 import type { CrmPlugin, CrmEvent, PluginContext } from '@khirby/plugin-sdk';
 import { Module, Controller, Get, UseGuards } from '@nestjs/common';
+/*
+ * Relative, NOT '@khirby/plugin-host' — the same path the first-party plugins use.
+ *
+ * This is a VALUE import, so tsc emits a real `require()` with whatever specifier
+ * is written here. `nest build` is plain tsc and rewrites nothing, and the runtime
+ * image ships only the build output plus each package's package.json — so a bare
+ * specifier resolves to a directory with no sources and the API dies at boot with
+ * MODULE_NOT_FOUND. Nothing catches that earlier: typecheck, lint and the whole
+ * test suite pass, and even `docker build` succeeds.
+ *
+ * A plugin published to npm and installed by an operator DOES import the bare
+ * specifier (see docs/PLUGINS.md) — that works because npm gives it a real
+ * node_modules entry. This fixture is different: it is compiled into apps/api's
+ * own output, so it follows the first-party convention.
+ */
 import {
   SessionGuard,
   PermissionGuard,
   RequirePermission,
   RequirePluginEnabled,
   PluginEnabledGuard,
-} from '@khirby/plugin-host';
+} from '../../../packages/plugin-host/src';
 
 @Controller('plugins/hello')
 @UseGuards(SessionGuard, PermissionGuard, PluginEnabledGuard)
