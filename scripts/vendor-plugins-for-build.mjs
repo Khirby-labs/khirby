@@ -1,5 +1,11 @@
 #!/usr/bin/env node
-/** Copy npm plugin sources into plugins/ for Nest compile (skip if plugins/.git). */
+/**
+ * Copy npm plugin sources into plugins/ for Nest compile (ADR-0037).
+ *
+ * Default is hybrid: keep any plugins/<dir> that already has src/, vendor only
+ * the gaps from node_modules. KHIRBY_PLUGINS_WORKSPACE=1 or plugins/.git means
+ * local-only — never copy from npm (a missing package is a checkout problem).
+ */
 import {
   cpSync,
   existsSync,
@@ -53,55 +59,28 @@ function resolvePackageRoot(packageName) {
   return dir;
 }
 
-function isProtectedCheckout() {
+function isLocalOnlyMode() {
   return process.env.KHIRBY_PLUGINS_WORKSPACE === '1' || existsSync(join(pluginsRoot, '.git'));
 }
 
-const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
-const plugins = manifest.plugins;
-if (!Array.isArray(plugins)) {
-  console.error('Invalid plugins.manifest.json');
-  process.exit(1);
+function hasLocalSources(dest) {
+  return existsSync(join(dest, 'src')) && existsSync(join(dest, 'package.json'));
 }
 
-if (isProtectedCheckout()) {
-  console.log('Skipping vendor — local plugins/ checkout present');
-  process.exit(0);
+function pluginDirName(packageName) {
+  return (
+    PACKAGE_TO_DIR[packageName] ??
+    `crm-plugin-${packageName.replace(/^@khirby\/plugin-/, '').replace(/^@crm\/plugin-/, '')}`
+  );
 }
 
-mkdirSync(pluginsRoot, { recursive: true });
-
-for (const entry of plugins) {
-  const name = entry.package;
-  /*
-   * A `local` entry already sits in the source tree (examples/*) and is compiled
-   * from there, so there is nothing to vendor. Copying it into plugins/ would
-   * produce a second copy of the same sources and — via the fallback naming below
-   * — a directory whose prefix is doubled.
-   */
-  if (typeof entry.local === 'string' && entry.local) {
-    console.log(`Skipping vendor for ${name} — local source at ${entry.local}`);
-    continue;
-  }
-  const dirName =
-    PACKAGE_TO_DIR[name] ??
-    `crm-plugin-${name.replace(/^@khirby\/plugin-/, '').replace(/^@crm\/plugin-/, '')}`;
-  const dest = join(pluginsRoot, dirName);
-  let srcRoot;
-  try {
-    srcRoot = resolvePackageRoot(name);
-  } catch (err) {
-    throw new Error(
-      `Cannot resolve ${name} — run pnpm install first (${err instanceof Error ? err.message : err})`,
-    );
-  }
-
-  rmSync(dest, { recursive: true, force: true });
-  mkdirSync(dest, { recursive: true });
+function vendorInto(dest, srcRoot, name) {
   const srcDir = join(srcRoot, 'src');
   if (!existsSync(srcDir)) {
     throw new Error(`${name} has no src/ at ${srcRoot}`);
   }
+  rmSync(dest, { recursive: true, force: true });
+  mkdirSync(dest, { recursive: true });
   cpSync(srcDir, join(dest, 'src'), { recursive: true });
 
   const pkg = JSON.parse(readFileSync(join(srcRoot, 'package.json'), 'utf8'));
@@ -120,7 +99,63 @@ for (const entry of plugins) {
       2,
     ) + '\n',
   );
-  console.log(`Vendored ${name}@${pkg.version} → plugins/${dirName}`);
+  console.log(`Vendored ${name}@${pkg.version} → plugins/${pluginDirName(name)}`);
+}
+
+const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+const plugins = manifest.plugins;
+if (!Array.isArray(plugins)) {
+  console.error('Invalid plugins.manifest.json');
+  process.exit(1);
+}
+
+if (isLocalOnlyMode()) {
+  console.log('Skipping vendor — local-only (KHIRBY_PLUGINS_WORKSPACE or plugins/.git)');
+  process.exit(0);
+}
+
+mkdirSync(pluginsRoot, { recursive: true });
+
+let vendored = 0;
+let kept = 0;
+
+for (const entry of plugins) {
+  const name = entry.package;
+  /*
+   * A `local` entry already sits in the source tree (examples/*) and is compiled
+   * from there, so there is nothing to vendor. Copying it into plugins/ would
+   * produce a second copy of the same sources and — via the fallback naming below
+   * — a directory whose prefix is doubled.
+   */
+  if (typeof entry.local === 'string' && entry.local) {
+    console.log(`Skipping vendor for ${name} — local source at ${entry.local}`);
+    continue;
+  }
+  const dirName = pluginDirName(name);
+  const dest = join(pluginsRoot, dirName);
+  let srcRoot;
+  try {
+    srcRoot = resolvePackageRoot(name);
+  } catch (err) {
+    throw new Error(
+      `Cannot resolve ${name} — run pnpm install first (${err instanceof Error ? err.message : err})`,
+    );
+  }
+
+  if (hasLocalSources(dest)) {
+    const localVer = JSON.parse(readFileSync(join(dest, 'package.json'), 'utf8')).version;
+    const npmVer = JSON.parse(readFileSync(join(srcRoot, 'package.json'), 'utf8')).version;
+    const stale =
+      localVer !== npmVer
+        ? ` (on disk ${localVer}, npm ${npmVer} — delete plugins/${dirName} to refresh)`
+        : '';
+    console.log(`Keeping plugins/${dirName}${stale}`);
+    kept += 1;
+    continue;
+  }
+
+  vendorInto(dest, srcRoot, name);
+  vendored += 1;
 }
 
 const apiNodeModules = join(root, 'apps/api/node_modules');
@@ -130,4 +165,6 @@ if (existsSync(apiNodeModules)) {
   symlinkSync(relative(pluginsRoot, apiNodeModules), pluginsNodeModules);
 }
 
-console.log(`Vendored ${plugins.length} plugin(s)`);
+console.log(
+  `Vendor hybrid: kept ${kept}, vendored ${vendored} of ${plugins.length} manifest plugin(s)`,
+);

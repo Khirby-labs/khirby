@@ -202,6 +202,22 @@ the path without a sidebar / ⌘K entry.
 
 ---
 
+## Instance self-build (MCP hot-load)
+
+On a running CRM, Cursor/Claude can author a plugin **on this instance** without
+`npm publish` or an image rebuild ([ADR-0036](adr/0036-instance-volume-append-only-plugin-hot-load.md)).
+
+1. MCP bearer token (existing Settings → MCP).
+2. Tools: `describe_plugin_contract` → `scaffold_plugin` → edit → `validate_plugin` → `install_instance_plugin`.
+3. Files land in `INSTANCE_PLUGINS_DIR` (`./instance-plugins` locally, `/data/instance-plugins` in Docker) plus `plugins.manifest.json`.
+4. Hot-load is append-only (`jiti` + `createPlugin` + optional `LazyModuleLoader`). Disable still only drops the in-memory context.
+
+Packages must use bare `@khirby/plugin-sdk` / `@khirby/plugin-host`. `exports["./web"]` is rejected — Settings via `getConfigSchema()` still works. Marketplace listing is a later ticket ([KBY-121](https://linear.app/finsly/issue/KBY-121)).
+
+Editing first-party sources under `plugins/` survives `pnpm dev`: vendor keeps existing dirs and fills only gaps ([ADR-0037](adr/0037-hybrid-plugin-vendor-keep-local-sources.md)). `KHIRBY_PLUGINS_WORKSPACE=1` skips npm vendor entirely.
+
+---
+
 ## Testing
 
 Place `*.spec.ts` next to plugin sources. Jest roots include `plugins/`

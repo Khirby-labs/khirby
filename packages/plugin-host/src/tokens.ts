@@ -29,6 +29,7 @@ export interface PluginRegistryLike {
 
 export const CONTACTS_SERVICE = 'CRM_CONTACTS_SERVICE';
 export const LEADS_SERVICE = 'CRM_LEADS_SERVICE';
+export const USERS_SERVICE = 'CRM_USERS_SERVICE';
 export const PIPELINE_STAGES_SERVICE = 'CRM_PIPELINE_STAGES_SERVICE';
 export const EVENTS_SERVICE = 'CRM_EVENTS_SERVICE';
 export const MAIL_THREAD_SERVICE = 'CRM_MAIL_THREAD_SERVICE';
@@ -81,6 +82,11 @@ export interface LeadsServiceLike {
       ownerId?: string | null;
     },
   ): Promise<unknown>;
+}
+
+/** Narrow users surface for plugins / MCP. */
+export interface UsersServiceLike {
+  findAll(currentUserId?: string): Promise<unknown>;
 }
 
 export interface PipelineStagesServiceLike {
@@ -267,6 +273,29 @@ export interface PokeloContextServiceLike {
   listBoundProjects?(): Promise<Array<{ id: string; name: string }>>;
   /** All projects visible to the configured token (settings UI). */
   listProjects?(): Promise<Array<{ id: string; name: string }>>;
+}
+
+/**
+ * Instance-volume plugins (ADR-0036). Provided by PluginsModule; MCP scaffold
+ * tools consume it so the plugin never imports `apps/api`.
+ */
+export const INSTANCE_PLUGINS = 'CRM_INSTANCE_PLUGINS';
+
+export interface InstancePluginsLike {
+  /** Writable dir (`INSTANCE_PLUGINS_DIR` or `./instance-plugins`). */
+  instanceDir(): string;
+  /** Names that must not be scaffolded or hot-loaded (natives + `crm_hello`). */
+  reservedNames(): readonly string[];
+  /** Plugins already in this process (image + previously hot-loaded). */
+  loadedNames(): string[];
+  /**
+   * Load `createPlugin()` from a directory on the volume, push onto the live
+   * registry, optionally LazyModuleLoader, then install+activate.
+   */
+  hotLoad(absPackageDir: string): Promise<{ name: string }>;
+  /** Same rules as hotLoad, without mutating the process. */
+  validate(absPackageDir: string): { name: string };
+  appendManifest(packageName: string, localDir: string): void;
 }
 
 /** Marker metadata key for PluginEnabledGuard */

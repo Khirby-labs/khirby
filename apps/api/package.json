@@ -52,6 +52,7 @@
     "hono": "4.13.1",
     "imapflow": "^1.6.3",
     "ioredis": "^5.11.1",
+    "jiti": "^2.7.0",
     "mailparser": "^3.9.14",
     "nodemailer": "^9.0.3",
     "postgres": "^3.4.0",

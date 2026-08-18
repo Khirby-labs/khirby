@@ -1,3 +1,6 @@
+import { mkdtempSync, mkdirSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PluginRegistryService, NATIVE_PLUGIN_NAMES } from './plugin-registry.service';
 import { CrmPlugin, CrmEvent } from '@khirby/plugin-sdk';
@@ -742,6 +745,121 @@ describe('PluginRegistryService', () => {
       const result = await svc.updateConfig('test_plugin', newConfig);
       expect(result.config).toEqual(newConfig);
       expect(setMock).toHaveBeenCalledWith(expect.objectContaining({ config: newConfig }));
+    });
+  });
+
+  describe('hotLoad', () => {
+    function writeTmpPlugin(name: string) {
+      const dir = mkdtempSync(join(tmpdir(), 'hotload-'));
+      mkdirSync(join(dir, 'src'));
+      writeFileSync(
+        join(dir, 'package.json'),
+        JSON.stringify({
+          name: `pkg-${name}`,
+          version: '0.1.0',
+          main: './src/index.ts',
+          exports: { '.': './src/index.ts' },
+        }),
+      );
+      writeFileSync(
+        join(dir, 'src/index.ts'),
+        `export function createPlugin() {
+  return {
+    name: '${name}',
+    displayName: '${name}',
+    version: '0.1.0',
+    onEvent: undefined,
+  };
+}
+`,
+      );
+      return dir;
+    }
+
+    function makeInstallDb(onEventPlugin?: { onEvent: jest.Mock }) {
+      const row = {
+        id: 'uuid-hot',
+        name: 'crm_hot',
+        displayName: 'crm_hot',
+        version: '0.1.0',
+        enabled: true,
+        config: {},
+        installedAt: new Date(),
+        updatedAt: new Date(),
+        description: null,
+      };
+      const insertValues = jest.fn(() => ({ returning: () => makeChain([row]) }));
+      const db: any = {
+        $client: { unsafe: jest.fn() },
+        select: jest.fn(() => ({
+          from: () => ({ where: () => ({ limit: () => makeChain([]) }) }),
+        })),
+        insert: jest.fn(() => ({ values: insertValues })),
+        update: jest.fn(() => ({ set: jest.fn(() => ({ where: jest.fn(() => makeChain()) })) })),
+        delete: jest.fn(() => ({ where: jest.fn(() => makeChain()) })),
+      };
+      void onEventPlugin;
+      return { db, row };
+    }
+
+    it('pushes onto the live array, installs, and emit reaches onEvent without restart', async () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      const volume = mkdtempSync(join(tmpdir(), 'instance-vol-'));
+      process.env.INSTANCE_PLUGINS_DIR = volume;
+      try {
+        const { db } = makeInstallDb();
+        const live: CrmPlugin[] = [];
+        const svc = makeService(live, db);
+        const pkgDir = writeTmpPlugin('crm_hot');
+        // Rewrite with onEvent after load — jiti will compile the file. Patch via file:
+        writeFileSync(
+          join(pkgDir, 'src/index.ts'),
+          `const state = { hits: 0 };
+export function createPlugin() {
+  return {
+    name: 'crm_hot',
+    displayName: 'crm_hot',
+    version: '0.1.0',
+    async onEvent() { state.hits += 1; },
+    getHits() { return state.hits; },
+  };
+}
+`,
+        );
+
+        await svc.hotLoad(pkgDir);
+        expect(svc.loadedNames()).toContain('crm_hot');
+        expect(svc.isEnabled('crm_hot')).toBe(true);
+
+        const plugin = live.find((p) => p.name === 'crm_hot');
+        expect(plugin).toBeDefined();
+        plugin!.onEvent = jest.fn();
+        const event: CrmEvent = {
+          type: 'contact.created',
+          payload: { id: 'c1', email: 'x@x.pl', createdAt: new Date() },
+        };
+        await svc.emit(event);
+        expect(plugin!.onEvent).toHaveBeenCalledWith(event, expect.any(Object));
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('rejects a name already in the image', async () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      process.env.INSTANCE_PLUGINS_DIR = mkdtempSync(join(tmpdir(), 'instance-vol-'));
+      try {
+        const { db } = makeInstallDb();
+        const image = makePlugin({ name: 'crm_mcp' });
+        const svc = makeService([image], db);
+        const pkgDir = writeTmpPlugin('crm_mcp');
+        await expect(svc.hotLoad(pkgDir)).rejects.toThrow(BadRequestException);
+        expect(svc.loadedNames()).toEqual(['crm_mcp']);
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
     });
   });
 });

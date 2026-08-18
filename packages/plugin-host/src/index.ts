@@ -30,6 +30,8 @@ export {
   LEADS_SERVICE,
   type LeadsServiceLike,
   type LeadPriority,
+  USERS_SERVICE,
+  type UsersServiceLike,
   PIPELINE_STAGES_SERVICE,
   type PipelineStagesServiceLike,
   EVENTS_SERVICE,
@@ -49,5 +51,7 @@ export {
   POKELO_CONTEXT_SERVICE,
   type PokeloContextServiceLike,
   type PokeloFetchOpts,
+  INSTANCE_PLUGINS,
+  type InstancePluginsLike,
   PLUGIN_NAME_KEY,
 } from './tokens';

@@ -242,8 +242,12 @@ export function registerPluginRoutes(
   for (const plugin of plugins) {
     if (!plugin.enabled || !plugin.frontendRoutes?.length) continue;
     for (const route of plugin.frontendRoutes) {
-      const component = pluginComponentMap[plugin.name];
-      if (!component) continue;
+      // Image plugins ship Vue via exports["./web"] (generated map). Instance
+      // plugins declare the tab with getFrontendRoutes() and reuse one host
+      // page — ./web is not hot-loadable (ADR-0036).
+      const component =
+        pluginComponentMap[plugin.name] ??
+        (() => import('../views/plugins/InstancePluginView.vue'));
 
       enabledRouteNames.add(route.name);
 

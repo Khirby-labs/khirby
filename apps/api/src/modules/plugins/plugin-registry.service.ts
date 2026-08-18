@@ -1,4 +1,5 @@
-import { Injectable, Inject, OnModuleInit, Logger } from '@nestjs/common';
+import { Injectable, Inject, OnModuleInit, Logger, Optional, HttpException } from '@nestjs/common';
+import { LazyModuleLoader } from '@nestjs/core';
 import { eq } from 'drizzle-orm';
 import { Db } from '../../core/database/db';
 import { DB_TOKEN } from '../../core/database/database.module';
@@ -8,6 +9,12 @@ import { AppException } from '../../core/errors/app-exception';
 // Relative, not '@khirby/types': `nest build` is plain tsc and the bare
 // specifier does not survive into the build output (INCIDENTS 2026-07-24).
 import type { AvailablePlugin } from '../../../../../packages/types/src';
+import {
+  appendInstanceManifest,
+  defaultInstancePluginsDir,
+  ensureInstanceDir,
+  loadPluginFromDir,
+} from './instance-plugins.loader';
 
 type PluginRow = typeof plugins.$inferSelect;
 
@@ -30,6 +37,12 @@ export const NATIVE_PLUGIN_NAMES = [
   'crm_pokelo',
 ] as const;
 
+/** Image natives plus the in-repo example — instance scaffold must not reuse them. */
+export const RESERVED_INSTANCE_PLUGIN_NAMES: readonly string[] = [
+  ...NATIVE_PLUGIN_NAMES,
+  'crm_hello',
+];
+
 @Injectable()
 export class PluginRegistryService implements OnModuleInit {
   private readonly logger = new Logger(PluginRegistryService.name);
@@ -38,6 +51,7 @@ export class PluginRegistryService implements OnModuleInit {
   constructor(
     @Inject(DB_TOKEN) private db: Db,
     @Inject(CRM_PLUGINS) private readonly registeredPlugins: CrmPlugin[],
+    @Optional() private readonly lazyModuleLoader?: LazyModuleLoader,
   ) {}
 
   /**
@@ -345,6 +359,86 @@ export class PluginRegistryService implements OnModuleInit {
 
     this.logger.log(`Plugin installed from marketplace: ${name} v${plugin.version}`);
     return this.enrichRow(inserted);
+  }
+
+  instanceDir(): string {
+    return defaultInstancePluginsDir();
+  }
+
+  reservedNames(): readonly string[] {
+    return RESERVED_INSTANCE_PLUGIN_NAMES;
+  }
+
+  validate(absPackageDir: string): { name: string } {
+    try {
+      const plugin = loadPluginFromDir(absPackageDir);
+      if (RESERVED_INSTANCE_PLUGIN_NAMES.includes(plugin.name)) {
+        throw AppException.badRequest(`Reserved plugin name: ${plugin.name}`, {
+          reason: 'reserved_name',
+        });
+      }
+      return { name: plugin.name };
+    } catch (err) {
+      const message = (err as Error).message;
+      const errName = (err as Error).name;
+      if (errName === 'web_not_hot_loadable' || message === 'web_not_hot_loadable') {
+        throw AppException.badRequest('Vue ./web is not hot-loadable on an instance volume', {
+          reason: 'web_not_hot_loadable',
+        });
+      }
+      if (err instanceof HttpException) throw err;
+      throw AppException.badRequest(message);
+    }
+  }
+
+  appendManifest(packageName: string, localDir: string): void {
+    try {
+      ensureInstanceDir(this.instanceDir());
+      appendInstanceManifest(this.instanceDir(), packageName, localDir);
+    } catch (err) {
+      this.logger.error(`Cannot write instance manifest: ${(err as Error).message}`);
+      throw AppException.upstreamFailed('instance-plugins');
+    }
+  }
+
+  /**
+   * Append-only load from the instance volume (ADR-0036). Never unloads.
+   * `install()` then writes the `plugins` row and activates.
+   */
+  async hotLoad(absPackageDir: string): Promise<{ name: string }> {
+    try {
+      ensureInstanceDir(this.instanceDir());
+    } catch (err) {
+      this.logger.error(`Instance plugins dir not writable: ${(err as Error).message}`);
+      throw AppException.upstreamFailed('instance-plugins');
+    }
+
+    const { name } = this.validate(absPackageDir);
+    if (this.loadedNames().includes(name)) {
+      throw AppException.badRequest(`Plugin ${name} is already loaded in this process`, {
+        reason: 'image_collision',
+      });
+    }
+
+    const plugin = loadPluginFromDir(absPackageDir);
+    this.registeredPlugins.push(plugin);
+
+    const nestModule = plugin.getNestModule?.();
+    if (nestModule && this.lazyModuleLoader) {
+      // Instantiates providers only. Nest's LazyModuleLoader never maps
+      // controllers onto Fastify — GET /api/plugins/:name then swallows the
+      // same path with `null`. HTTP routes appear on the next process start,
+      // when PluginsModule.forRoot imports getNestModule() from the volume.
+      await this.lazyModuleLoader.load(() => Promise.resolve(nestModule));
+    }
+    if (nestModule) {
+      this.logger.warn(
+        `Plugin ${name} Nest HTTP is registered at API process start, not on hot-load — restart to expose controllers`,
+      );
+    }
+
+    await this.install(name);
+    return { name };
   }
 
   /**

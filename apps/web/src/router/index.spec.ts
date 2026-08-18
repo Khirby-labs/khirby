@@ -110,4 +110,36 @@ describe('router guard (beforeEach)', () => {
     expect(router.currentRoute.value.name).toBe('listmonk');
     expect(router.currentRoute.value.fullPath).toBe('/plugins/listmonk');
   });
+
+  it('registers a tab for an instance plugin that has no ./web bundle', async () => {
+    const instancePlugin: Plugin = {
+      id: 'p-hw',
+      name: 'crm_hello_world',
+      displayName: 'Hello World',
+      description: null,
+      version: '0.1.0',
+      enabled: true,
+      config: {},
+      installedAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      frontendRoutes: [
+        {
+          path: '/plugins/hello-world',
+          name: 'plugin-hello-world',
+          navLabel: 'Hello World',
+          navIcon: 'plugins',
+        },
+      ],
+    };
+
+    server.use(
+      authMe(() => HttpResponse.json(user)),
+      plugins([instancePlugin]),
+    );
+
+    await router.push('/plugins/hello-world');
+
+    expect(router.hasRoute('plugin-hello-world')).toBe(true);
+    expect(router.currentRoute.value.name).toBe('plugin-hello-world');
+  });
 });

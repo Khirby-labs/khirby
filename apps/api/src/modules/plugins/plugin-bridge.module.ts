@@ -2,6 +2,7 @@ import { Global, Module, forwardRef } from '@nestjs/common';
 import {
   CONTACTS_SERVICE,
   LEADS_SERVICE,
+  USERS_SERVICE,
   PIPELINE_STAGES_SERVICE,
   EVENTS_SERVICE,
   MAIL_THREAD_SERVICE,
@@ -29,6 +30,8 @@ import { ProjectsService } from '../boards/projects/projects.service';
 import { ModulesService } from '../boards/modules/modules.service';
 import { TasksService } from '../boards/tasks/tasks.service';
 import { StatusesService } from '../boards/statuses/statuses.service';
+import { UsersModule } from '../users/users.module';
+import { UsersService } from '../users/users.service';
 
 /**
  * Global DI bridge so Nest plugins resolve host services via @khirby/plugin-host
@@ -44,11 +47,13 @@ import { StatusesService } from '../boards/statuses/statuses.service';
     EventsModule,
     forwardRef(() => MailModule),
     forwardRef(() => BoardsModule),
+    forwardRef(() => UsersModule),
   ],
   providers: [
     { provide: RBAC_SERVICE, useExisting: RbacService },
     { provide: CONTACTS_SERVICE, useExisting: ContactsService },
     { provide: LEADS_SERVICE, useExisting: LeadsService },
+    { provide: USERS_SERVICE, useExisting: UsersService },
     { provide: PIPELINE_STAGES_SERVICE, useExisting: PipelineStagesService },
     { provide: EVENTS_SERVICE, useExisting: EventsService },
     { provide: MAIL_THREAD_SERVICE, useExisting: MailThreadService },
@@ -62,6 +67,7 @@ import { StatusesService } from '../boards/statuses/statuses.service';
     RBAC_SERVICE,
     CONTACTS_SERVICE,
     LEADS_SERVICE,
+    USERS_SERVICE,
     PIPELINE_STAGES_SERVICE,
     EVENTS_SERVICE,
     MAIL_THREAD_SERVICE,
