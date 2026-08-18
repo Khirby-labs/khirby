@@ -35,8 +35,11 @@ function makeRegistry(options: {
 }) {
   return {
     loadedNames: () => options.loaded,
-    findAll: jest.fn().mockResolvedValue(options.installed ?? []),
-    listAvailable: jest.fn().mockResolvedValue(options.available ?? []),
+    // One snapshot call, mirroring the single table read the service depends on.
+    snapshot: jest.fn().mockResolvedValue({
+      installed: options.installed ?? [],
+      available: options.available ?? [],
+    }),
     install: options.install ?? jest.fn().mockResolvedValue({ name: 'x' }),
   } as any;
 }
@@ -206,6 +209,39 @@ describe('MarketplaceService.list', () => {
    * Here the catalog stub is called twice and returns the same document; only the
    * registry's answer changes, exactly as it would after a real install.
    */
+  /*
+   * Installed and available are derived from ONE read of the table. Asking for
+   * them separately let an install() commit between the two queries, after which
+   * the same plugin was installed according to one answer and available according
+   * to the other — the Marketplace then rendered two cards for one name, one of
+   * them still offering Install.
+   */
+  it('takes both lists from a single registry snapshot', async () => {
+    const registry = makeRegistry({
+      loaded: ['crm_a'],
+      installed: [installedRow('crm_a')],
+    });
+    const svc = new MarketplaceService(makeCatalog(catalogWith(['crm_a'])), registry);
+
+    await svc.list();
+
+    expect(registry.snapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it('never lists the same plugin twice', async () => {
+    const svc = new MarketplaceService(
+      makeCatalog(catalogWith(['crm_a', 'crm_b'])),
+      makeRegistry({
+        loaded: ['crm_a', 'crm_b'],
+        installed: [installedRow('crm_a')],
+        available: [availablePlugin('crm_b')],
+      }),
+    );
+
+    const names = (await svc.list()).map((c) => c.name);
+    expect(new Set(names).size).toBe(names.length);
+  });
+
   it('reflects an install immediately, even though the catalog document is cached', async () => {
     const catalog = makeCatalog(catalogWith(['crm_a']));
     const registry = makeRegistry({ loaded: ['crm_a'], available: [availablePlugin('crm_a')] });
@@ -214,8 +250,10 @@ describe('MarketplaceService.list', () => {
     expect((await svc.list())[0].status).toBe('available');
 
     // The install happened; the catalog document did not change.
-    registry.findAll.mockResolvedValue([installedRow('crm_a')]);
-    registry.listAvailable.mockResolvedValue([]);
+    registry.snapshot.mockResolvedValue({
+      installed: [installedRow('crm_a')],
+      available: [],
+    });
 
     expect((await svc.list())[0].status).toBe('installed');
     expect(catalog.load).toHaveBeenCalledTimes(2);

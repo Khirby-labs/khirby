@@ -253,6 +253,35 @@ export class PluginRegistryService implements OnModuleInit {
    */
   async listAvailable(): Promise<AvailablePlugin[]> {
     const rows = await this.db.select().from(plugins);
+    return this.availableFrom(rows);
+  }
+
+  /**
+   * Installed rows and available plugins derived from ONE read of the table.
+   *
+   * Asking for the two lists separately means two SELECTs, and an `install()`
+   * committing between them makes the answers disagree: the plugin is installed
+   * according to one query and available according to the other, so the same name
+   * appears twice in the Marketplace (two cards, one offering Install) — or, with
+   * the opposite ordering, in neither and it vanishes until the next refetch.
+   * Postgres gives no ordering guarantee between statements issued on different
+   * pooled connections, so this is not a narrow theoretical window.
+   *
+   * A single snapshot cannot contradict itself, and costs one query instead of two.
+   */
+  async snapshot(): Promise<{
+    installed: ReturnType<PluginRegistryService['enrichRow']>[];
+    available: AvailablePlugin[];
+  }> {
+    const rows = await this.db.select().from(plugins);
+    return {
+      installed: rows.map((row) => this.enrichRow(row)),
+      available: this.availableFrom(rows),
+    };
+  }
+
+  /** Registry minus the names already present in `rows`. */
+  private availableFrom(rows: PluginRow[]): AvailablePlugin[] {
     const installed = new Set(rows.map((row) => row.name));
     return this.registeredPlugins
       .filter((plugin) => !installed.has(plugin.name))

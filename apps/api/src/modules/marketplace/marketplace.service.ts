@@ -38,10 +38,12 @@ export class MarketplaceService {
    * log line, because its install button could never work.
    */
   async list(): Promise<MarketplacePlugin[]> {
-    const [document, installedRows, available] = await Promise.all([
+    // One snapshot, not findAll() + listAvailable(): two separate reads let an
+    // install() commit between them, and the same plugin then shows up as both
+    // installed and available — two cards for one name — or as neither.
+    const [document, { installed: installedRows, available }] = await Promise.all([
       this.catalog.load(),
-      this.registry.findAll(),
-      this.registry.listAvailable(),
+      this.registry.snapshot(),
     ]);
 
     const loaded = new Set(this.registry.loadedNames());

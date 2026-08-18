@@ -358,6 +358,31 @@ describe('PluginRegistryService', () => {
       ]);
     });
 
+    /*
+     * snapshot() exists so the two lists cannot disagree. Two separate SELECTs
+     * let an install() commit in between, after which one answer called a plugin
+     * installed and the other called it available — the Marketplace rendered two
+     * cards for one name, one of them still offering Install.
+     */
+    it('snapshot derives both lists from a single read of the table', async () => {
+      const { db } = makeBootDb({ table: [makeRow({ name: 'crm_installed' })] });
+      const svc = makeService(
+        [makePlugin({ name: 'crm_installed' }), makePlugin({ name: 'crm_available' })],
+        db,
+      );
+
+      const { installed, available } = await svc.snapshot();
+
+      expect(db.select).toHaveBeenCalledTimes(1);
+      expect(installed.map((r: any) => r.name)).toEqual(['crm_installed']);
+      expect(available.map((p) => p.name)).toEqual(['crm_available']);
+      // The two sets partition the names; no plugin can be in both.
+      const overlap = installed
+        .map((r: any) => r.name)
+        .filter((name: string) => available.some((p) => p.name === name));
+      expect(overlap).toEqual([]);
+    });
+
     it('is empty when every plugin in the process is installed', async () => {
       const { db } = makeBootDb({ table: [makeRow({ name: 'crm_installed' })] });
       const svc = makeService([makePlugin({ name: 'crm_installed' })], db);
