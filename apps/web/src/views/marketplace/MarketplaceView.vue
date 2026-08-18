@@ -177,7 +177,7 @@ import { computed, onMounted, ref } from 'vue';
 import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import type { MarketplaceCategory, MarketplacePlugin, PluginConfigField } from '@khirby/types';
-import { useMarketplaceStore } from '../../stores/marketplace.store';
+import { useMarketplaceStore, type MarketplaceError } from '../../stores/marketplace.store';
 import { useToastStore } from '../../stores/toast.store';
 import { useServerText } from '../../composables/useServerText';
 import { isNavIconName, type NavIconName } from '../../components/nav-icons';
@@ -240,7 +240,17 @@ function requiredKeys(entry: MarketplacePlugin): PluginConfigField[] {
   return (entry.configSchema ?? []).filter((field) => field.required);
 }
 
-const errorMessage = computed(() => store.error);
+/**
+ * Reason code → message key, resolved at render so the banner follows the active
+ * language. A literal map for the same reason the categories use one: i18n-guard
+ * matches only literal `t()` keys.
+ */
+const ERROR_KEYS: Record<MarketplaceError, string> = {
+  forbidden: 'marketplace.errors.forbidden',
+  load: 'marketplace.errors.load',
+};
+
+const errorMessage = computed(() => (store.error ? t(ERROR_KEYS[store.error]) : ''));
 
 async function handleInstall(entry: MarketplacePlugin): Promise<void> {
   try {

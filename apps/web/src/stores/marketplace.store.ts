@@ -1,13 +1,23 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import type { MarketplaceCategory, MarketplacePlugin } from '@khirby/types';
-import { apiGet, apiPost } from '../api/client';
+import { ApiError, apiGet, apiPost } from '../api/client';
 import { usePluginsStore } from './plugins.store';
+
+/**
+ * Why the catalog could not be shown — a CODE, never a sentence.
+ *
+ * A store that held the message would hold the server's English prose, and the
+ * banner would render it untranslated on a Polish screen. Keeping the reason
+ * machine-readable lets the view pick the message in the reader's language
+ * (`.claude/rules/i18n.md`: throw a code, translate at render).
+ */
+export type MarketplaceError = 'forbidden' | 'load';
 
 export const useMarketplaceStore = defineStore('marketplace', () => {
   const entries = ref<MarketplacePlugin[]>([]);
   const loading = ref(false);
-  const error = ref('');
+  const error = ref<MarketplaceError | null>(null);
   /** Name of the plugin currently being installed — one at a time, per card. */
   const installing = ref<string | null>(null);
 
@@ -21,13 +31,13 @@ export const useMarketplaceStore = defineStore('marketplace', () => {
 
   async function fetchCatalog(): Promise<void> {
     loading.value = true;
-    error.value = '';
+    error.value = null;
     try {
       entries.value = await apiGet<MarketplacePlugin[]>('/api/marketplace/plugins');
     } catch (e: unknown) {
-      // The view needs to distinguish "no permission" from "nothing to show", so
-      // the code travels with the message rather than the message being parsed.
-      error.value = e instanceof Error ? e.message : 'Failed to load the catalog';
+      // Branch on the status, never on the message: a missing permission deserves
+      // its own sentence naming what to ask for, and prose is translated.
+      error.value = e instanceof ApiError && e.status === 403 ? 'forbidden' : 'load';
       entries.value = [];
       throw e;
     } finally {

@@ -56,14 +56,16 @@ function entry(overrides: Partial<MarketplacePlugin> = {}): MarketplacePlugin {
 }
 
 const catalogRoute = (list: MarketplacePlugin[], status = 200) =>
-  http.get(api('/api/marketplace/plugins'), () =>
-    status === 200
-      ? HttpResponse.json(list)
-      : HttpResponse.json(
-          { statusCode: status, code: 'FORBIDDEN', message: 'Forbidden' },
-          { status },
-        ),
-  );
+  http.get(api('/api/marketplace/plugins'), () => {
+    if (status === 200) return HttpResponse.json(list);
+    // Shaped like the real error body, English prose included — the point of the
+    // error specs being that none of that prose reaches the screen.
+    const body =
+      status === 403
+        ? { statusCode: 403, code: 'FORBIDDEN', message: 'Forbidden' }
+        : { statusCode: status, code: 'INTERNAL', message: 'Internal server error' };
+    return HttpResponse.json(body, { status });
+  });
 
 /** The install POST plus the plugin-list refetch the store fires after a 201. */
 const installRoute = (status = 201) =>
@@ -113,13 +115,44 @@ describe('MarketplaceView — view states', () => {
     expect(wrapper.text()).toContain('The catalog is empty');
   });
 
-  it('shows an error banner and no grid when the request is refused', async () => {
+  /*
+   * Asserting the TEXT, not merely that a banner exists. The weaker form passed
+   * while the store put the server's raw English prose on screen and the
+   * translated `errors.*` keys went unused — a Polish operator read an English
+   * sentence and every gate stayed green.
+   */
+  it('names the missing permission when the request is refused', async () => {
     server.use(catalogRoute([], 403));
     const wrapper = mountView();
     await flushPromises();
 
-    expect(wrapper.find('.crm-error').exists()).toBe(true);
+    const banner = wrapper.find('.crm-error');
+    expect(banner.exists()).toBe(true);
+    expect(banner.text()).toContain('You need the integrations permission');
+    // Never the server's own words, which are English whatever the reader's language.
+    expect(banner.text()).not.toContain('Forbidden');
     expect(wrapper.text()).not.toContain('Hello Example');
+  });
+
+  it('shows the refusal in Polish when Polish is active', async () => {
+    server.use(catalogRoute([], 403));
+    await withLocale('pl');
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.find('.crm-error').text()).toContain(
+      'Zarządzanie wtyczkami wymaga uprawnienia do integracji',
+    );
+  });
+
+  it('falls back to the generic load error for any other failure', async () => {
+    server.use(catalogRoute([], 500));
+    const wrapper = mountView();
+    await flushPromises();
+
+    const banner = wrapper.find('.crm-error');
+    expect(banner.text()).toContain("Couldn't load the catalog");
+    expect(banner.text()).not.toContain('You need the integrations permission');
   });
 
   it('renders a card with name, version, vendor and category', async () => {

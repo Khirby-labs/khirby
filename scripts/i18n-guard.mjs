@@ -93,6 +93,11 @@ const I18N_ENFORCED = [
   'apps/web/src/components/ui/AppDateRangePicker.vue',
   // KBY-107 — Marketplace
   'apps/web/src/views/marketplace/MarketplaceView.vue',
+  // Documentation, not enforcement, like the group above: the ratchet parses
+  // <template> only, so listing a .ts file scans nothing. It is recorded here
+  // because the store deliberately holds error CODES rather than sentences — the
+  // audit of this feature found a hardcoded English fallback that listing the file
+  // did not, and could not, catch.
   'apps/web/src/stores/marketplace.store.ts',
 ];
 
