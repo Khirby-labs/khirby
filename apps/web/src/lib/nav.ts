@@ -27,6 +27,24 @@ export const workspaceNav: NavItem[] = [
   { to: '/mail', name: 'mail', labelKey: 'nav.workspace.mail', icon: 'mail' },
 ];
 
+/**
+ * Discovery — its own sidebar section between Workspace and the plugin routes.
+ *
+ * ADR-0008 rejected promoting Plugins into the main sidebar as administration
+ * leaking into the daily workspace, and that still holds for Settings. Marketplace
+ * is the deliberate exception recorded in ADR-0033: it is where an operator finds
+ * out what the CRM can do, which is discovery rather than administration.
+ * Configuration stays in Settings, where the card links to (ADR-0023).
+ */
+export const marketplaceNav: NavItem[] = [
+  {
+    to: '/marketplace',
+    name: 'marketplace',
+    labelKey: 'nav.extensions.marketplace',
+    icon: 'marketplace',
+  },
+];
+
 /** Administration — lives inside the Settings console, not the main list. */
 export const settingsNav: NavItem[] = [
   {
@@ -103,8 +121,16 @@ export type Translate = (key: string) => string;
 export function buildCommandGroups(t: Translate, pluginItems: CommandItem[]): CommandGroup[] {
   return [
     {
+      /*
+       * Marketplace joins the existing "navigate" group rather than getting a
+       * fourth group of its own: the palette groups by what an entry DOES (go
+       * somewhere / create something / a plugin page), and a one-item group would
+       * be heading chrome around a single line. It must be here explicitly —
+       * `nav.spec.ts` counted exactly workspaceNav + settingsNav, so a nav section
+       * left out of the palette would have gone unnoticed by every test.
+       */
       heading: t('nav.commandGroup.navigate'),
-      items: [...workspaceNav, ...settingsNav].map((n) => ({
+      items: [...workspaceNav, ...marketplaceNav, ...settingsNav].map((n) => ({
         kind: 'nav',
         label: t(n.labelKey),
         to: n.to,

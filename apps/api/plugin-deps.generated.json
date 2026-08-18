@@ -4,5 +4,6 @@
   "@khirby/plugin-listmonk",
   "@khirby/plugin-mcp",
   "@khirby/plugin-ai-compose",
-  "@khirby/plugin-pokelo"
+  "@khirby/plugin-pokelo",
+  "crm-plugin-hello"
 ]

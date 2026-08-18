@@ -253,5 +253,9 @@
       "rotate": "Nie udało się wygenerować tokena",
       "revoke": "Nie udało się odwołać tokena"
     }
+  },
+  "hello": {
+    "displayName": "Przykład Hello",
+    "description": "Minimalna wtyczka pokazowa — zapisuje linię w logu przy każdym nowym kontakcie."
   }
 }

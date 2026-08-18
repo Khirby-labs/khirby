@@ -103,6 +103,8 @@ function makeChain(returnValue?: unknown) {
 - Interface: `CrmPlugin` from `@khirby/plugin-sdk`
 - Host surface for Nest plugins: `@khirby/plugin-host` (guards, `DB_TOKEN`, `AppException`, service tokens) — never import `apps/api` from a plugin (ADR-0016)
 - Registration: list packages in root `plugins.manifest.json` only — then `pnpm sync:plugins && pnpm install` (writes `apps/api` deps + regenerates loaders). Never hand-edit plugin deps in `apps/api/package.json`.
+- The manifest says what is **in the image**; a row in the `plugins` table says what is **installed** (ADR-0032). Marketplace installs a plugin already in the image by writing that row — no manifest edit, no restart. Only an empty `plugins` table seeds the native set, on a first boot.
+- An `examples/*` fixture is declared with `"local": "<path>"` in the manifest; it resolves as a workspace link in every environment and is skipped by the vendor step (ADR-0035). Anything compiled into `apps/api/dist` imports `@khirby/plugin-host` **by relative path** — a bare specifier passes every gate and dies at boot in the image.
 - Events emitted: `contact.created`, `form.submitted`, …
 - Plugin config stored in DB (`plugins` table, `config` jsonb column)
 - Context: `{ log(msg), config: Record<string, string> }`
@@ -128,6 +130,8 @@ function makeChain(returnValue?: unknown) {
 | UI colors | Never hardcode hex/rgba or use Tailwind's built-in palette in views — semantic token classes only, see `docs/DESIGN-SYSTEM.md` (ADR-0007) |
 | UI copy | Never hardcode a user-facing string in `apps/web` — the app ships **pl + en**. Use `t()` with a key, write the copy via `/copy`; rules in `.claude/rules/i18n.md`, voice + glossary in `docs/i18n-copy-guide.md` (ADR-0011) |
 | Date inputs | Never `<input type="date">` (or `time`/`month`/`week`) — the browser draws the glyph and panel, so tokens can't reach them. Use `AppDatePicker` / `AppDateRangePicker`; `pnpm lint:design` fails otherwise (ADR-0012) |
+| Bare `@khirby/*` value import in anything compiled into `apps/api/dist` | `nest build` is plain tsc and emits the specifier verbatim, while the runtime image ships only the build output plus each package's `package.json` — so it resolves to a sources-free directory and the API dies at boot with `MODULE_NOT_FOUND`. Typecheck, lint, the full suite **and `docker build` all pass**, and `docker.yml` builds images only on `v*.*.*` tags, so it first breaks at release. **Do** import host packages by relative path (`../../../packages/plugin-host/src`) from `plugins/*` and `examples/*`; a plugin installed from npm keeps the bare specifier |
+| A `.ts` file listed in `I18N_ENFORCED` | The ratchet parses `<template>` only, so listing a store or composable scans **nothing** and merely looks gated. **Do** keep such entries under the "documentation, not enforcement" comment, and keep user-facing strings out of stores — hold an error *code* and translate it at render |
 | Journal `when` timestamp | Always set `meta/_journal.json` `when` to **`Date.now()`** (must be **> previous entry**). A backdated `when` makes `pnpm migrate` exit 0 while **skipping** the SQL — `relation does not exist` at runtime |
 
 ---

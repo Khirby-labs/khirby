@@ -17,6 +17,7 @@
     "@khirby/plugin-sdk": "^1.0.0",
     "@nestjs/common": "*",
     "vue": "^3",
+    "vue-i18n": "^11",
     "vue-router": "^4"
   }
 }

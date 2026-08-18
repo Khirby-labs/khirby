@@ -6,6 +6,7 @@ import { createPlugin as createPlugin_2 } from '../../../../../plugins/crm-plugi
 import { createPlugin as createPlugin_3 } from '../../../../../plugins/crm-plugin-mcp/src';
 import { createPlugin as createPlugin_4 } from '../../../../../plugins/crm-plugin-ai-compose/src';
 import { createPlugin as createPlugin_5 } from '../../../../../plugins/crm-plugin-pokelo/src';
+import { createPlugin as createPlugin_6 } from '../../../../../examples/crm-plugin-hello/src';
 
 export function loadPlugins(): CrmPlugin[] {
   return [
@@ -15,5 +16,6 @@ export function loadPlugins(): CrmPlugin[] {
     createPlugin_3(),
     createPlugin_4(),
     createPlugin_5(),
+    createPlugin_6(),
   ];
 }

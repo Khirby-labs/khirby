@@ -73,6 +73,16 @@ mkdirSync(pluginsRoot, { recursive: true });
 
 for (const entry of plugins) {
   const name = entry.package;
+  /*
+   * A `local` entry already sits in the source tree (examples/*) and is compiled
+   * from there, so there is nothing to vendor. Copying it into plugins/ would
+   * produce a second copy of the same sources and — via the fallback naming below
+   * — a directory whose prefix is doubled.
+   */
+  if (typeof entry.local === 'string' && entry.local) {
+    console.log(`Skipping vendor for ${name} — local source at ${entry.local}`);
+    continue;
+  }
   const dirName =
     PACKAGE_TO_DIR[name] ??
     `crm-plugin-${name.replace(/^@khirby\/plugin-/, '').replace(/^@crm\/plugin-/, '')}`;

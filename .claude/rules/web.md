@@ -39,7 +39,17 @@ Polish and English, so a hardcoded English literal is a bug. Write copy via `/co
 - **Page controls go through `<PageActions>`** (teleports to the top bar's `#topbar-actions`).
   Never hand-build a second header/actions bar in the shell.
 - **Nav is declared once** in `src/lib/nav.ts`. Admin surfaces live in the Settings console
-  (`/settings/*`), not the main sidebar list.
+  (`/settings/*`), not the main sidebar list. **Marketplace is the single exception**
+  (ADR-0033): *administration* is operating what you already have and stays in Settings,
+  *discovery* is finding out what you could have and earns a sidebar section, because a
+  discovery surface you must already know about discovers nothing. That line is drawn for
+  Marketplace only — a second sidebar section has to argue against ADR-0033, not cite it.
+  Marketplace never configures anything; an installed card links to Settings (ADR-0023).
+- **A new nav section touches two files.** `nav.ts` has no notion of a group — the sidebar
+  sections are written out in `AppSidebar.vue`, and `buildCommandGroups` composes the ⌘K
+  groups by hand. Add the section to both, or it renders in the sidebar and is silently
+  missing from the palette. `nav.spec.ts` counts the palette entries and
+  `AppSidebar.spec.ts` asserts the rendered section order; keep both honest.
 - **Search / `⌘K` navigates, quick-creates, and searches contacts** (email / name / phone via
   `GET /api/contacts?search=`). It does not yet search leads or mail — don't write copy implying
   full CRM full-text until that exists.

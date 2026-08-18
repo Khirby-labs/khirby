@@ -13,6 +13,7 @@ COPY packages/types/package.json ./packages/types/
 COPY packages/plugin-sdk/package.json ./packages/plugin-sdk/
 COPY packages/plugin-host/package.json ./packages/plugin-host/
 COPY packages/forms-client/package.json ./packages/forms-client/
+COPY examples/crm-plugin-hello/package.json ./examples/crm-plugin-hello/
 COPY plugins.manifest.json ./plugins.manifest.json
 
 RUN pnpm install --frozen-lockfile
@@ -21,6 +22,7 @@ COPY apps/api ./apps/api
 COPY apps/web ./apps/web
 COPY packages ./packages
 COPY scripts ./scripts
+COPY examples ./examples
 COPY drizzle ./drizzle
 
 RUN node scripts/vendor-plugins-for-build.mjs \
@@ -43,6 +45,7 @@ COPY packages/types/package.json ./packages/types/
 COPY packages/plugin-sdk/package.json ./packages/plugin-sdk/
 COPY packages/plugin-host/package.json ./packages/plugin-host/
 COPY packages/forms-client/package.json ./packages/forms-client/
+COPY examples/crm-plugin-hello/package.json ./examples/crm-plugin-hello/
 COPY plugins.manifest.json ./plugins.manifest.json
 
 RUN pnpm install --frozen-lockfile --prod

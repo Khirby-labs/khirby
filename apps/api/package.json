@@ -44,6 +44,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "connect-redis": "^9.0.0",
+    "crm-plugin-hello": "workspace:*",
     "drizzle-orm": "^0.45.2",
     "fastify": "^5.11.2",
     "google-auth-library": "^11.0.0",
@@ -106,7 +107,8 @@
     },
     "roots": [
       "<rootDir>",
-      "<rootDir>/../../../plugins"
+      "<rootDir>/../../../plugins",
+      "<rootDir>/../../../examples"
     ]
   }
 }

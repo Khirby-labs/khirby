@@ -17,7 +17,7 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0005](0005-fastify-http-adapter.md) | Fastify HTTP adapter for NestJS | Accepted |
 | [0006](0006-plugins-consumed-as-ts-source.md) | In-repo plugins/packages consumed as TS source | Accepted |
 | [0007](0007-honey-graphite-design-system.md) | "Honey & Graphite" design system, CSS variable tokens, headless UI | Accepted |
-| [0008](0008-navigation-shell-architecture.md) | Navigation shell architecture (sidebar, topbar, ⌘K, Settings console) | Accepted |
+| [0008](0008-navigation-shell-architecture.md) | Navigation shell architecture (sidebar, topbar, ⌘K, Settings console) | Accepted — partly amended by [0033](0033-marketplace-is-the-one-discovery-surface-allowed-in-the-primary-sidebar.md) |
 | [0009](0009-role-mutations-super-admin-only.md) | Role mutations require super-admin | Accepted |
 | [0010](0010-web-tests-measure-the-boundary.md) | Web tests measure the boundary (MSW / DOM), not our own code | Accepted |
 | [0011](0011-i18n-architecture.md) | i18n: two authored locales, keys as the contract | Accepted |
@@ -41,3 +41,7 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0029](0029-public-docs-on-landing.md) | Public product docs live on the landing site | Accepted |
 | [0030](0030-first-party-plugins-from-npm.md) | First-party plugins install from npm (out of monorepo) | Accepted |
 | [0031](0031-linear-writes-go-through-a-repo-script-mcp-stays-read-only.md) | Linear writes go through a repo script, MCP stays read-only | Accepted |
+| [0032](0032-a-row-in-plugins-means-installed-boot-seeds-only-an-empty-table.md) | A row in `plugins` means installed; boot seeds only an empty table | Accepted |
+| [0033](0033-marketplace-is-the-one-discovery-surface-allowed-in-the-primary-sidebar.md) | Marketplace is the one discovery surface allowed in the primary sidebar (amends 0008) | Accepted |
+| [0034](0034-the-catalog-is-a-versioned-remote-document-with-an-in-image-fallback.md) | The Marketplace catalog is a versioned remote document with an in-image fallback | Accepted |
+| [0035](0035-the-example-plugin-is-a-workspace-package-first-party-plugins-still-are-not.md) | The example plugin is a workspace package; first-party plugins still are not (narrows 0030) | Accepted |

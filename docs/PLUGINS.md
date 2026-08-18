@@ -67,12 +67,46 @@ pnpm install
 ```
 
 Do **not** hand-edit plugin lines in `apps/api/package.json` — `scripts/sync-plugin-deps.mjs`
-owns them (`apps/api/plugin-deps.generated.json`). Marketplace install (later) will
-write the manifest and run the same sync.
+owns them (`apps/api/plugin-deps.generated.json`).
 
-Enable/disable and config stay in the DB (Plugins UI). The manifest only lists
-what is **installed**. Admin UI install from npm is planned later (still requires
-process restart).
+### Two different words: *in the image* and *installed*
+
+They used to mean the same thing and no longer do (ADR-0032).
+
+- **The manifest lists what is in the image** — the plugins whose code is compiled
+  into this build. Changing it needs `pnpm sync:plugins`, `pnpm install` and a
+  restart, exactly as above.
+- **A row in the `plugins` table means installed** — that an operator chose it. A
+  plugin in the image with no row is *available*: its routes answer 503 and it
+  receives no events until someone installs it.
+
+**Marketplace install does not touch the manifest.** It writes the row and brings
+the plugin up in the running process — no restart, because the code was already
+loaded and only the database state and the in-memory context change. It can
+therefore only offer what is already in the image; installing something new from
+npm still means editing the manifest and restarting.
+
+On a **first** boot — an entirely empty `plugins` table — the native set is seeded
+so a fresh instance looks as it always did. Emptying the table by hand makes the
+next start seed it again; that follows from the empty-table rule and is not a bug.
+
+Enable/disable and configuration stay in the DB and remain the Plugins UI's job
+(ADR-0023) — Marketplace links there rather than duplicating the form.
+
+### The example plugin
+
+`examples/crm-plugin-hello` is a working fixture: a `CrmPlugin` class, a Nest
+controller, a Vue view, and a `contact.created` handler. It is registered in the
+manifest as a `local` entry, is `private: true`, and is deliberately **not** part
+of the native set — so on a fresh instance it is the one card in the Marketplace
+with an Install button, and the whole path can be walked by hand (ADR-0035).
+
+One thing to copy from it carefully rather than literally: it imports
+`@khirby/plugin-host` **by relative path**. Anything compiled into `apps/api`'s
+output must, because `nest build` is plain tsc and the runtime image ships only the
+build output — a bare specifier compiles fine and dies at boot with
+`MODULE_NOT_FOUND`. A plugin you publish to npm and install as a package should use
+the bare specifier, which is what the rest of this guide shows.
 
 ---
 

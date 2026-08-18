@@ -57,6 +57,27 @@
         />
       </div>
 
+      <!-- Discovery, between the daily work above and the plugin pages below —
+           ADR-0033. Always rendered: unlike the plugin group it has no data to
+           depend on. -->
+      <div v-if="collapsed" class="my-3 h-px bg-border-subtle" aria-hidden="true" />
+      <p
+        v-else
+        class="px-2.5 pb-1.5 pt-4 font-mono text-[10px] uppercase tracking-wider text-text-ghost"
+      >
+        {{ t('shell.sidebar.extensions') }}
+      </p>
+      <div class="space-y-0.5">
+        <SidebarLink
+          v-for="item in marketplaceNav"
+          :key="item.to"
+          :to="item.to"
+          :icon="item.icon"
+          :label="t(item.labelKey)"
+          :collapsed="collapsed"
+        />
+      </div>
+
       <template v-if="pluginNav.length">
         <div v-if="collapsed" class="my-3 h-px bg-border-subtle" aria-hidden="true" />
         <p
@@ -125,7 +146,7 @@ import SidebarLink from './SidebarLink.vue';
 import AccountMenu from './AccountMenu.vue';
 import AppTooltip from '../ui/AppTooltip.vue';
 import { cn } from '../../lib/utils';
-import { workspaceNav } from '../../lib/nav';
+import { workspaceNav, marketplaceNav } from '../../lib/nav';
 import type { NavIconName } from '../nav-icons';
 import { useUiStore } from '../../stores/ui.store';
 import { usePluginsStore } from '../../stores/plugins.store';

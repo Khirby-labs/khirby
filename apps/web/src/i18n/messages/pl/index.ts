@@ -12,6 +12,7 @@ import contacts from './contacts.json';
 import errors from './errors.json';
 import forms from './forms.json';
 import mail from './mail.json';
+import marketplace from './marketplace.json';
 import nav from './nav.json';
 import newsletter from './newsletter.json';
 import pipeline from './pipeline.json';
@@ -30,6 +31,7 @@ export default {
   errors,
   forms,
   mail,
+  marketplace,
   nav,
   newsletter,
   pipeline,

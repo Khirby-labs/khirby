@@ -23,5 +23,8 @@
     "plugins": "Plugins",
     "create": "Create",
     "contacts": "Contacts"
+  },
+  "extensions": {
+    "marketplace": "Marketplace"
   }
 }
