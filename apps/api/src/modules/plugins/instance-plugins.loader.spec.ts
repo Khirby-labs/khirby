@@ -1,13 +1,23 @@
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
   appendInstanceManifest,
+  defaultInstancePluginsDir,
+  findRepoRoot,
+  INSTANCE_MANIFEST,
   isSafeLocalSegment,
+  isSafeRelPath,
+  listInstancePluginFiles,
   loadInstancePlugins,
   loadPluginFromDir,
   packageDeclaresWeb,
+  pluginVolumeRoot,
+  readInstancePluginFile,
+  scaffoldInstancePlugin,
+  writeInstancePluginFile,
 } from './instance-plugins.loader';
+import { scaffoldFileMap } from './instance-plugin-scaffold';
 
 function writePlugin(dir: string, opts: { name: string; web?: boolean; skipCreate?: boolean }) {
   mkdirSync(join(dir, 'src'), { recursive: true });
@@ -55,7 +65,7 @@ describe('instance-plugins.loader', () => {
     const root = mkdtempSync(join(tmpdir(), 'instance-dotdot-'));
     appendInstanceManifest(root, 'evil', 'ok-name');
     writeFileSync(
-      join(root, 'plugins.manifest.json'),
+      join(root, INSTANCE_MANIFEST),
       JSON.stringify({ plugins: [{ package: 'evil', local: '..' }] }),
     );
     const logs: string[] = [];
@@ -100,5 +110,78 @@ describe('instance-plugins.loader', () => {
       packageDeclaresWeb({ exports: { '.': './src/index.ts', './web': './src/web.ts' } }),
     ).toBe(true);
     expect(packageDeclaresWeb({ exports: { '.': './src/index.ts' } })).toBe(false);
+  });
+
+  it('findRepoRoot / defaultInstancePluginsDir resolve to <repo>/plugins', () => {
+    const root = mkdtempSync(join(tmpdir(), 'repo-root-'));
+    writeFileSync(join(root, 'plugins.manifest.json'), '{"plugins":[]}');
+    writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages: []\n');
+    const nested = join(root, 'apps', 'api');
+    mkdirSync(nested, { recursive: true });
+    expect(findRepoRoot(nested)).toBe(root);
+    const prev = process.env.INSTANCE_PLUGINS_DIR;
+    delete process.env.INSTANCE_PLUGINS_DIR;
+    try {
+      expect(defaultInstancePluginsDir(nested)).toBe(join(root, 'plugins'));
+    } finally {
+      if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+      else process.env.INSTANCE_PLUGINS_DIR = prev;
+    }
+  });
+
+  it('loads a package that is only on disk (no sidecar manifest)', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-scan-'));
+    writePlugin(join(root, 'crm-plugin-demo'), { name: 'crm_demo' });
+    expect(loadInstancePlugins(root, new Set()).map((p) => p.name)).toEqual(['crm_demo']);
+  });
+
+  it('does not load a first-party directory even if it has createPlugin', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-first-party-'));
+    writePlugin(join(root, 'crm-plugin-mcp'), { name: 'crm_from_disk' });
+    expect(loadInstancePlugins(root, new Set())).toEqual([]);
+  });
+
+  it('pluginVolumeRoot rejects first-party dirs', () => {
+    expect(() => pluginVolumeRoot('/tmp', 'crm-plugin-mcp')).toThrow('reserved_dir');
+  });
+
+  it('isSafeRelPath rejects traversal', () => {
+    expect(isSafeRelPath('src/index.ts')).toBe(true);
+    expect(isSafeRelPath('../x.ts')).toBe(false);
+    expect(isSafeRelPath('/abs.ts')).toBe(false);
+  });
+
+  it('write/read/list round-trip a file and reject traversal', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-files-'));
+    expect(() => writeInstancePluginFile(root, 'ok', '../x.ts', 'nope')).toThrow('bad_path');
+    const written = writeInstancePluginFile(
+      root,
+      'my-demo',
+      'src/index.ts',
+      'export const x = 1\n',
+    );
+    expect(written.bytes).toBeGreaterThan(0);
+    expect(listInstancePluginFiles(root, 'my-demo').files).toEqual(['src/index.ts']);
+    expect(readInstancePluginFile(root, 'my-demo', 'src/index.ts').content).toBe(
+      'export const x = 1\n',
+    );
+  });
+
+  it('scaffoldInstancePlugin writes createPlugin and bare host imports', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-scaffold-'));
+    const result = scaffoldInstancePlugin(root, {
+      directory: 'my-demo',
+      name: 'crm_demo',
+      nest: true,
+    });
+    expect(result.files).toEqual(expect.arrayContaining(['package.json', 'src/index.ts']));
+    const src = readFileSync(join(result.directory, 'src/index.ts'), 'utf8');
+    expect(src).toContain('export function createPlugin');
+    expect(src).toContain("from '@khirby/plugin-host'");
+    expect(src).not.toContain('packages/plugin-host/src');
+    expect(src).toContain("RequirePermission('integrations', 'manage')");
+    expect(scaffoldFileMap({ directory: 'x', name: 'crm_x' })['package.json']).toContain(
+      '@khirby/plugin-sdk',
+    );
   });
 });

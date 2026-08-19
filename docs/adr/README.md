@@ -45,5 +45,7 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0033](0033-marketplace-is-the-one-discovery-surface-allowed-in-the-primary-sidebar.md) | Marketplace is the one discovery surface allowed in the primary sidebar (amends 0008) | Accepted |
 | [0034](0034-the-catalog-is-a-versioned-remote-document-with-an-in-image-fallback.md) | The Marketplace catalog is a versioned remote document with an in-image fallback | Accepted |
 | [0035](0035-the-example-plugin-is-a-workspace-package-first-party-plugins-still-are-not.md) | The example plugin is a workspace package; first-party plugins still are not (narrows 0030) | Accepted |
-| [0036](0036-instance-volume-append-only-plugin-hot-load.md) | Instance-volume append-only plugin hot-load (self-build MCP) | Accepted |
+| [0036](0036-instance-volume-append-only-plugin-hot-load.md) | Instance-volume append-only plugin hot-load (self-build MCP) | Accepted — path amended by [0039](0039-instance-plugins-live-in-plugins-dir.md) |
 | [0037](0037-hybrid-plugin-vendor-keep-local-sources.md) | Hybrid plugin vendor: keep local `plugins/` sources, npm-fill gaps (amends 0030) | Accepted |
+| [0038](0038-instance-plugin-authoring-is-core.md) | Instance-plugin authoring lives in core (chat + MCP share `INSTANCE_PLUGINS`) | Accepted |
+| [0039](0039-instance-plugins-live-in-plugins-dir.md) | Instance-authored plugins live in `plugins/` (amends 0036 path) | Accepted |

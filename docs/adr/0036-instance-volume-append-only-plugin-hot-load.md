@@ -1,6 +1,6 @@
 # 0036 — Instance-volume append-only plugin hot-load
 
-- **Status:** Accepted
+- **Status:** Accepted — volume path amended by [0039](0039-instance-plugins-live-in-plugins-dir.md)
 - **Date:** 2026-08-18
 - **Deciders:** Patryk
 

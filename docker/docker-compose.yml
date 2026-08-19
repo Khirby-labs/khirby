@@ -16,10 +16,10 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
       PORT: 3000
-      INSTANCE_PLUGINS_DIR: /data/instance-plugins
+      INSTANCE_PLUGINS_DIR: /app/plugins
     command: sh -c "node dist/apps/api/src/migrate.js && node dist/apps/api/src/main.js"
     volumes:
-      - instance_plugins:/data/instance-plugins
+      - ../plugins:/app/plugins
     depends_on:
       db:
         condition: service_healthy
@@ -82,4 +82,3 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  instance_plugins:

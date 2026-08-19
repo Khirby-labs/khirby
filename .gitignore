@@ -8,8 +8,6 @@ docker/crm.env
 *.local
 .DS_Store
 /plugins/
-/instance-plugins/
-/apps/api/instance-plugins/
 .tmp-plugins-repo/
 # compiled outputs from packages (built inline by api tsconfig)
 packages/**/*.js

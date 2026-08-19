@@ -202,14 +202,19 @@ the path without a sidebar / ⌘K entry.
 
 ---
 
-## Instance self-build (MCP hot-load)
+## Instance self-build (core authoring + hot-load)
 
-On a running CRM, Cursor/Claude can author a plugin **on this instance** without
-`npm publish` or an image rebuild ([ADR-0036](adr/0036-instance-volume-append-only-plugin-hot-load.md)).
+On a running CRM, Cursor/Claude **or in-app chat** can author a plugin **on this instance** without
+`npm publish` or an image rebuild ([ADR-0036](adr/0036-instance-volume-append-only-plugin-hot-load.md),
+[ADR-0038](adr/0038-instance-plugin-authoring-is-core.md)).
 
-1. MCP bearer token (existing Settings → MCP).
-2. Tools: `describe_plugin_contract` → `scaffold_plugin` → edit → `validate_plugin` → `install_instance_plugin`.
-3. Files land in `INSTANCE_PLUGINS_DIR` (`./instance-plugins` locally, `/data/instance-plugins` in Docker) plus `plugins.manifest.json`.
+Scaffold, file caps, the contract text, and hot-load live on the host (`INSTANCE_PLUGINS` /
+`PluginRegistryService`). MCP tools are thin wrappers; chat will call the same methods. Do not
+duplicate templates inside `@khirby/plugin-mcp`.
+
+1. Client: MCP bearer (Settings → MCP) or in-app chat.
+2. Flow: contract → `scaffold` → edit via `writeFile` → `validate` → `hotLoad` / `install`.
+3. Files land in `plugins/<directory>/` (same folder as first-party plugins). Docker: `/app/plugins` bind-mounted to host `plugins/` or `${DATA_PATH}/plugins`. Override with `INSTANCE_PLUGINS_DIR`.
 4. Hot-load is append-only (`jiti` + `createPlugin` + optional `LazyModuleLoader`). Disable still only drops the in-memory context.
 
 Packages must use bare `@khirby/plugin-sdk` / `@khirby/plugin-host`. `exports["./web"]` is rejected — Settings via `getConfigSchema()` still works. Marketplace listing is a later ticket ([KBY-121](https://linear.app/finsly/issue/KBY-121)).

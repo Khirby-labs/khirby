@@ -6,6 +6,7 @@ import { DB_TOKEN } from '../../core/database/database.module';
 import { plugins } from '../../core/database/schema';
 import { CrmPlugin, CrmEvent, PluginContext, CRM_PLUGINS } from '@khirby/plugin-sdk';
 import { AppException } from '../../core/errors/app-exception';
+import type { InstancePluginsLike } from '../../../../../packages/plugin-host/src';
 // Relative, not '@khirby/types': `nest build` is plain tsc and the bare
 // specifier does not survive into the build output (INCIDENTS 2026-07-24).
 import type { AvailablePlugin } from '../../../../../packages/types/src';
@@ -13,8 +14,14 @@ import {
   appendInstanceManifest,
   defaultInstancePluginsDir,
   ensureInstanceDir,
+  listInstancePluginFiles,
   loadPluginFromDir,
+  pluginVolumeRoot,
+  readInstancePluginFile,
+  scaffoldInstancePlugin,
+  writeInstancePluginFile,
 } from './instance-plugins.loader';
+import { INSTANCE_PLUGIN_CONTRACT } from './instance-plugin-contract';
 
 type PluginRow = typeof plugins.$inferSelect;
 
@@ -44,7 +51,7 @@ export const RESERVED_INSTANCE_PLUGIN_NAMES: readonly string[] = [
 ];
 
 @Injectable()
-export class PluginRegistryService implements OnModuleInit {
+export class PluginRegistryService implements OnModuleInit, InstancePluginsLike {
   private readonly logger = new Logger(PluginRegistryService.name);
   private readonly contexts = new Map<string, PluginContext>();
 
@@ -365,6 +372,14 @@ export class PluginRegistryService implements OnModuleInit {
     return defaultInstancePluginsDir();
   }
 
+  packageDir(directory: string): string {
+    try {
+      return pluginVolumeRoot(this.instanceDir(), directory);
+    } catch (err) {
+      this.throwAuthoring(err);
+    }
+  }
+
   reservedNames(): readonly string[] {
     return RESERVED_INSTANCE_PLUGIN_NAMES;
   }
@@ -399,6 +414,84 @@ export class PluginRegistryService implements OnModuleInit {
       this.logger.error(`Cannot write instance manifest: ${(err as Error).message}`);
       throw AppException.upstreamFailed('instance-plugins');
     }
+  }
+
+  pluginContract(): string {
+    return INSTANCE_PLUGIN_CONTRACT;
+  }
+
+  scaffold(input: { directory: string; name: string; displayName?: string; nest?: boolean }): {
+    directory: string;
+    files: string[];
+  } {
+    if (!/^crm_[a-z0-9_]+$/.test(input.name)) {
+      throw AppException.badRequest('name must match crm_[a-z0-9_]+', { reason: 'bad_name' });
+    }
+    if (this.reservedNames().includes(input.name)) {
+      throw AppException.badRequest(`Reserved plugin name: ${input.name}`, {
+        reason: 'reserved_name',
+      });
+    }
+    try {
+      ensureInstanceDir(this.instanceDir());
+      return scaffoldInstancePlugin(this.instanceDir(), input);
+    } catch (err) {
+      this.throwAuthoring(err);
+    }
+  }
+
+  writeFile(
+    directory: string,
+    path: string,
+    content: string,
+  ): { directory: string; path: string; bytes: number } {
+    try {
+      ensureInstanceDir(this.instanceDir());
+      return writeInstancePluginFile(this.instanceDir(), directory, path, content);
+    } catch (err) {
+      this.throwAuthoring(err);
+    }
+  }
+
+  readFile(directory: string, path: string): { directory: string; path: string; content: string } {
+    try {
+      return readInstancePluginFile(this.instanceDir(), directory, path);
+    } catch (err) {
+      this.throwAuthoring(err);
+    }
+  }
+
+  listFiles(directory: string): { directory: string; files: string[] } {
+    try {
+      return listInstancePluginFiles(this.instanceDir(), directory);
+    } catch (err) {
+      this.throwAuthoring(err);
+    }
+  }
+
+  private throwAuthoring(err: unknown): never {
+    if (err instanceof HttpException) throw err;
+    const code = (err as Error).message;
+    if (code === 'bad_path') {
+      throw AppException.badRequest('directory/path must be relative without ..', {
+        reason: 'bad_path',
+      });
+    }
+    if (code === 'too_large') {
+      throw AppException.badRequest('file exceeds size cap', { reason: 'too_large' });
+    }
+    if (code === 'too_many_files') {
+      throw AppException.badRequest('plugin file cap exceeded', { reason: 'too_many_files' });
+    }
+    if (code === 'not_found') {
+      throw AppException.notFound('file', 'instance-plugin');
+    }
+    if (code === 'reserved_dir') {
+      throw AppException.badRequest('directory is a first-party plugin', {
+        reason: 'reserved_dir',
+      });
+    }
+    throw AppException.badRequest((err as Error).message);
   }
 
   /**

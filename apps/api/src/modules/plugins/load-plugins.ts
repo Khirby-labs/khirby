@@ -3,10 +3,11 @@ import { defaultInstancePluginsDir, loadInstancePlugins } from './instance-plugi
 import type { CrmPlugin } from '@khirby/plugin-sdk';
 
 /**
- * Image plugins (generated from plugins.manifest.json) plus instance-volume
- * packages (ADR-0036). The returned array is the `CRM_PLUGINS` value — it must
- * stay the same reference so a later `push` is visible to `emit()`.
- * Volume Nest controllers are registered only at this boot — not by LazyModuleLoader.
+ * Image plugins (generated from plugins.manifest.json) plus packages in
+ * `plugins/` that are not first-party (ADR-0036, ADR-0039). The returned array
+ * is the `CRM_PLUGINS` value — it must stay the same reference so a later `push`
+ * is visible to `emit()`. Volume Nest controllers are registered only at this
+ * boot — not by LazyModuleLoader.
  */
 export function loadPlugins(): CrmPlugin[] {
   const image = loadImagePlugins();

@@ -53,5 +53,6 @@ export {
   type PokeloFetchOpts,
   INSTANCE_PLUGINS,
   type InstancePluginsLike,
+  type InstancePluginScaffoldInput,
   PLUGIN_NAME_KEY,
 } from './tokens';

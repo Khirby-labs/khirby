@@ -276,14 +276,23 @@ export interface PokeloContextServiceLike {
 }
 
 /**
- * Instance-volume plugins (ADR-0036). Provided by PluginsModule; MCP scaffold
- * tools consume it so the plugin never imports `apps/api`.
+ * Instance-volume plugins (ADR-0036, ADR-0038). Provided by PluginsModule.
+ * MCP and in-app chat consume this token — never import `apps/api`.
  */
 export const INSTANCE_PLUGINS = 'CRM_INSTANCE_PLUGINS';
 
+export type InstancePluginScaffoldInput = {
+  directory: string;
+  name: string;
+  displayName?: string;
+  nest?: boolean;
+};
+
 export interface InstancePluginsLike {
-  /** Writable dir (`INSTANCE_PLUGINS_DIR` or `./instance-plugins`). */
+  /** Writable `plugins/` dir (`INSTANCE_PLUGINS_DIR` or repo `plugins/`). */
   instanceDir(): string;
+  /** Absolute package dir for one volume segment (rejects `..` / nested paths). */
+  packageDir(directory: string): string;
   /** Names that must not be scaffolded or hot-loaded (natives + `crm_hello`). */
   reservedNames(): readonly string[];
   /** Plugins already in this process (image + previously hot-loaded). */
@@ -296,6 +305,16 @@ export interface InstancePluginsLike {
   /** Same rules as hotLoad, without mutating the process. */
   validate(absPackageDir: string): { name: string };
   appendManifest(packageName: string, localDir: string): void;
+  /** Shared authoring contract (events, volume, ./web ban). */
+  pluginContract(): string;
+  scaffold(input: InstancePluginScaffoldInput): { directory: string; files: string[] };
+  writeFile(
+    directory: string,
+    path: string,
+    content: string,
+  ): { directory: string; path: string; bytes: number };
+  readFile(directory: string, path: string): { directory: string; path: string; content: string };
+  listFiles(directory: string): { directory: string; files: string[] };
 }
 
 /** Marker metadata key for PluginEnabledGuard */

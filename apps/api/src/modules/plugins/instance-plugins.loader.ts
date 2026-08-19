@@ -1,20 +1,51 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { isAbsolute, join, resolve, sep } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { createJiti } from 'jiti';
 import type { CrmPlugin } from '@khirby/plugin-sdk';
+import { type InstancePluginScaffoldInput, writeScaffold } from './instance-plugin-scaffold';
 
-export const INSTANCE_MANIFEST = 'plugins.manifest.json';
+/** Sidecar inside `plugins/` — not the repo-root image manifest. */
+export const INSTANCE_MANIFEST = 'instance.manifest.json';
 export const MAX_INSTANCE_FILES = 24;
 export const MAX_INSTANCE_FILE_BYTES = 100_000;
+
+/** First-party checkout dirs. Scaffold/write must not land on top of these. */
+export const FIRST_PARTY_PLUGIN_DIRS: readonly string[] = [
+  'crm-plugin-webhook',
+  'crm-plugin-discord',
+  'crm-plugin-listmonk',
+  'crm-plugin-mcp',
+  'crm-plugin-ai-compose',
+  'crm-plugin-pokelo',
+];
 
 export type InstanceManifest = {
   plugins: Array<{ package: string; local: string }>;
 };
 
-export function defaultInstancePluginsDir(): string {
+/** Walk up from `start` looking for the monorepo root (ADR-0039). */
+export function findRepoRoot(start = process.cwd()): string | undefined {
+  let dir = resolve(start);
+  for (let i = 0; i < 10; i++) {
+    if (
+      existsSync(join(dir, 'plugins.manifest.json')) &&
+      existsSync(join(dir, 'pnpm-workspace.yaml'))
+    ) {
+      return dir;
+    }
+    const parent = dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
+  }
+  return undefined;
+}
+
+export function defaultInstancePluginsDir(start = process.cwd()): string {
   const fromEnv = process.env.INSTANCE_PLUGINS_DIR?.trim();
   if (fromEnv) return fromEnv;
-  return join(process.cwd(), 'instance-plugins');
+  const root = findRepoRoot(start);
+  if (root) return join(root, 'plugins');
+  return join(start, 'plugins');
 }
 
 /** One path segment, no `..`, no absolute, no separators. */
@@ -123,6 +154,20 @@ export function loadPluginFromDir(absDir: string): CrmPlugin {
  * Boot-time scan. Empty / missing dir → []. `local: ".."` is skipped.
  * A name already in `imageNames` is skipped (image wins).
  */
+function listedLocals(dir: string): string[] {
+  const fromManifest = readManifest(dir).plugins.map((p) => p.local);
+  const fromDisk: string[] = [];
+  if (existsSync(dir)) {
+    for (const name of readdirSync(dir)) {
+      if (name === 'node_modules') continue;
+      const abs = join(dir, name);
+      if (!statSync(abs).isDirectory()) continue;
+      fromDisk.push(name);
+    }
+  }
+  return [...new Set([...fromManifest, ...fromDisk])];
+}
+
 export function loadInstancePlugins(
   dir: string | undefined,
   imageNames: Set<string>,
@@ -131,14 +176,16 @@ export function loadInstancePlugins(
   if (!dir) return [];
   const absDir = resolve(dir);
   if (!existsSync(absDir)) return [];
-  const manifest = readManifest(absDir);
   const out: CrmPlugin[] = [];
-  for (const entry of manifest.plugins) {
-    if (!isSafeLocalSegment(entry.local)) {
-      log(`Instance plugin local path skipped: ${entry.local}`);
+  for (const local of listedLocals(absDir)) {
+    if (!isSafeLocalSegment(local) || FIRST_PARTY_PLUGIN_DIRS.includes(local)) {
+      if (!isSafeLocalSegment(local)) {
+        log(`Instance plugin local path skipped: ${local}`);
+      }
       continue;
     }
-    const pkgDir = join(absDir, entry.local);
+    const pkgDir = join(absDir, local);
+    if (!existsSync(join(pkgDir, 'package.json'))) continue;
     try {
       const plugin = loadPluginFromDir(pkgDir);
       if (imageNames.has(plugin.name)) {
@@ -151,7 +198,7 @@ export function loadInstancePlugins(
       }
       out.push(plugin);
     } catch (err) {
-      log(`Instance plugin ${entry.package} failed to load: ${(err as Error).message}`);
+      log(`Instance plugin ${local} failed to load: ${(err as Error).message}`);
     }
   }
   return out;
@@ -168,4 +215,115 @@ export function assertPathInside(root: string, absPath: string): void {
 
 export function ensureInstanceDir(dir: string): void {
   mkdirSync(dir, { recursive: true });
+}
+
+/** Relative file under a plugin dir: no `..`, no absolute, safe segments. */
+export function isSafeRelPath(rel: string): boolean {
+  if (!rel || rel.startsWith('/') || rel.includes('\0') || rel.includes('..')) return false;
+  const parts = rel.split(/[/\\]/);
+  return parts.every((p) => p.length > 0 && p !== '.' && p !== '..' && /^[a-zA-Z0-9._-]+$/.test(p));
+}
+
+export function resolveInPlugin(root: string, rel: string): string {
+  const abs = resolve(root, rel);
+  assertPathInside(root, abs);
+  return abs;
+}
+
+export function countFiles(dir: string): number {
+  if (!existsSync(dir)) return 0;
+  let n = 0;
+  const walk = (d: string) => {
+    for (const name of readdirSync(d)) {
+      if (name === 'node_modules') continue;
+      const p = join(d, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else n += 1;
+    }
+  };
+  walk(dir);
+  return n;
+}
+
+export function listRelFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  const walk = (d: string) => {
+    for (const name of readdirSync(d)) {
+      if (name === 'node_modules') continue;
+      const p = join(d, name);
+      if (statSync(p).isDirectory()) walk(p);
+      else out.push(relative(dir, p).split(sep).join('/'));
+    }
+  };
+  walk(dir);
+  return out.sort();
+}
+
+export function pluginVolumeRoot(volumeDir: string, directory: string): string {
+  if (!isSafeLocalSegment(directory)) {
+    throw new Error('bad_path');
+  }
+  if (directory === 'node_modules' || FIRST_PARTY_PLUGIN_DIRS.includes(directory)) {
+    throw new Error('reserved_dir');
+  }
+  return join(volumeDir, directory);
+}
+
+export function scaffoldInstancePlugin(
+  volumeDir: string,
+  input: InstancePluginScaffoldInput,
+): { directory: string; files: string[] } {
+  const root = pluginVolumeRoot(volumeDir, input.directory);
+  ensureInstanceDir(root);
+  const files = writeScaffold(root, input);
+  return { directory: root, files };
+}
+
+export function writeInstancePluginFile(
+  volumeDir: string,
+  directory: string,
+  relPath: string,
+  content: string,
+): { directory: string; path: string; bytes: number } {
+  if (!isSafeRelPath(relPath)) {
+    throw new Error('bad_path');
+  }
+  const bytes = Buffer.byteLength(content, 'utf8');
+  if (bytes > MAX_INSTANCE_FILE_BYTES) {
+    throw new Error('too_large');
+  }
+  const root = pluginVolumeRoot(volumeDir, directory);
+  const abs = resolveInPlugin(root, relPath);
+  const existed = existsSync(abs);
+  if (!existed && countFiles(root) >= MAX_INSTANCE_FILES) {
+    throw new Error('too_many_files');
+  }
+  mkdirSync(dirname(abs), { recursive: true });
+  writeFileSync(abs, content, 'utf8');
+  return { directory, path: relPath, bytes };
+}
+
+export function readInstancePluginFile(
+  volumeDir: string,
+  directory: string,
+  relPath: string,
+): { directory: string; path: string; content: string } {
+  if (!isSafeRelPath(relPath)) {
+    throw new Error('bad_path');
+  }
+  const root = pluginVolumeRoot(volumeDir, directory);
+  const abs = resolveInPlugin(root, relPath);
+  if (!existsSync(abs)) {
+    throw new Error('not_found');
+  }
+  return { directory, path: relPath, content: readFileSync(abs, 'utf8') };
+}
+
+export function listInstancePluginFiles(
+  volumeDir: string,
+  directory: string,
+): { directory: string; files: string[] } {
+  const root = pluginVolumeRoot(volumeDir, directory);
+  return { directory, files: listRelFiles(root) };
 }

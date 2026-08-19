@@ -862,4 +862,69 @@ export function createPlugin() {
       }
     });
   });
+
+  describe('scaffold / writeFile (instance authoring)', () => {
+    function emptyDb(): any {
+      return {
+        $client: { unsafe: jest.fn() },
+        select: jest.fn(() => ({
+          from: () => ({ where: () => ({ limit: () => makeChain([]) }) }),
+        })),
+        insert: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      };
+    }
+
+    it('rejects first-party plugin directories', () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      process.env.INSTANCE_PLUGINS_DIR = mkdtempSync(join(tmpdir(), 'instance-auth-dir-'));
+      try {
+        const svc = makeService([], emptyDb());
+        expect(() =>
+          svc.scaffold({ directory: 'crm-plugin-mcp', name: 'crm_demo', nest: false }),
+        ).toThrow(BadRequestException);
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('rejects reserved plugin names', () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      process.env.INSTANCE_PLUGINS_DIR = mkdtempSync(join(tmpdir(), 'instance-auth-'));
+      try {
+        const image = makePlugin({ name: 'crm_mcp' });
+        const svc = makeService([image], emptyDb());
+        expect(() => svc.scaffold({ directory: 'mcp', name: 'crm_mcp', nest: true })).toThrow(
+          BadRequestException,
+        );
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('scaffolds then reads a file through the registry', async () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      process.env.INSTANCE_PLUGINS_DIR = mkdtempSync(join(tmpdir(), 'instance-auth-ok-'));
+      try {
+        const svc = makeService([], emptyDb());
+        const result = await svc.scaffold({
+          directory: 'my-demo',
+          name: 'crm_demo',
+          nest: false,
+        });
+        expect(result.files).toContain('src/index.ts');
+        const file = await svc.readFile('my-demo', 'src/index.ts');
+        expect(file.content).toContain('export function createPlugin');
+        expect(svc.pluginContract()).toContain('contact.created');
+        expect(svc.pluginContract()).toContain('plugins/');
+        expect(svc.packageDir('my-demo')).toContain('my-demo');
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+  });
 });

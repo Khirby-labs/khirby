@@ -62,7 +62,7 @@ Template: [`docker/crm.env.example`](../docker/crm.env.example).
 | `AI_COMPOSE_SECRETS_KEY` | 32-byte hex key — AI Compose |
 | `POKELO_SECRETS_KEY` | 32-byte hex key — Pokelo MCP token |
 | `MARKETPLACE_CATALOG_URL` | Optional. **Empty or unset = the Marketplace works from the catalog baked into the image and makes no network request at all** — the normal setup. Set it to a versioned JSON document to take the catalog from there instead; https is required in production. An unreachable, oversized, wrongly-typed or invalid document is ignored, the in-image copy is used, and one line is written to the log (ADR-0034) |
-| `INSTANCE_PLUGINS_DIR` | Writable dir for self-build plugins (ADR-0036). Images set `/data/instance-plugins`; the stack bind-mounts `${DATA_PATH}/instance-plugins`. Unset locally defaults to `./instance-plugins` |
+| `INSTANCE_PLUGINS_DIR` | Writable `plugins/` dir for self-build (ADR-0036, ADR-0039). Images set `/app/plugins`; compose bind-mounts host `plugins/`, the stack bind-mounts `${DATA_PATH}/plugins`. Unset locally defaults to `<repo>/plugins` |
 
 `DATABASE_URL` / `REDIS_URL` are built by the stack (`khirby-postgres`, `khirby-redis`).
 
