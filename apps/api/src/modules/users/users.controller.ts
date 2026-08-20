@@ -38,37 +38,37 @@ export class UsersController {
   constructor(private readonly users: UsersService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lista użytkowników' })
-  @ApiResponse({ status: 200, description: 'Lista userów' })
+  @ApiOperation({ summary: 'List users' })
+  @ApiResponse({ status: 200, description: 'User list' })
   findAll(@Req() req: FastifyRequest) {
     return this.users.findAll((req.session as { userId?: string }).userId);
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'User po ID' })
+  @ApiOperation({ summary: 'Get user by ID' })
   @ApiResponse({ status: 200, description: 'User' })
   findOne(@Param('id') id: string) {
     return this.users.findById(id);
   }
 
   @Post()
-  @ApiOperation({ summary: 'Utwórz użytkownika' })
-  @ApiResponse({ status: 201, description: 'User utworzony' })
+  @ApiOperation({ summary: 'Create user' })
+  @ApiResponse({ status: 201, description: 'User created' })
   create(@Body() dto: CreateUserDto) {
     return this.users.create(dto);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Zaktualizuj' })
-  @ApiResponse({ status: 200, description: 'Zaktualizowano' })
+  @ApiOperation({ summary: 'Update user' })
+  @ApiResponse({ status: 200, description: 'User updated' })
   update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
     return this.users.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Usuń' })
-  @ApiResponse({ status: 204, description: 'Usunięto' })
+  @ApiOperation({ summary: 'Delete user' })
+  @ApiResponse({ status: 204, description: 'User deleted' })
   delete(@Param('id') id: string, @Req() req: FastifyRequest) {
     return this.users.delete(id, (req.session as { userId?: string }).userId);
   }
@@ -76,8 +76,8 @@ export class UsersController {
   @Post(':id/roles/:roleId')
   @RequireSuperAdmin()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Przypisz rolę' })
-  @ApiResponse({ status: 200, description: 'Rola przypisana' })
+  @ApiOperation({ summary: 'Assign role' })
+  @ApiResponse({ status: 200, description: 'Role assigned' })
   assignRole(@Param('id') id: string, @Param('roleId') roleId: string) {
     return this.users.assignRole(id, roleId);
   }
@@ -85,8 +85,8 @@ export class UsersController {
   @Delete(':id/roles/:roleId')
   @RequireSuperAdmin()
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Usuń rolę' })
-  @ApiResponse({ status: 200, description: 'Rola usunięta' })
+  @ApiOperation({ summary: 'Remove role' })
+  @ApiResponse({ status: 200, description: 'Role removed' })
   removeRole(@Param('id') id: string, @Param('roleId') roleId: string) {
     return this.users.removeRole(id, roleId);
   }

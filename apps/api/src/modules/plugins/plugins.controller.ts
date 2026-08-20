@@ -14,15 +14,16 @@ export class PluginsController {
   constructor(private readonly registry: PluginRegistryService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lista pluginów' })
-  @ApiResponse({ status: 200, description: 'Lista pluginów' })
+  @ApiOperation({ summary: 'List plugins' })
+  @ApiResponse({ status: 200, description: 'Plugin list' })
   findAll() {
     return this.registry.findAll();
   }
 
   @Get('installed/:name')
   @ApiOperation({
-    summary: 'Plugin po nazwie (crm_*); nie koliduje z GET /api/plugins/<slug> instance pluginów',
+    summary:
+      'Get plugin by name (crm_*); does not collide with GET /api/plugins/<slug> instance plugins',
   })
   @ApiResponse({ status: 200, description: 'Plugin' })
   findOne(@Param('name') name: string) {
@@ -30,29 +31,29 @@ export class PluginsController {
   }
 
   @Post(':name/enable')
-  @ApiOperation({ summary: 'Włącz plugin' })
-  @ApiResponse({ status: 200, description: 'Plugin włączony' })
+  @ApiOperation({ summary: 'Enable plugin' })
+  @ApiResponse({ status: 200, description: 'Plugin enabled' })
   enable(@Param('name') name: string) {
     return this.registry.enable(name);
   }
 
   @Post(':name/disable')
-  @ApiOperation({ summary: 'Wyłącz plugin' })
-  @ApiResponse({ status: 200, description: 'Plugin wyłączony' })
+  @ApiOperation({ summary: 'Disable plugin' })
+  @ApiResponse({ status: 200, description: 'Plugin disabled' })
   disable(@Param('name') name: string) {
     return this.registry.disable(name);
   }
 
   @Delete('installed/:name')
-  @ApiOperation({ summary: 'Odinstaluj plugin (nie dotyczy natywnych wtyczek obrazu)' })
-  @ApiResponse({ status: 200, description: 'Plugin odinstalowany' })
+  @ApiOperation({ summary: 'Uninstall plugin (not for image-native plugins)' })
+  @ApiResponse({ status: 200, description: 'Plugin uninstalled' })
   uninstall(@Param('name') name: string) {
     return this.registry.uninstall(name);
   }
 
   @Patch(':name/config')
-  @ApiOperation({ summary: 'Zaktualizuj konfigurację' })
-  @ApiResponse({ status: 200, description: 'Konfiguracja zaktualizowana' })
+  @ApiOperation({ summary: 'Update configuration' })
+  @ApiResponse({ status: 200, description: 'Configuration updated' })
   updateConfig(@Param('name') name: string, @Body() config: Record<string, string>) {
     return this.registry.updateConfig(name, config);
   }

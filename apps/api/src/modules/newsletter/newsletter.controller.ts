@@ -1,5 +1,13 @@
 import {
-  Controller, Get, Post, Delete, Param, Body, UseGuards, HttpCode, HttpStatus,
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { IsString, IsNotEmpty } from 'class-validator';
@@ -27,20 +35,24 @@ export class NewsletterController {
   constructor(private readonly newsletterService: NewsletterService) {}
 
   @Get('lists')
-  @ApiOperation({ summary: 'Lista list newslettera' })
-  @ApiResponse({ status: 200, description: 'Listy newslettera' })
-  getLists() { return this.newsletterService.getLists(); }
+  @ApiOperation({ summary: 'List newsletter lists' })
+  @ApiResponse({ status: 200, description: 'Newsletter lists' })
+  getLists() {
+    return this.newsletterService.getLists();
+  }
 
   @Post('lists')
-  @ApiOperation({ summary: 'Utwórz listę' })
-  @ApiResponse({ status: 201, description: 'Lista utworzona' })
+  @ApiOperation({ summary: 'Create list' })
+  @ApiResponse({ status: 201, description: 'List created' })
   createList(@Body() dto: CreateNewsletterListDto) {
     return this.newsletterService.createList(dto);
   }
 
   @Delete('lists/:id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Usuń listę' })
-  @ApiResponse({ status: 204, description: 'Lista usunięta' })
-  deleteList(@Param('id') id: string) { return this.newsletterService.deleteList(id); }
+  @ApiOperation({ summary: 'Delete list' })
+  @ApiResponse({ status: 204, description: 'List deleted' })
+  deleteList(@Param('id') id: string) {
+    return this.newsletterService.deleteList(id);
+  }
 }

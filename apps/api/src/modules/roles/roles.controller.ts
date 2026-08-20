@@ -30,31 +30,31 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lista ról' })
-  @ApiResponse({ status: 200, description: 'Lista ról' })
+  @ApiOperation({ summary: 'List roles' })
+  @ApiResponse({ status: 200, description: 'Role list' })
   findAll(): Promise<Role[]> {
     return this.rolesService.findAll();
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Rola po ID' })
-  @ApiResponse({ status: 200, description: 'Rola' })
+  @ApiOperation({ summary: 'Get role by ID' })
+  @ApiResponse({ status: 200, description: 'Role' })
   findById(@Param('id') id: string): Promise<Role> {
     return this.rolesService.findById(id);
   }
 
   @Post()
   @RequireSuperAdmin()
-  @ApiOperation({ summary: 'Utwórz rolę' })
-  @ApiResponse({ status: 201, description: 'Rola utworzona' })
+  @ApiOperation({ summary: 'Create role' })
+  @ApiResponse({ status: 201, description: 'Role created' })
   create(@Body() dto: CreateRoleDto): Promise<Role> {
     return this.rolesService.create(dto);
   }
 
   @Patch(':id')
   @RequireSuperAdmin()
-  @ApiOperation({ summary: 'Zaktualizuj' })
-  @ApiResponse({ status: 200, description: 'Zaktualizowano' })
+  @ApiOperation({ summary: 'Update role' })
+  @ApiResponse({ status: 200, description: 'Role updated' })
   update(@Param('id') id: string, @Body() dto: UpdateRoleDto): Promise<Role> {
     return this.rolesService.update(id, dto);
   }
@@ -62,16 +62,16 @@ export class RolesController {
   @Delete(':id')
   @RequireSuperAdmin()
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Usuń' })
-  @ApiResponse({ status: 204, description: 'Usunięto' })
+  @ApiOperation({ summary: 'Delete role' })
+  @ApiResponse({ status: 204, description: 'Role deleted' })
   delete(@Param('id') id: string) {
     return this.rolesService.delete(id);
   }
 
   @Put(':id/permissions')
   @RequireSuperAdmin()
-  @ApiOperation({ summary: 'Ustaw uprawnienia roli' })
-  @ApiResponse({ status: 200, description: 'Uprawnienia ustawione' })
+  @ApiOperation({ summary: 'Set role permissions' })
+  @ApiResponse({ status: 200, description: 'Permissions set' })
   setPermissions(
     @Param('id') id: string,
     @Body() body: SetPermissionsDto,
@@ -82,8 +82,8 @@ export class RolesController {
   @Post(':id/users/:userId')
   @RequireSuperAdmin()
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Przypisz rolę do usera' })
-  @ApiResponse({ status: 204, description: 'Przypisano' })
+  @ApiOperation({ summary: 'Assign role to user' })
+  @ApiResponse({ status: 204, description: 'Assigned' })
   assignToUser(@Param('id') roleId: string, @Param('userId') userId: string) {
     return this.rolesService.assignToUser(userId, roleId);
   }
@@ -91,8 +91,8 @@ export class RolesController {
   @Delete(':id/users/:userId')
   @RequireSuperAdmin()
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Usuń rolę od usera' })
-  @ApiResponse({ status: 204, description: 'Usunięto' })
+  @ApiOperation({ summary: 'Remove role from user' })
+  @ApiResponse({ status: 204, description: 'Removed' })
   removeFromUser(@Param('id') roleId: string, @Param('userId') userId: string) {
     return this.rolesService.removeFromUser(userId, roleId);
   }
