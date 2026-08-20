@@ -36,6 +36,7 @@ docs/journal/plans/*
 # editors / OS
 .idea/
 .vscode/
+.cursor/plans/
 *.swp
 *~
 # test artifacts
