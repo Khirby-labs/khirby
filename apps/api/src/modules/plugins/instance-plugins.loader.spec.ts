@@ -1,6 +1,8 @@
 import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import 'reflect-metadata';
+import { register as registerTsNode } from 'ts-node';
 import {
   appendInstanceManifest,
   defaultInstancePluginsDir,
@@ -181,8 +183,7 @@ describe('instance-plugins.loader', () => {
       nest: true,
     });
     const plugin = loadPluginFromDir(join(root, 'crm-plugin-nest-mod'));
-    require('reflect-metadata');
-    require('ts-node').register({
+    registerTsNode({
       transpileOnly: true,
       compilerOptions: {
         module: 'commonjs',

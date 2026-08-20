@@ -1,6 +1,7 @@
 import { Injectable, Inject, OnModuleInit, Logger, Optional, HttpException } from '@nestjs/common';
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import 'reflect-metadata';
 import { LazyModuleLoader, ModuleRef } from '@nestjs/core';
 import { eq } from 'drizzle-orm';
 import { Db } from '../../core/database/db';
@@ -649,7 +650,6 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
 
     this.instanceBridge?.unregisterPlugin(name);
 
-    require('reflect-metadata');
     const nestModule = plugin.getNestModule?.();
     if (nestModule && this.lazyModuleLoader) {
       await this.lazyModuleLoader.load(() => Promise.resolve(nestModule));
@@ -729,7 +729,6 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     this.logger.log(`Instance plugin loaded in-process: ${name} v${plugin.version}`);
 
     try {
-      require('reflect-metadata');
       const nestModule = plugin.getNestModule?.();
       if (nestModule && this.lazyModuleLoader) {
         await this.lazyModuleLoader.load(() => Promise.resolve(nestModule));

@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import 'reflect-metadata';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PluginRegistryService, NATIVE_PLUGIN_NAMES } from './plugin-registry.service';
-import { findRepoRoot } from './instance-plugins.loader';
+import { findRepoRoot, scaffoldInstancePlugin } from './instance-plugins.loader';
 import { CrmPlugin, CrmEvent } from '@khirby/plugin-sdk';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -907,7 +907,6 @@ export function createPlugin() {
         }
         const { db } = makeInstallDb();
         const svc = makeService([], db);
-        const { scaffoldInstancePlugin } = require('./instance-plugins.loader');
         scaffoldInstancePlugin(volume, {
           directory: 'crm-plugin-retry',
           name: 'crm_retry',
@@ -935,7 +934,6 @@ export function createPlugin() {
         const { db } = makeInstallDb();
         const live: CrmPlugin[] = [];
         const svc = makeService(live, db);
-        const { scaffoldInstancePlugin } = require('./instance-plugins.loader');
         scaffoldInstancePlugin(volume, {
           directory: 'crm-plugin-reload',
           name: 'crm_reload',

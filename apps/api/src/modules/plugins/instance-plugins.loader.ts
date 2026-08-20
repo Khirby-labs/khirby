@@ -1,13 +1,6 @@
-import {
-  existsSync,
-  mkdirSync,
-  readFileSync,
-  readdirSync,
-  rmSync,
-  statSync,
-  writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
+import 'reflect-metadata';
 import { createJiti } from 'jiti';
 import type { CrmPlugin } from '@khirby/plugin-sdk';
 import { type InstancePluginScaffoldInput, writeScaffold } from './instance-plugin-scaffold';
@@ -199,7 +192,6 @@ export function loadPluginFromDir(absDir: string): CrmPlugin {
   }
   const entry = resolvePackageEntry(absDir);
   // Nest decorators in instance-plugin entry files need reflect-metadata at jiti eval time.
-  require('reflect-metadata');
   purgeInstancePluginLoadCache(absDir);
   const jiti = createJiti(pkgPath, { moduleCache: false, fsCache: false });
   const loaded = jiti(entry) as {
