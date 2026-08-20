@@ -216,11 +216,12 @@ function showToolStatus(msg: AgentMessage) {
 
 /** Keep the latest bubble in view while tokens stream and after history loads. */
 const scrollAnchor = computed(() => {
-  const last = messages.value.at(-1);
+  const list = messages.value;
+  const last = list.length > 0 ? list[list.length - 1] : undefined;
   return `${messages.value.length}:${last?.content?.length ?? 0}:${isStreaming.value}:${statusCode.value ?? ''}`;
 });
 
-function scrollToBottom(behavior: ScrollBehavior = 'smooth') {
+function scrollToBottom(behavior: 'auto' | 'instant' | 'smooth' = 'smooth') {
   void nextTick(() => {
     const el = scrollEl.value;
     if (!el) return;

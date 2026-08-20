@@ -78,29 +78,29 @@ importers:
         specifier: workspace:*
         version: link:../../packages/forms-client
       '@khirby/plugin-ai-compose':
-        specifier: workspace:*
-        version: link:../../plugins/crm-plugin-ai-compose
+        specifier: ^1.0.0
+        version: 1.0.0(@khirby/plugin-host@packages+plugin-host)(@khirby/plugin-sdk@packages+plugin-sdk)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/swagger@11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2))(drizzle-orm@0.45.2(postgres@3.4.9))
       '@khirby/plugin-discord':
-        specifier: workspace:*
-        version: link:../../plugins/crm-plugin-discord
+        specifier: ^1.0.0
+        version: 1.0.0(@khirby/plugin-sdk@packages+plugin-sdk)
       '@khirby/plugin-host':
         specifier: workspace:*
         version: link:../../packages/plugin-host
       '@khirby/plugin-listmonk':
-        specifier: workspace:*
-        version: link:../../plugins/crm-plugin-listmonk
+        specifier: ^1.1.0
+        version: 1.1.0(@khirby/plugin-host@packages+plugin-host)(@khirby/plugin-sdk@packages+plugin-sdk)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/swagger@11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2))(class-validator@0.14.4)(drizzle-orm@0.45.2(postgres@3.4.9))(vue-i18n@11.4.7(vue@3.5.39(typescript@5.9.3)))(vue-router@4.6.4(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))
       '@khirby/plugin-mcp':
-        specifier: workspace:*
-        version: link:../../plugins/crm-plugin-mcp
+        specifier: ^1.0.0
+        version: 1.0.0(@khirby/plugin-host@packages+plugin-host)(@khirby/plugin-sdk@packages+plugin-sdk)(@modelcontextprotocol/node@2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.13.1))(@modelcontextprotocol/server@2.0.0)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/swagger@11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2))(bcryptjs@3.0.3)(drizzle-orm@0.45.2(postgres@3.4.9))(zod@4.4.3)
       '@khirby/plugin-pokelo':
-        specifier: workspace:*
-        version: link:../../plugins/crm-plugin-pokelo
+        specifier: ^1.0.0
+        version: 1.0.0(@khirby/plugin-host@packages+plugin-host)(@khirby/plugin-sdk@packages+plugin-sdk)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/swagger@11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2))(drizzle-orm@0.45.2(postgres@3.4.9))
       '@khirby/plugin-sdk':
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
       '@khirby/plugin-webhook':
-        specifier: workspace:*
-        version: link:../../plugins/crm-plugin-webhook
+        specifier: ^1.0.0
+        version: 1.0.0(@khirby/plugin-sdk@packages+plugin-sdk)
       '@khirby/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -247,8 +247,8 @@ importers:
         specifier: ^3.12.2
         version: 3.12.2
       '@khirby/plugin-listmonk':
-        specifier: workspace:*
-        version: link:../../plugins/crm-plugin-listmonk
+        specifier: ^1.1.0
+        version: 1.1.0(@khirby/plugin-host@packages+plugin-host)(@khirby/plugin-sdk@packages+plugin-sdk)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/swagger@11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2))(class-validator@0.14.4)(drizzle-orm@0.45.2(postgres@3.4.9))(vue-i18n@11.4.7(vue@3.5.39(typescript@5.9.3)))(vue-router@4.6.4(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))
       '@khirby/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -448,54 +448,6 @@ importers:
         version: 11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
 
   packages/types: {}
-
-  plugins/crm-plugin-ai-compose: {}
-
-  plugins/crm-plugin-discord: {}
-
-  plugins/crm-plugin-listmonk: {}
-
-  plugins/crm-plugin-mcp: {}
-
-  plugins/crm-plugin-pokelo: {}
-
-  plugins/crm-plugin-webhook: {}
-
-  plugins/crm_hello_world_stats:
-    dependencies:
-      '@khirby/plugin-host':
-        specifier: workspace:*
-        version: link:../../packages/plugin-host
-      '@khirby/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../packages/plugin-sdk
-      '@nestjs/common':
-        specifier: '*'
-        version: 11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      drizzle-orm:
-        specifier: '>=0.45.2'
-        version: 0.45.2(postgres@3.4.9)
-      ts-node:
-        specifier: '*'
-        version: 10.9.2(@types/node@22.20.1)(typescript@5.9.3)
-
-  plugins/hello-world:
-    dependencies:
-      '@khirby/plugin-host':
-        specifier: workspace:*
-        version: link:../../packages/plugin-host
-      '@khirby/plugin-sdk':
-        specifier: workspace:*
-        version: link:../../packages/plugin-sdk
-      '@nestjs/common':
-        specifier: '*'
-        version: 11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
-      drizzle-orm:
-        specifier: '>=0.45.2'
-        version: 0.45.2(postgres@3.4.9)
-      ts-node:
-        specifier: '*'
-        version: 10.9.2(@types/node@22.20.1)(typescript@5.9.3)
 
 packages:
 
@@ -1364,6 +1316,61 @@ packages:
 
   '@jsdevtools/ono@7.1.3':
     resolution: {integrity: sha512-4JQNk+3mVzK3xh2rqd6RB4J46qUR19azEHBneZyTZM+c456qOrbbM/5xcR8huNCCcbVt7+UmizG6GuUvPvKUYg==}
+
+  '@khirby/plugin-ai-compose@1.0.0':
+    resolution: {integrity: sha512-5sY0/CWLBcpcxkldr4Ntn/hvVeiiuTszRjijjDKgxnj6eO26F9k4SU7BGJXc0kQmEh0m/zuhQoyWv2Tf8bX5Eg==}
+    peerDependencies:
+      '@khirby/plugin-host': workspace:*
+      '@khirby/plugin-sdk': workspace:*
+      '@nestjs/common': '*'
+      '@nestjs/swagger': '*'
+      drizzle-orm: '>=0.45.2'
+
+  '@khirby/plugin-discord@1.0.0':
+    resolution: {integrity: sha512-cIsBd8PKKFa8y8i0d1Uszgdah5WtBwyCfWIYPlYYvd2cezDO6R2wMpTbObr3JOw1TKMZo5xrJ5SJIk2YvFms5w==}
+    peerDependencies:
+      '@khirby/plugin-sdk': workspace:*
+
+  '@khirby/plugin-listmonk@1.1.0':
+    resolution: {integrity: sha512-MV3OWBbsKVkuW3fywVZMv1tWB5aEbpwj36CLmi/7ffOveQoZyHvsUST1IzhadCjLYAm1G/nyJIRrfYjKDXL27g==}
+    peerDependencies:
+      '@khirby/plugin-host': workspace:*
+      '@khirby/plugin-sdk': workspace:*
+      '@nestjs/common': '*'
+      '@nestjs/swagger': '*'
+      class-validator: '*'
+      drizzle-orm: '>=0.45.2'
+      vue: ^3
+      vue-i18n: '*'
+      vue-router: ^4
+
+  '@khirby/plugin-mcp@1.0.0':
+    resolution: {integrity: sha512-DUXrW5phSyIKLeFJxqTORRoygcmst2V4d8gN4oexyULgtBaW4LzVPp0D6mfM1yPcKStQHUlYPXV7sEcWP+Nk2w==}
+    peerDependencies:
+      '@khirby/plugin-host': workspace:*
+      '@khirby/plugin-sdk': workspace:*
+      '@modelcontextprotocol/node': '*'
+      '@modelcontextprotocol/server': '*'
+      '@nestjs/common': '*'
+      '@nestjs/core': '*'
+      '@nestjs/swagger': '*'
+      bcryptjs: '*'
+      drizzle-orm: '>=0.45.2'
+      zod: '*'
+
+  '@khirby/plugin-pokelo@1.0.0':
+    resolution: {integrity: sha512-Yytt9nivdYqhWNfbW3y+jzu+mHwluWAc3FZczI3ssm3V1QZWS2c4zKhtglT1++62TFbxrhBpg2ha0cQgrayuuw==}
+    peerDependencies:
+      '@khirby/plugin-host': workspace:*
+      '@khirby/plugin-sdk': workspace:*
+      '@nestjs/common': '*'
+      '@nestjs/swagger': '*'
+      drizzle-orm: '>=0.45.2'
+
+  '@khirby/plugin-webhook@1.0.0':
+    resolution: {integrity: sha512-b7czh9l+oXhJOHQmF5gju75NZ80NU500y/Vixkzi+Ag85LDgxIFhZCLiTsYt2x4mFtulgaHYcFQk+9GJCeUP7A==}
+    peerDependencies:
+      '@khirby/plugin-sdk': workspace:*
 
   '@lukeed/csprng@1.1.0':
     resolution: {integrity: sha512-Z7C/xXCiGWsg0KuKsHTKJxbWhpI3Vs5GwLfOean7MGyVFGqdRgBbAjOCh6u4bbjPc/8MJ2pZmK/0DLdCbivLDA==}
@@ -6485,6 +6492,56 @@ snapshots:
       '@jridgewell/sourcemap-codec': 1.5.5
 
   '@jsdevtools/ono@7.1.3': {}
+
+  '@khirby/plugin-ai-compose@1.0.0(@khirby/plugin-host@packages+plugin-host)(@khirby/plugin-sdk@packages+plugin-sdk)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/swagger@11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2))(drizzle-orm@0.45.2(postgres@3.4.9))':
+    dependencies:
+      '@khirby/plugin-host': link:packages/plugin-host
+      '@khirby/plugin-sdk': link:packages/plugin-sdk
+      '@nestjs/common': 11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/swagger': 11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
+      drizzle-orm: 0.45.2(postgres@3.4.9)
+
+  '@khirby/plugin-discord@1.0.0(@khirby/plugin-sdk@packages+plugin-sdk)':
+    dependencies:
+      '@khirby/plugin-sdk': link:packages/plugin-sdk
+
+  '@khirby/plugin-listmonk@1.1.0(@khirby/plugin-host@packages+plugin-host)(@khirby/plugin-sdk@packages+plugin-sdk)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/swagger@11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2))(class-validator@0.14.4)(drizzle-orm@0.45.2(postgres@3.4.9))(vue-i18n@11.4.7(vue@3.5.39(typescript@5.9.3)))(vue-router@4.6.4(vue@3.5.39(typescript@5.9.3)))(vue@3.5.39(typescript@5.9.3))':
+    dependencies:
+      '@khirby/plugin-host': link:packages/plugin-host
+      '@khirby/plugin-sdk': link:packages/plugin-sdk
+      '@nestjs/common': 11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/swagger': 11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
+      class-validator: 0.14.4
+      drizzle-orm: 0.45.2(postgres@3.4.9)
+      vue: 3.5.39(typescript@5.9.3)
+      vue-i18n: 11.4.7(vue@3.5.39(typescript@5.9.3))
+      vue-router: 4.6.4(vue@3.5.39(typescript@5.9.3))
+
+  '@khirby/plugin-mcp@1.0.0(@khirby/plugin-host@packages+plugin-host)(@khirby/plugin-sdk@packages+plugin-sdk)(@modelcontextprotocol/node@2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.13.1))(@modelcontextprotocol/server@2.0.0)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/swagger@11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2))(bcryptjs@3.0.3)(drizzle-orm@0.45.2(postgres@3.4.9))(zod@4.4.3)':
+    dependencies:
+      '@khirby/plugin-host': link:packages/plugin-host
+      '@khirby/plugin-sdk': link:packages/plugin-sdk
+      '@modelcontextprotocol/node': 2.0.0(@modelcontextprotocol/server@2.0.0)(hono@4.13.1)
+      '@modelcontextprotocol/server': 2.0.0
+      '@nestjs/common': 11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/core': 11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/swagger': 11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
+      bcryptjs: 3.0.3
+      drizzle-orm: 0.45.2(postgres@3.4.9)
+      hono: 4.13.1
+      zod: 4.4.3
+
+  '@khirby/plugin-pokelo@1.0.0(@khirby/plugin-host@packages+plugin-host)(@khirby/plugin-sdk@packages+plugin-sdk)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/swagger@11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2))(drizzle-orm@0.45.2(postgres@3.4.9))':
+    dependencies:
+      '@khirby/plugin-host': link:packages/plugin-host
+      '@khirby/plugin-sdk': link:packages/plugin-sdk
+      '@nestjs/common': 11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2)
+      '@nestjs/swagger': 11.4.5(@fastify/static@10.1.3)(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(@nestjs/core@11.1.28(@nestjs/common@11.1.28(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)(rxjs@7.8.2))(reflect-metadata@0.2.2)(rxjs@7.8.2))(class-transformer@0.5.1)(class-validator@0.14.4)(reflect-metadata@0.2.2)
+      drizzle-orm: 0.45.2(postgres@3.4.9)
+
+  '@khirby/plugin-webhook@1.0.0(@khirby/plugin-sdk@packages+plugin-sdk)':
+    dependencies:
+      '@khirby/plugin-sdk': link:packages/plugin-sdk
 
   '@lukeed/csprng@1.1.0': {}
 
