@@ -43,7 +43,9 @@ describe('LoginView', () => {
     // default happy path; individual tests override
     server.use(
       http.post(api('/api/auth/login'), () =>
-        HttpResponse.json({ user: { id: 'u1', email: 'admin@example.com' } }),
+        HttpResponse.json({
+          user: { id: 'u1', email: 'admin@example.com', locale: null, permissions: [] },
+        }),
       ),
     );
   });
@@ -94,7 +96,9 @@ describe('LoginView', () => {
     server.use(
       http.post(api('/api/auth/login'), async () => {
         await gate;
-        return HttpResponse.json({ user: { id: 'u1', email: 'admin@example.com' } });
+        return HttpResponse.json({
+          user: { id: 'u1', email: 'admin@example.com', locale: null, permissions: [] },
+        });
       }),
     );
 

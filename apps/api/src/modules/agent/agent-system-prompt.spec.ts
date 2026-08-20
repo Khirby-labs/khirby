@@ -1,0 +1,37 @@
+import { buildAgentSystemPrompt } from './agent-system-prompt';
+
+describe('buildAgentSystemPrompt', () => {
+  it('includes CRM workflow hints', () => {
+    const prompt = buildAgentSystemPrompt({ hasPokelo: false, hasPluginTools: false });
+    expect(prompt).toContain('search_leads');
+    expect(prompt).toContain('list_pipeline_stages');
+    expect(prompt).toContain('list_board_modules');
+    expect(prompt).toContain('list_mail_threads');
+    expect(prompt).not.toContain('search_knowledge_base');
+  });
+
+  it('includes Markdown formatting guidance', () => {
+    const prompt = buildAgentSystemPrompt({ hasPokelo: false, hasPluginTools: false });
+    expect(prompt).toContain('Markdown table');
+    expect(prompt).toContain('Never paste raw tool output');
+  });
+
+  it('includes Pokelo guidance when configured', () => {
+    const prompt = buildAgentSystemPrompt({ hasPokelo: true, hasPluginTools: false });
+    expect(prompt).toContain('search_knowledge_base');
+    expect(prompt).toContain('Use it eagerly');
+  });
+
+  it('includes plugin authoring workflow when plugin tools are exposed', () => {
+    const prompt = buildAgentSystemPrompt({ hasPokelo: false, hasPluginTools: true });
+    expect(prompt).toContain('describe_plugin_contract');
+    expect(prompt).toContain('InstancePluginView');
+    expect(prompt).toContain('stats:');
+  });
+
+  it('includes both Pokelo and plugin sections when both available', () => {
+    const prompt = buildAgentSystemPrompt({ hasPokelo: true, hasPluginTools: true });
+    expect(prompt).toContain('Pokelo knowledge base');
+    expect(prompt).toContain('Instance plugins');
+  });
+});

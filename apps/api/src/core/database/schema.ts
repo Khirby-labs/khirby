@@ -375,6 +375,39 @@ export const tbTaskActivity = pgTable('tb_task_activity', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
+// ─── Agent chat (Ask Khirby) ──────────────────────────────────────────────────
+
+export type AgentMessageRole = 'user' | 'assistant';
+
+export type AgentToolTraceEntry = {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+  ok: boolean;
+  summary: string;
+};
+
+export const agentConversations = pgTable('agent_conversations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  userId: uuid('user_id')
+    .references(() => users.id, { onDelete: 'cascade' })
+    .notNull(),
+  title: text('title').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const agentMessages = pgTable('agent_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  conversationId: uuid('conversation_id')
+    .references(() => agentConversations.id, { onDelete: 'cascade' })
+    .notNull(),
+  role: text('role').$type<AgentMessageRole>().notNull(),
+  content: text('content').notNull(),
+  toolTrace: jsonb('tool_trace').$type<AgentToolTraceEntry[] | null>(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
 // ─── Plugin registry ──────────────────────────────────────────────────────────
 
 export const plugins = pgTable('plugins', {

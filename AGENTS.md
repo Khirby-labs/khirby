@@ -109,6 +109,7 @@ function makeChain(returnValue?: unknown) {
 - Plugin config stored in DB (`plugins` table, `config` jsonb column)
 - Context: `{ log(msg), config: Record<string, string> }`
 - Example: `examples/crm-plugin-hello`; author guide: `docs/PLUGINS.md`
+- Instance authoring (scaffold / read / write / list / hot-load) lives on `INSTANCE_PLUGINS` in core ([ADR-0038](docs/adr/0038-instance-plugin-authoring-is-core.md)). Packages land in `plugins/` next to first-party checkouts ([ADR-0039](docs/adr/0039-instance-plugins-live-in-plugins-dir.md)). MCP and in-app chat call that token — do not reimplement file ops in `@khirby/plugin-mcp`. Volume plugins use bare `@khirby/plugin-sdk` / `@khirby/plugin-host`. Nest templates gate on `integrations:manage` (there is no `plugins` resource).
 
 ---
 
@@ -119,6 +120,8 @@ function makeChain(returnValue?: unknown) {
 | `moduleNameMapper` path | `<rootDir>/../../../packages/...` — `rootDir` = `apps/api/src`, so 3 levels up to repo root |
 | Guard name | `SessionGuard` (**NOT** `JwtGuard` — JWT was removed) — see `apps/api/src/core/auth/session.guard.ts` |
 | Plugin imports in `app.module.ts` | Use path `../../../plugins/...` relative to `src/` |
+| Vendor of `plugins/` | `predev` must **not** `rmSync` existing `plugins/<dir>` (ADR-0037). Keep local sources; npm-fill only missing dirs. `KHIRBY_PLUGINS_WORKSPACE=1` or `plugins/.git` = local-only. Delete a dir to refresh from npm |
+| Instance-plugin writes | Go through `INSTANCE_PLUGINS` (`scaffold` / `writeFile` / …) into `plugins/<dir>/`, not a sibling `instance-plugins/` tree and not a second fs helper in the MCP plugin (ADR-0038, ADR-0039) |
 | Root db mock | Do **not** add `.then` to the root db mock object in tests |
 | Drizzle `.values()` / `.set()` | Add `as any` to avoid strict type inference errors in Drizzle 0.40 |
 | pnpm workspace | Always run `pnpm install` from repo root, never from a sub-package directly |
@@ -164,3 +167,6 @@ function makeChain(returnValue?: unknown) {
   (`get` / `create` / `comment` / `status` / `labels`), which is pinned to the team
   in `.claude/linear.json` and reads `LINEAR_API_KEY` from `.env` itself
 - Do not gate role/role-assignment **mutations** with `@RequirePermission('roles','manage')` — that reopens privilege escalation; use `@RequireSuperAdmin()` (reads keep `roles:manage`); see ADR-0009
+- Do not restore unconditional `rmSync` of `plugins/crm-plugin-*` on `predev` — vendor is hybrid (ADR-0037)
+- Do not reimplement instance-plugin file ops or scaffolds in `crm-plugin-mcp` — they belong on `INSTANCE_PLUGINS` so chat can share them (ADR-0038)
+- Do not write self-build packages to `instance-plugins/` — they belong in `plugins/` (ADR-0039)

@@ -16,6 +16,8 @@ export interface NavItem {
   name: string;
   labelKey: string;
   icon: NavIconName;
+  /** When set, item is shown only when the user holds this permission pair. */
+  requiredPermission?: { resource: string; action: string };
 }
 
 /** Daily work — the operational surfaces, top of the sidebar. */
@@ -25,6 +27,13 @@ export const workspaceNav: NavItem[] = [
   { to: '/boards', name: 'boards', labelKey: 'nav.workspace.boards', icon: 'boards' },
   { to: '/forms', name: 'forms', labelKey: 'nav.workspace.forms', icon: 'forms' },
   { to: '/mail', name: 'mail', labelKey: 'nav.workspace.mail', icon: 'mail' },
+  {
+    to: '/ask',
+    name: 'ask-new',
+    labelKey: 'nav.workspace.ask',
+    icon: 'ask',
+    requiredPermission: { resource: 'agent', action: 'use' },
+  },
 ];
 
 /**
@@ -94,12 +103,25 @@ export const quickCreateActions: QuickCreateAction[] = [
  * case of plugin routes, which the SPA cannot localize.
  */
 export interface CommandItem {
-  kind: 'nav' | 'create' | 'contact';
+  kind: 'nav' | 'create' | 'contact' | 'ask';
   label: string;
   to: string;
   icon: NavIconName;
   /** Optional secondary line (e.g. email under contact name). */
   detail?: string;
+  /** Prefill draft for Ask Khirby (not in URL). */
+  draft?: string;
+}
+
+export type PermissionPair = { resource: string; action: string };
+
+/** Filter nav items by effective session permissions. */
+export function filterNavForUser(items: NavItem[], permissions: PermissionPair[]): NavItem[] {
+  return items.filter((item) => {
+    if (!item.requiredPermission) return true;
+    const { resource, action } = item.requiredPermission;
+    return permissions.some((p) => p.resource === resource && p.action === action);
+  });
 }
 
 export interface CommandGroup {
@@ -118,7 +140,11 @@ export type Translate = (key: string) => string;
  * matches on them: filtering key strings would silently stop matching what the
  * user actually sees, and no existing test would have noticed.
  */
-export function buildCommandGroups(t: Translate, pluginItems: CommandItem[]): CommandGroup[] {
+export function buildCommandGroups(
+  t: Translate,
+  pluginItems: CommandItem[],
+  navItems: NavItem[] = [...workspaceNav, ...marketplaceNav, ...settingsNav],
+): CommandGroup[] {
   return [
     {
       /*
@@ -130,8 +156,8 @@ export function buildCommandGroups(t: Translate, pluginItems: CommandItem[]): Co
        * left out of the palette would have gone unnoticed by every test.
        */
       heading: t('nav.commandGroup.navigate'),
-      items: [...workspaceNav, ...marketplaceNav, ...settingsNav].map((n) => ({
-        kind: 'nav',
+      items: navItems.map((n) => ({
+        kind: 'nav' as const,
         label: t(n.labelKey),
         to: n.to,
         icon: n.icon,

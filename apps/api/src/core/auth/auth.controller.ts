@@ -14,6 +14,7 @@ import { FastifyRequest } from 'fastify';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { SessionGuard } from './session.guard';
+import { RbacService } from '../rbac/rbac.service';
 import { IsEmail, IsIn, IsString, MinLength, ValidateIf } from 'class-validator';
 // Relative import (like permission-catalog): `nest build` is plain tsc; a bare
 // '@khirby/types' specifier would survive into dist. SUPPORTED_LOCALE_CODES is a
@@ -46,29 +47,33 @@ class ChangePasswordDto {
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private auth: AuthService) {}
+  constructor(
+    private auth: AuthService,
+    private rbac: RbacService,
+  ) {}
 
   @Post('login')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Zaloguj się — ustawia httpOnly session cookie' })
+  @ApiOperation({ summary: 'Log in — sets an httpOnly session cookie' })
   @ApiBody({ type: LoginDto })
-  @ApiResponse({ status: 200, description: 'Zalogowano' })
-  @ApiResponse({ status: 401, description: 'Nieprawidłowe dane' })
+  @ApiResponse({ status: 200, description: 'Logged in' })
+  @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() dto: LoginDto, @Req() req: FastifyRequest): Promise<LoginResponse> {
     const user = await this.auth.validateUser(dto.email, dto.password);
     await req.session.regenerate();
     req.session.userId = user.id;
     await req.session.save();
-    return { user };
+    const permissions = await this.rbac.getUserPermissions(user.id);
+    return { user: { ...user, permissions } };
   }
 
   @Post('logout')
   @UseGuards(SessionGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiBearerAuth('session')
-  @ApiOperation({ summary: 'Wyloguj się — niszczy sesję w Redis' })
-  @ApiResponse({ status: 204, description: 'Wylogowano' })
+  @ApiOperation({ summary: 'Log out — destroys the Redis session' })
+  @ApiResponse({ status: 204, description: 'Logged out' })
   async logout(@Req() req: FastifyRequest) {
     await req.session.destroy();
   }
@@ -76,23 +81,24 @@ export class AuthController {
   @Get('me')
   @UseGuards(SessionGuard)
   @ApiBearerAuth('session')
-  @ApiOperation({ summary: 'Pobierz profil zalogowanego użytkownika' })
-  @ApiResponse({ status: 200, description: 'Profil użytkownika' })
-  @ApiResponse({ status: 401, description: 'Brak sesji' })
+  @ApiOperation({ summary: 'Get the current user profile' })
+  @ApiResponse({ status: 200, description: 'User profile' })
+  @ApiResponse({ status: 401, description: 'No session' })
   async me(@Req() req: FastifyRequest): Promise<SessionUser> {
     const user = await this.auth.findById((req.session as any).userId);
     if (!user) throw AppException.sessionExpired();
-    return { id: user.id, email: user.email, locale: user.locale };
+    const permissions = await this.rbac.getUserPermissions(user.id);
+    return { id: user.id, email: user.email, locale: user.locale, permissions };
   }
 
   @Put('locale')
   @UseGuards(SessionGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('session')
-  @ApiOperation({ summary: 'Zapisz język interfejsu na koncie (null = język przeglądarki)' })
+  @ApiOperation({ summary: 'Save UI locale on the account (null = browser language)' })
   @ApiBody({ type: UpdateLocaleDto })
-  @ApiResponse({ status: 200, description: 'Zapisano' })
-  @ApiResponse({ status: 400, description: 'Nieobsługiwany kod języka' })
+  @ApiResponse({ status: 200, description: 'Saved' })
+  @ApiResponse({ status: 400, description: 'Unsupported locale code' })
   async updateLocale(@Body() dto: UpdateLocaleDto, @Req() req: FastifyRequest) {
     return this.auth.updateLocale((req.session as any).userId, dto.locale);
   }
@@ -101,9 +107,9 @@ export class AuthController {
   @UseGuards(SessionGuard)
   @HttpCode(HttpStatus.OK)
   @ApiBearerAuth('session')
-  @ApiOperation({ summary: 'Zmień hasło zalogowanego użytkownika' })
-  @ApiResponse({ status: 200, description: 'Hasło zmienione' })
-  @ApiResponse({ status: 401, description: 'Nieprawidłowe aktualne hasło' })
+  @ApiOperation({ summary: 'Change the current user password' })
+  @ApiResponse({ status: 200, description: 'Password changed' })
+  @ApiResponse({ status: 401, description: 'Invalid current password' })
   async changePassword(@Body() dto: ChangePasswordDto, @Req() req: FastifyRequest) {
     return this.auth.changePassword(
       (req.session as any).userId,

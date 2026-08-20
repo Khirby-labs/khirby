@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
-import { apiGet, apiPost, apiPatch } from '../api/client';
+import { apiGet, apiPost, apiPatch, apiDelete } from '../api/client';
 import { registerPluginRoutes } from '../router';
 import type { Plugin, PluginConfigField, PluginFrontendRoute } from '@khirby/types';
 
@@ -39,5 +39,11 @@ export const usePluginsStore = defineStore('plugins', () => {
     }
   }
 
-  return { plugins, loading, fetchPlugins, togglePlugin, updateConfig };
+  async function uninstallPlugin(name: string): Promise<void> {
+    await apiDelete(`/api/plugins/installed/${name}`);
+    plugins.value = plugins.value.filter((p) => p.name !== name);
+    registerPluginRoutes(plugins.value);
+  }
+
+  return { plugins, loading, fetchPlugins, togglePlugin, updateConfig, uninstallPlugin };
 });

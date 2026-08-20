@@ -24,7 +24,8 @@
     "listAria": "Results",
     "placeholder": "Search contacts, pages…",
     "createTag": "Create",
-    "noMatches": "Nothing found for “{query}”"
+    "noMatches": "Nothing found for “{query}”",
+    "askKhirby": "Ask Khirby"
   },
   "account": {
     "logOut": "Log out",

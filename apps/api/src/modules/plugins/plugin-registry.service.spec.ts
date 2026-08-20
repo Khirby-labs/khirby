@@ -1,5 +1,10 @@
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import 'reflect-metadata';
 import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
 import { PluginRegistryService, NATIVE_PLUGIN_NAMES } from './plugin-registry.service';
+import { findRepoRoot, scaffoldInstancePlugin } from './instance-plugins.loader';
 import { CrmPlugin, CrmEvent } from '@khirby/plugin-sdk';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -88,7 +93,8 @@ function makePlugin(partial: Partial<CrmPlugin> = {}): CrmPlugin {
 }
 
 function makeService(plugins: CrmPlugin[], db: any): PluginRegistryService {
-  const svc = new (PluginRegistryService as any)(db, plugins);
+  const moduleRef = { get: jest.fn() };
+  const svc = new (PluginRegistryService as any)(db, plugins, moduleRef);
   return svc;
 }
 
@@ -417,7 +423,38 @@ describe('PluginRegistryService', () => {
       const svc = makeService([], db);
       const result = await svc.findAll();
 
-      expect(result).toEqual([{ id: 'uuid-3', name: 'p1', frontendRoutes: [], configSchema: [] }]);
+      expect(result).toEqual([
+        {
+          id: 'uuid-3',
+          name: 'p1',
+          frontendRoutes: [],
+          configSchema: [],
+          codeLoaded: false,
+          canUninstall: true,
+        },
+      ]);
+    });
+
+    it('falls back navLabel to displayName when route omits it', async () => {
+      const plugin = makePlugin({
+        name: 'crm_hello_world',
+        displayName: 'Hello World',
+        getFrontendRoutes: () => [
+          {
+            path: '/plugins/hello-world',
+            name: 'plugin-hello-world',
+            navIcon: 'plugins',
+          } as any,
+        ],
+      });
+      const rows = [
+        makeRow({ name: 'crm_hello_world', displayName: 'Hello World', enabled: true }),
+      ];
+      const chain = makeChain(rows);
+      const db: any = { select: jest.fn(() => ({ from: () => chain })) };
+      const svc = makeService([plugin], db);
+      const result = await svc.findAll();
+      expect(result[0].frontendRoutes[0].navLabel).toBe('Hello World');
     });
   });
 
@@ -742,6 +779,331 @@ describe('PluginRegistryService', () => {
       const result = await svc.updateConfig('test_plugin', newConfig);
       expect(result.config).toEqual(newConfig);
       expect(setMock).toHaveBeenCalledWith(expect.objectContaining({ config: newConfig }));
+    });
+  });
+
+  describe('hotLoad', () => {
+    function writeTmpPlugin(name: string) {
+      const dir = mkdtempSync(join(tmpdir(), 'hotload-'));
+      mkdirSync(join(dir, 'src'));
+      writeFileSync(
+        join(dir, 'package.json'),
+        JSON.stringify({
+          name: `pkg-${name}`,
+          version: '0.1.0',
+          main: './src/index.ts',
+          exports: { '.': './src/index.ts' },
+        }),
+      );
+      writeFileSync(
+        join(dir, 'src/index.ts'),
+        `export function createPlugin() {
+  return {
+    name: '${name}',
+    displayName: '${name}',
+    version: '0.1.0',
+    onEvent: undefined,
+  };
+}
+`,
+      );
+      return dir;
+    }
+
+    function makeInstallDb(onEventPlugin?: { onEvent: jest.Mock }) {
+      const row = {
+        id: 'uuid-hot',
+        name: 'crm_hot',
+        displayName: 'crm_hot',
+        version: '0.1.0',
+        enabled: true,
+        config: {},
+        installedAt: new Date(),
+        updatedAt: new Date(),
+        description: null,
+      };
+      const insertValues = jest.fn(() => ({ returning: () => makeChain([row]) }));
+      const db: any = {
+        $client: { unsafe: jest.fn() },
+        select: jest.fn(() => ({
+          from: () => ({ where: () => ({ limit: () => makeChain([]) }) }),
+        })),
+        insert: jest.fn(() => ({ values: insertValues })),
+        update: jest.fn(() => ({ set: jest.fn(() => ({ where: jest.fn(() => makeChain()) })) })),
+        delete: jest.fn(() => ({ where: jest.fn(() => makeChain()) })),
+      };
+      void onEventPlugin;
+      return { db, row };
+    }
+
+    it('pushes onto the live array, installs, and emit reaches onEvent without restart', async () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      const volume = mkdtempSync(join(tmpdir(), 'instance-vol-'));
+      process.env.INSTANCE_PLUGINS_DIR = volume;
+      try {
+        const { db } = makeInstallDb();
+        const live: CrmPlugin[] = [];
+        const svc = makeService(live, db);
+        const pkgDir = writeTmpPlugin('crm_hot');
+        // Rewrite with onEvent after load — jiti will compile the file. Patch via file:
+        writeFileSync(
+          join(pkgDir, 'src/index.ts'),
+          `const state = { hits: 0 };
+export function createPlugin() {
+  return {
+    name: 'crm_hot',
+    displayName: 'crm_hot',
+    version: '0.1.0',
+    async onEvent() { state.hits += 1; },
+    getHits() { return state.hits; },
+  };
+}
+`,
+        );
+
+        await svc.hotLoad(pkgDir);
+        expect(svc.loadedNames()).toContain('crm_hot');
+        expect(svc.isEnabled('crm_hot')).toBe(true);
+
+        const plugin = live.find((p) => p.name === 'crm_hot');
+        expect(plugin).toBeDefined();
+        plugin!.onEvent = jest.fn();
+        const event: CrmEvent = {
+          type: 'contact.created',
+          payload: { id: 'c1', email: 'x@x.pl', createdAt: new Date() },
+        };
+        await svc.emit(event);
+        expect(plugin!.onEvent).toHaveBeenCalledWith(event, expect.any(Object));
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('rejects a name already in the image', async () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      process.env.INSTANCE_PLUGINS_DIR = mkdtempSync(join(tmpdir(), 'instance-vol-'));
+      try {
+        const { db } = makeInstallDb();
+        const image = makePlugin({ name: 'crm_mcp' });
+        const svc = makeService([image], db);
+        const pkgDir = writeTmpPlugin('crm_mcp');
+        await expect(svc.hotLoad(pkgDir)).rejects.toThrow(BadRequestException);
+        expect(svc.loadedNames()).toEqual(['crm_mcp']);
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('installFromDirectory hot-loads a scaffolded plugin on first install', async () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      const volume = mkdtempSync(join(tmpdir(), 'instance-install-'));
+      process.env.INSTANCE_PLUGINS_DIR = volume;
+      try {
+        const repoRoot = findRepoRoot(join(__dirname, '..'));
+        if (repoRoot) {
+          symlinkSync(join(repoRoot, 'apps/api/node_modules'), join(volume, 'node_modules'));
+        }
+        const { db } = makeInstallDb();
+        const svc = makeService([], db);
+        scaffoldInstancePlugin(volume, {
+          directory: 'crm-plugin-retry',
+          name: 'crm_retry',
+          displayName: 'Retry',
+          nest: true,
+        });
+        const result = await svc.installFromDirectory('crm-plugin-retry');
+        expect(result.status).toBe('installed');
+        expect(svc.loadedNames()).toContain('crm_retry');
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('reloadFromDirectory picks up a displayName edit without a second hotLoad', async () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      const volume = mkdtempSync(join(tmpdir(), 'instance-reload-'));
+      process.env.INSTANCE_PLUGINS_DIR = volume;
+      try {
+        const repoRoot = findRepoRoot(join(__dirname, '..'));
+        if (repoRoot) {
+          symlinkSync(join(repoRoot, 'apps/api/node_modules'), join(volume, 'node_modules'));
+        }
+        const { db } = makeInstallDb();
+        const live: CrmPlugin[] = [];
+        const svc = makeService(live, db);
+        scaffoldInstancePlugin(volume, {
+          directory: 'crm-plugin-reload',
+          name: 'crm_reload',
+          displayName: 'Before',
+          nest: false,
+        });
+        await svc.installFromDirectory('crm-plugin-reload');
+        expect(live.find((p) => p.name === 'crm_reload')?.displayName).toBe('Before');
+
+        const original = svc.readFile('crm-plugin-reload', 'src/index.ts').content;
+        svc.writeFile(
+          'crm-plugin-reload',
+          'src/index.ts',
+          original.replace('displayName = "Before"', 'displayName = "After"'),
+        );
+        const reloaded = await svc.reloadFromDirectory('crm-plugin-reload');
+        expect(reloaded).toEqual({ name: 'crm_reload', status: 'reloaded' });
+        expect(live.find((p) => p.name === 'crm_reload')?.displayName).toBe('After');
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+  });
+
+  describe('scaffold / writeFile (instance authoring)', () => {
+    function emptyDb(): any {
+      return {
+        $client: { unsafe: jest.fn() },
+        select: jest.fn(() => ({
+          from: () => ({ where: () => ({ limit: () => makeChain([]) }) }),
+        })),
+        insert: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      };
+    }
+
+    it('rejects first-party plugin directories', () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      process.env.INSTANCE_PLUGINS_DIR = mkdtempSync(join(tmpdir(), 'instance-auth-dir-'));
+      try {
+        const svc = makeService([], emptyDb());
+        expect(() =>
+          svc.scaffold({ directory: 'crm-plugin-mcp', name: 'crm_demo', nest: false }),
+        ).toThrow(BadRequestException);
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('rejects reserved plugin names', () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      process.env.INSTANCE_PLUGINS_DIR = mkdtempSync(join(tmpdir(), 'instance-auth-'));
+      try {
+        const image = makePlugin({ name: 'crm_mcp' });
+        const svc = makeService([image], emptyDb());
+        expect(() => svc.scaffold({ directory: 'mcp', name: 'crm_mcp', nest: true })).toThrow(
+          BadRequestException,
+        );
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('scaffolds then reads a file through the registry', async () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      process.env.INSTANCE_PLUGINS_DIR = mkdtempSync(join(tmpdir(), 'instance-auth-ok-'));
+      try {
+        const svc = makeService([], emptyDb());
+        const result = await svc.scaffold({
+          directory: 'my-demo',
+          name: 'crm_demo',
+          nest: false,
+        });
+        expect(result.files).toContain('src/index.ts');
+        const file = await svc.readFile('my-demo', 'src/index.ts');
+        expect(file.content).toContain('export function createPlugin');
+        expect(svc.pluginContract()).toContain('contact.created');
+        expect(svc.pluginContract()).toContain('plugins/');
+        expect(svc.packageDir('my-demo')).toContain('my-demo');
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+  });
+
+  describe('uninstall', () => {
+    function makeUninstallDb(row: ReturnType<typeof makeRow> | null) {
+      const deleteWhere = jest.fn(() => makeChain());
+      const db: any = {
+        $client: { unsafe: jest.fn() },
+        select: jest.fn(() => ({
+          from: () => ({ where: () => ({ limit: () => makeChain(row ? [row] : []) }) }),
+        })),
+        delete: jest.fn(() => ({ where: deleteWhere })),
+      };
+      return { db, deleteWhere };
+    }
+
+    it('rejects native plugins', async () => {
+      const { db } = makeUninstallDb(makeRow({ name: 'crm_webhook' }));
+      const svc = makeService([makePlugin({ name: 'crm_webhook' })], db);
+      await expect(svc.uninstall('crm_webhook')).rejects.toThrow(BadRequestException);
+    });
+
+    it('runs onUninstall then deletes the row for marketplace plugins', async () => {
+      const order: string[] = [];
+      const row = makeRow({ name: 'crm_hello', enabled: true });
+      const { db, deleteWhere } = makeUninstallDb(row);
+      const onUninstall = jest.fn().mockImplementation(async () => void order.push('uninstall'));
+      const svc = makeService([makePlugin({ name: 'crm_hello', onUninstall })], db);
+      svc['contexts'].set('crm_hello', { log: jest.fn(), config: {} });
+
+      const result = await svc.uninstall('crm_hello');
+
+      expect(result).toEqual({ name: 'crm_hello' });
+      expect(order).toEqual(['uninstall']);
+      expect(onUninstall).toHaveBeenCalledWith(db.$client);
+      expect(deleteWhere).toHaveBeenCalled();
+      expect(svc.isEnabled('crm_hello')).toBe(false);
+    });
+
+    it('deletes orphan rows when plugin code is not loaded', async () => {
+      const row = makeRow({ name: 'crm_hello_world', enabled: false });
+      const { db, deleteWhere } = makeUninstallDb(row);
+      const svc = makeService([], db);
+
+      await svc.uninstall('crm_hello_world');
+
+      expect(deleteWhere).toHaveBeenCalled();
+    });
+
+    it('marks enrichRow with codeLoaded and canUninstall', async () => {
+      const rows = [makeRow({ name: 'crm_hello' }), makeRow({ name: 'crm_webhook' })];
+      const db: any = {
+        select: jest.fn(() => ({ from: () => makeChain(rows) })),
+      };
+      const svc = makeService(
+        [makePlugin({ name: 'crm_hello' }), makePlugin({ name: 'crm_webhook' })],
+        db,
+      );
+
+      const list = await svc.findAll();
+
+      expect(list.find((p) => p.name === 'crm_hello')).toBeUndefined();
+      expect(list.find((p) => p.name === 'crm_webhook')).toMatchObject({
+        codeLoaded: true,
+        canUninstall: false,
+      });
+    });
+
+    it('excludes marketplace demo plugins from findAll but not snapshot', async () => {
+      const rows = [makeRow({ name: 'crm_hello' }), makeRow({ name: 'crm_webhook' })];
+      const db: any = {
+        select: jest.fn(() => ({ from: () => makeChain(rows) })),
+      };
+      const svc = makeService(
+        [makePlugin({ name: 'crm_hello' }), makePlugin({ name: 'crm_webhook' })],
+        db,
+      );
+
+      const installed = await svc.findAll();
+      const snapshot = await svc.snapshot();
+
+      expect(installed.map((p) => p.name)).toEqual(['crm_webhook']);
+      expect(snapshot.installed.map((p) => p.name).sort()).toEqual(['crm_hello', 'crm_webhook']);
     });
   });
 });

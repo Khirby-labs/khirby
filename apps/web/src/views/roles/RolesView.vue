@@ -193,15 +193,29 @@
               <li
                 v-for="resource in RESOURCES"
                 :key="resource"
-                class="flex items-center px-4 py-3 hover:bg-surface-raise transition-colors"
+                class="px-4 py-3 hover:bg-surface-raise transition-colors space-y-2"
               >
-                <AppCheckbox
-                  :model-value="hasManage(selectedRole, resource)"
-                  :aria-label="t('roles.permissions.grantAria', { module: moduleLabel(resource) })"
-                  @update:model-value="(v) => toggleModule(selectedRole!, resource, v)"
+                <div
+                  v-for="pair in pairsForResource(resource)"
+                  :key="`${pair.resource}:${pair.action}`"
+                  class="flex items-center"
                 >
-                  <span class="font-medium text-text-secondary">{{ moduleLabel(resource) }}</span>
-                </AppCheckbox>
+                  <AppCheckbox
+                    :model-value="hasPerm(selectedRole, pair.resource, pair.action)"
+                    :aria-label="
+                      t('roles.permissions.grantAria', {
+                        module: moduleLabel(pair.resource, pair.action),
+                      })
+                    "
+                    @update:model-value="
+                      (v) => togglePerm(selectedRole!, pair.resource, pair.action, v)
+                    "
+                  >
+                    <span class="font-medium text-text-secondary">{{
+                      moduleLabel(pair.resource, pair.action)
+                    }}</span>
+                  </AppCheckbox>
+                </div>
               </li>
             </ul>
           </div>
@@ -374,7 +388,7 @@ import { ref, computed, onMounted, reactive, watch } from 'vue';
 import { storeToRefs } from 'pinia';
 import { onBeforeRouteLeave } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { PERMISSION_RESOURCES } from '@khirby/types';
+import { ALL_PERMISSIONS, PERMISSION_RESOURCES } from '@khirby/types';
 import { useRolesStore, type Role, type RolePermission } from '../../stores/roles.store';
 import { useConfirm } from '../../composables/useConfirm';
 import { useServerText } from '../../composables/useServerText';
@@ -397,9 +411,9 @@ interface RoleSnapshot {
   permKeys: Set<string>;
 }
 
-/** Access is per-module: one grant per resource, always the 'manage' action. */
+/** Access pairs from the canonical catalog — not a cartesian product. */
+const PERMISSION_PAIRS = ALL_PERMISSIONS;
 const RESOURCES = PERMISSION_RESOURCES;
-const MANAGE = 'manage';
 const NAME_MAX = 100;
 const DESC_MAX = 500;
 
@@ -409,8 +423,15 @@ const DESC_MAX = 500;
  * Polish casing (.claude/rules/i18n.md). The token set is the closed union
  * PERMISSION_RESOURCES, so the key is safe to build from it.
  */
-function moduleLabel(resource: string): string {
+function moduleLabel(resource: string, action?: string): string {
+  if (resource === 'agent' && action) {
+    return t(`roles.permissions.agent.${action}`);
+  }
   return t(`roles.permissions.resource.${resource}`);
+}
+
+function pairsForResource(resource: string) {
+  return PERMISSION_PAIRS.filter((p) => p.resource === resource);
 }
 
 const { roles, loading, error } = storeToRefs(rolesStore);
@@ -427,7 +448,7 @@ const selectedRole = computed((): Role | null => {
 });
 
 const grantedCount = computed(
-  () => RESOURCES.filter((r) => hasManage(selectedRole.value, r)).length,
+  () => PERMISSION_PAIRS.filter((p) => hasPerm(selectedRole.value, p.resource, p.action)).length,
 );
 
 /** One plural message, not a word plus a '(n)' node — see roles.list.heading. */
@@ -439,8 +460,8 @@ const roleHeading = computed(() =>
 const moduleCountLabel = computed(() =>
   t(
     'roles.detail.moduleCount',
-    { granted: n(grantedCount.value, 'integer'), total: n(RESOURCES.length, 'integer') },
-    RESOURCES.length,
+    { granted: n(grantedCount.value, 'integer'), total: n(PERMISSION_PAIRS.length, 'integer') },
+    PERMISSION_PAIRS.length,
   ),
 );
 
@@ -554,18 +575,20 @@ async function selectRole(id: string) {
   selectedRoleId.value = id;
 }
 
-function hasManage(role: Role | null, resource: string): boolean {
+function hasPerm(role: Role | null, resource: string, action: string): boolean {
   if (!role) return false;
-  return (role.permissions ?? []).some((p) => p.resource === resource && p.action === MANAGE);
+  return (role.permissions ?? []).some((p) => p.resource === resource && p.action === action);
 }
 
-function toggleModule(role: Role, resource: string, granted: boolean) {
-  const without = (role.permissions ?? []).filter((p) => p.resource !== resource);
-  role.permissions = granted ? [...without, { resource, action: MANAGE }] : without;
+function togglePerm(role: Role, resource: string, action: string, granted: boolean) {
+  const without = (role.permissions ?? []).filter(
+    (p) => !(p.resource === resource && p.action === action),
+  );
+  role.permissions = granted ? [...without, { resource, action }] : without;
 }
 
 function grantAll(role: Role) {
-  role.permissions = RESOURCES.map((resource) => ({ resource, action: MANAGE }));
+  role.permissions = PERMISSION_PAIRS.map((p) => ({ ...p }));
 }
 
 function revokeAll(role: Role) {
@@ -689,11 +712,12 @@ function closeCreate() {
   createOpen.value = false;
 }
 
-/** Module access of a source role, expressed as this UI's per-module `manage` grants. */
+/** Permission pairs granted on a source role — used by copy-from. */
 function buildCopyPermissions(source: Role | null): RolePermission[] {
-  return RESOURCES.filter((r) => hasManage(source, r)).map((resource) => ({
-    resource,
-    action: MANAGE,
+  if (!source) return [];
+  return PERMISSION_PAIRS.filter((p) => hasPerm(source, p.resource, p.action)).map((p) => ({
+    resource: p.resource,
+    action: p.action,
   }));
 }
 

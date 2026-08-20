@@ -18,7 +18,12 @@ import { api } from '../test/api-base';
 // Typed from @khirby/types so a drift in the response shape fails the typecheck
 // rather than production. `locale: null` = the account made no language choice,
 // so the device resolution stands (ADR-0011).
-const sessionUser: SessionUser = { id: 'u1', email: 'admin@example.com', locale: null };
+const sessionUser: SessionUser = {
+  id: 'u1',
+  email: 'admin@example.com',
+  locale: null,
+  permissions: [],
+};
 
 const meOk = () => http.get(api('/api/auth/me'), () => HttpResponse.json(sessionUser));
 
@@ -105,6 +110,25 @@ describe('auth.store', () => {
     expect(calls).toBe(1);
   });
 
+  it('re-fetches /auth/me when the cached user lacks permissions (stale session)', async () => {
+    let calls = 0;
+    server.use(
+      http.get(api('/api/auth/me'), () => {
+        calls++;
+        return HttpResponse.json(sessionUser);
+      }),
+    );
+
+    const auth = useAuthStore();
+    auth.user = { id: 'u1', email: 'admin@example.com', locale: null } as SessionUser;
+    auth.checked = true;
+
+    await auth.checkSession();
+
+    expect(calls).toBe(1);
+    expect(auth.user?.permissions).toEqual([]);
+  });
+
   it('login sets user on success', async () => {
     server.use(http.post(api('/api/auth/login'), () => HttpResponse.json({ user: sessionUser })));
 
@@ -179,5 +203,25 @@ describe('auth.store', () => {
 
     await pending;
     expect(auth.loading).toBe(false);
+  });
+
+  it('hasPermission reflects effective session grants', async () => {
+    const userWithAgent = {
+      ...sessionUser,
+      permissions: [{ resource: 'agent', action: 'use' }],
+    };
+    server.use(http.get(api('/api/auth/me'), () => HttpResponse.json(userWithAgent)));
+
+    const auth = useAuthStore();
+    await auth.checkSession();
+
+    expect(auth.hasPermission('agent', 'use')).toBe(true);
+    expect(auth.hasPermission('agent', 'manage')).toBe(false);
+    expect(auth.hasPermission('contacts', 'manage')).toBe(false);
+  });
+
+  it('hasPermission is false before a session exists', () => {
+    const auth = useAuthStore();
+    expect(auth.hasPermission('agent', 'use')).toBe(false);
   });
 });

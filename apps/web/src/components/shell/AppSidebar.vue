@@ -9,8 +9,8 @@
   <aside
     :class="
       cn(
-        'fixed inset-y-0 left-0 z-30 flex flex-col border-r border-border-subtle bg-surface-panel',
-        'transition-[transform,width] duration-200 md:relative md:translate-x-0',
+        'fixed inset-y-0 left-0 z-30 flex flex-col border-r border-border-subtle bg-surface-panel md:relative md:translate-x-0',
+        ui.railAnimate && 'transition-[transform,width] duration-200 ease-out',
         'w-60',
         collapsed && 'md:w-16',
         ui.mobileNavOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
@@ -26,11 +26,14 @@
         )
       "
     >
-      <span
-        class="grid h-6 w-6 flex-shrink-0 place-items-center rounded-md bg-accent font-semibold text-accent-ink"
+      <img
+        src="/khirby-sygnet.png"
+        alt=""
+        width="24"
+        height="24"
+        class="h-6 w-6 flex-shrink-0 rounded-md object-cover"
         aria-hidden="true"
-        >B</span
-      >
+      />
       <span
         v-if="!collapsed"
         class="truncate text-sm font-semibold tracking-tight text-text-primary"
@@ -48,7 +51,7 @@
       </p>
       <div class="space-y-0.5">
         <SidebarLink
-          v-for="item in workspaceNav"
+          v-for="item in filteredWorkspaceNav"
           :key="item.to"
           :to="item.to"
           :icon="item.icon"
@@ -146,21 +149,27 @@ import SidebarLink from './SidebarLink.vue';
 import AccountMenu from './AccountMenu.vue';
 import AppTooltip from '../ui/AppTooltip.vue';
 import { cn } from '../../lib/utils';
-import { workspaceNav, marketplaceNav } from '../../lib/nav';
+import { workspaceNav, marketplaceNav, filterNavForUser } from '../../lib/nav';
 import type { NavIconName } from '../nav-icons';
 import { useUiStore } from '../../stores/ui.store';
 import { usePluginsStore } from '../../stores/plugins.store';
+import { useAuthStore } from '../../stores/auth.store';
 import { useServerText } from '../../composables/useServerText';
 
 const { t } = useI18n();
-const { pluginNavLabel } = useServerText();
+const auth = useAuthStore();
+const { pluginNavLabel, pluginDisplayName } = useServerText();
 const ui = useUiStore();
 const pluginsStore = usePluginsStore();
 const { plugins } = storeToRefs(pluginsStore);
 const isDesktop = useMediaQuery('(min-width: 768px)');
 
 /** Rail collapse is a desktop affordance; the mobile drawer always shows labels. */
-const collapsed = computed(() => ui.railCollapsed && isDesktop.value);
+const collapsed = computed(() => isDesktop.value && ui.railCollapsed);
+
+const filteredWorkspaceNav = computed(() =>
+  filterNavForUser(workspaceNav, auth.user?.permissions ?? []),
+);
 
 const pluginNav = computed(() =>
   plugins.value
@@ -172,7 +181,7 @@ const pluginNav = computed(() =>
           to: r.path,
           // Resolved in a computed, not at import: the label follows a language
           // switch, and an unknown key falls back to the plugin's own literal.
-          label: pluginNavLabel(r),
+          label: pluginNavLabel(r) || pluginDisplayName(p),
           icon: 'plugins' as NavIconName,
         })),
     ),
