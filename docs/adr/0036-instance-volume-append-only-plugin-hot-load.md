@@ -22,7 +22,7 @@ This does **not** amend ADR-0034's catalog availability filter. A hot-loaded plu
 
 Easier: an agent with an MCP bearer can scaffold, validate, and test an API-only plugin on this instance; restart survives via the volume.
 
-Harder: no Vue UI until the image is rebuilt; no unload (a bad plugin stays until process restart + removing the volume entry); Swarm must pin `app` to the node that holds `${DATA_PATH}` because the volume is a host bind-mount. `jiti` is a production dependency of `apps/api`.
+Harder: no Vue UI until the image is rebuilt; Nest modules are never unloaded from the container (a bad plugin's *module* stays until process restart); Swarm must pin `app` to the node that holds `${DATA_PATH}` because the volume is a host bind-mount. `jiti` is a production dependency of `apps/api`. After `write_instance_plugin_file` (or a repeat `install_instance_plugin`) the host re-jiti's the volume package and rebinds GET handlers on `InstancePluginHttpBridge` — page copy/stats can change without a restart. That is not SPA hot-load and not Nest module unload.
 
 Agents must not "fix" this into module unload, SPA hot-load, or routing codegen through AI Compose.
 

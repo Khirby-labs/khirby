@@ -13,7 +13,9 @@
   "detail.revokeAll": "Text button next to it that takes every module away. Imperative, ≤2 words. The · between them stays in markup.",
   "detail.save": "Primary button at the bottom of the detail pane; commits the pending module grants. Imperative, ≤2 words. Was Title Case ('Save Changes') before the migration.",
 
-  "permissions.grantAria": "aria-label of one module's checkbox. {module} is a module label from permissions.resource.*, already translated. Says that ticking it gives this role access.",
+  "permissions.grantAria": "aria-label of one module's checkbox. {module} is a module label from permissions.resource.* or permissions.agent.*, already translated. Says that ticking it gives this role access.",
+  "permissions.agent.use": "Checkbox label for agent:use — lets the role open Ask Khirby and chat. Product name stays English. ≤4 words.",
+  "permissions.agent.manage": "Checkbox label for agent:manage — full control over agent conversations (beyond use). Product name stays English. ≤4 words.",
   "permissions.resource.contacts": "Label of the 'contacts' module in the access checklist. The raw token comes from PERMISSION_RESOURCES and stays the value; this is only its label. Noun, plural, 1 word — CSS 'capitalize' was doing this job before and does not produce correct Polish.",
   "permissions.resource.forms": "Label of the 'forms' module. Noun, plural, 1 word. Glossary: form → formularz.",
   "permissions.resource.leads": "Label of the 'leads' module. Noun, plural, 1 word. Glossary: lead stays 'lead' in Polish and inflects.",

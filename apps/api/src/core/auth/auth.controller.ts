@@ -14,6 +14,7 @@ import { FastifyRequest } from 'fastify';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { SessionGuard } from './session.guard';
+import { RbacService } from '../rbac/rbac.service';
 import { IsEmail, IsIn, IsString, MinLength, ValidateIf } from 'class-validator';
 // Relative import (like permission-catalog): `nest build` is plain tsc; a bare
 // '@khirby/types' specifier would survive into dist. SUPPORTED_LOCALE_CODES is a
@@ -46,7 +47,10 @@ class ChangePasswordDto {
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private auth: AuthService) {}
+  constructor(
+    private auth: AuthService,
+    private rbac: RbacService,
+  ) {}
 
   @Post('login')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
@@ -60,7 +64,8 @@ export class AuthController {
     await req.session.regenerate();
     req.session.userId = user.id;
     await req.session.save();
-    return { user };
+    const permissions = await this.rbac.getUserPermissions(user.id);
+    return { user: { ...user, permissions } };
   }
 
   @Post('logout')
@@ -82,7 +87,8 @@ export class AuthController {
   async me(@Req() req: FastifyRequest): Promise<SessionUser> {
     const user = await this.auth.findById((req.session as any).userId);
     if (!user) throw AppException.sessionExpired();
-    return { id: user.id, email: user.email, locale: user.locale };
+    const permissions = await this.rbac.getUserPermissions(user.id);
+    return { id: user.id, email: user.email, locale: user.locale, permissions };
   }
 
   @Put('locale')

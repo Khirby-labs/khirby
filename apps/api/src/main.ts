@@ -40,7 +40,11 @@ class IoRedisSessionStore {
 }
 import { AllExceptionsFilter } from './core/filters/all-exceptions.filter';
 import { validationExceptionFactory } from './core/errors/validation-exception-factory';
-import { parseCorsOrigin, resolveSessionSecret } from './core/security/bootstrap-env';
+import {
+  parseCorsOrigin,
+  resolveListenPort,
+  resolveSessionSecret,
+} from './core/security/bootstrap-env';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -170,11 +174,11 @@ async function bootstrap() {
         withCredentials: true,
       },
     });
-    const port = process.env.PORT ?? 3000;
+    const port = resolveListenPort();
     logger.log(`Swagger UI: http://localhost:${port}/api/docs`);
   }
 
-  const port = process.env.PORT ?? 3000;
+  const port = resolveListenPort();
   await app.listen(port, '0.0.0.0');
   logger.log(`API listening on http://0.0.0.0:${port} [${isDev ? 'development' : 'production'}]`);
 }

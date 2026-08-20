@@ -304,6 +304,13 @@ export interface InstancePluginsLike {
   hotLoad(absPackageDir: string): Promise<{ name: string }>;
   /** Same rules as hotLoad, without mutating the process. */
   validate(absPackageDir: string): { name: string };
+  /** validate → manifest → hotLoad (first time) or enable/install row (retry). */
+  installFromDirectory(
+    localDir: string,
+    packageName?: string,
+  ): Promise<{ name: string; status: 'installed' | 're-enabled' | 'already_active' }>;
+  /** Delete volume files, manifest entry, and DB row (process memory until restart). */
+  removeInstance(localDir: string): Promise<{ name: string }>;
   appendManifest(packageName: string, localDir: string): void;
   /** Shared authoring contract (events, volume, ./web ban). */
   pluginContract(): string;
@@ -313,9 +320,30 @@ export interface InstancePluginsLike {
     path: string,
     content: string,
   ): { directory: string; path: string; bytes: number };
+  /**
+   * Re-read a volume plugin already in this process and rebind its GET handlers.
+   * No-op (not_loaded) when the name is not in the live registry yet.
+   */
+  reloadFromDirectory(
+    localDir: string,
+  ): Promise<{ name: string; status: 'reloaded' | 'not_loaded' }>;
   readFile(directory: string, path: string): { directory: string; path: string; content: string };
   listFiles(directory: string): { directory: string; files: string[] };
 }
 
 /** Marker metadata key for PluginEnabledGuard */
 export const PLUGIN_NAME_KEY = 'crm-plugin-name';
+
+/**
+ * BYOK LLM config from crm-plugin-ai-compose (ADR-0040).
+ * Agent chat consumes this token — @Optional() when plugin is absent.
+ */
+export const AI_COMPOSE_LLM = 'AI_COMPOSE_LLM';
+
+export interface AiComposeLlmLike {
+  getCompletionConfig(): Promise<{
+    baseUrl: string;
+    apiKey: string;
+    model: string;
+  } | null>;
+}

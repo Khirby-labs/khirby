@@ -86,9 +86,21 @@ describe('RolesView — permission matrix', () => {
 
     // Plural + fraction messages, each a single key — a missing one would show
     // the key path here instead of copy. One role in the fixture, so English
-    // takes its singular form; the module fraction counts all nine modules.
+    // takes its singular form; the module fraction counts all permission pairs.
     expect(wrapper.text()).toContain('Role (1)');
-    expect(wrapper.text()).toContain('1/9 modules');
+    expect(wrapper.text()).toContain('1/11 modules');
+  });
+
+  it('renders separate checkboxes for agent use and manage', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    const useBox = wrapper.find('input[aria-label="Grant access to Use Ask Khirby"]');
+    const manageBox = wrapper.find('input[aria-label="Grant access to Manage Ask Khirby"]');
+    expect(useBox.exists()).toBe(true);
+    expect(manageBox.exists()).toBe(true);
+    expect((useBox.element as HTMLInputElement).checked).toBe(false);
+    expect((manageBox.element as HTMLInputElement).checked).toBe(false);
   });
 
   it('PUTs the updated module set when a module is toggled and saved', async () => {

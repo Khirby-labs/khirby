@@ -1,8 +1,17 @@
-import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { createJiti } from 'jiti';
 import type { CrmPlugin } from '@khirby/plugin-sdk';
 import { type InstancePluginScaffoldInput, writeScaffold } from './instance-plugin-scaffold';
+import { assertInstancePluginShape } from './instance-plugin-validate';
 
 /** Sidecar inside `plugins/` — not the repo-root image manifest. */
 export const INSTANCE_MANIFEST = 'instance.manifest.json';
@@ -93,6 +102,61 @@ export function appendInstanceManifest(dir: string, packageName: string, localDi
   writeFileSync(join(dir, INSTANCE_MANIFEST), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
 }
 
+export function removeInstanceManifest(dir: string, localDir: string): void {
+  if (!existsSync(dir)) return;
+  const manifest = readManifest(dir);
+  const next = manifest.plugins.filter((p) => p.local !== localDir);
+  if (next.length === manifest.plugins.length) return;
+  writeFileSync(
+    join(dir, INSTANCE_MANIFEST),
+    `${JSON.stringify({ plugins: next }, null, 2)}\n`,
+    'utf8',
+  );
+}
+
+/** Volume segment for an installed plugin name, or null when not on the instance volume. */
+export function findInstanceLocalDirForPlugin(
+  volumeDir: string,
+  pluginName: string,
+): string | null {
+  const manifest = readManifest(volumeDir);
+  for (const entry of manifest.plugins) {
+    if (entry.package === pluginName) return entry.local;
+    const pkgDir = join(volumeDir, entry.local);
+    if (!existsSync(join(pkgDir, 'package.json'))) continue;
+    try {
+      if (loadPluginFromDir(pkgDir).name === pluginName) return entry.local;
+    } catch {
+      // Broken tree — keep scanning.
+    }
+  }
+  if (!existsSync(volumeDir)) return null;
+  for (const local of readdirSync(volumeDir)) {
+    if (!isSafeLocalSegment(local) || FIRST_PARTY_PLUGIN_DIRS.includes(local)) continue;
+    const pkgDir = join(volumeDir, local);
+    if (!statSync(pkgDir).isDirectory()) continue;
+    if (!existsSync(join(pkgDir, 'package.json'))) continue;
+    try {
+      if (loadPluginFromDir(pkgDir).name === pluginName) return local;
+    } catch {
+      // Orphan or invalid package — skip.
+    }
+  }
+  return null;
+}
+
+export function readPackageName(absDir: string): string {
+  const pkgPath = join(absDir, 'package.json');
+  if (!existsSync(pkgPath)) {
+    throw new Error('package.json missing');
+  }
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>;
+  if (typeof pkg.name !== 'string' || !pkg.name.trim()) {
+    throw new Error('package.json name is required');
+  }
+  return pkg.name.trim();
+}
+
 function exportsDot(pkg: Record<string, unknown>): string | undefined {
   const exportsField = pkg.exports;
   if (typeof exportsField === 'string') return exportsField;
@@ -134,7 +198,10 @@ export function loadPluginFromDir(absDir: string): CrmPlugin {
     throw err;
   }
   const entry = resolvePackageEntry(absDir);
-  const jiti = createJiti(pkgPath);
+  // Nest decorators in instance-plugin entry files need reflect-metadata at jiti eval time.
+  require('reflect-metadata');
+  purgeInstancePluginLoadCache(absDir);
+  const jiti = createJiti(pkgPath, { moduleCache: false, fsCache: false });
   const loaded = jiti(entry) as {
     createPlugin?: () => CrmPlugin;
     default?: { createPlugin?: () => CrmPlugin };
@@ -147,7 +214,19 @@ export function loadPluginFromDir(absDir: string): CrmPlugin {
   if (!plugin?.name) {
     throw new Error('createPlugin returned no name');
   }
+  assertInstancePluginShape(plugin);
   return plugin;
+}
+
+/** Drop Node/jiti/ts-node cache for a volume plugin so the next load sees disk. */
+export function purgeInstancePluginLoadCache(absDir: string): void {
+  const root = resolve(absDir);
+  const prefixes = [root + sep, `file://${root}${sep}`];
+  for (const key of Object.keys(require.cache)) {
+    if (prefixes.some((p) => key.startsWith(p)) || key === root) {
+      delete require.cache[key];
+    }
+  }
 }
 
 /**

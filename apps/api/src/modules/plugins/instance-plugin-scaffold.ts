@@ -14,45 +14,107 @@ export type InstancePluginScaffoldInput = {
  *
  * Nest templates gate on `integrations:manage` (there is no `plugins` resource).
  */
+export function pluginRouteSlug(name: string): string {
+  return name.replace(/^crm_/, '').replace(/_/g, '-');
+}
+
 export function scaffoldFileMap(input: InstancePluginScaffoldInput): Record<string, string> {
   const displayName = input.displayName?.trim() || input.name;
-  const nestBlock = input.nest
-    ? `
-import { Module, Controller, Get, UseGuards } from '@nestjs/common';
+  const routeSlug = pluginRouteSlug(input.name);
+
+  const nestModule = input.nest
+    ? `import 'reflect-metadata';
+import { Controller, Get, Inject, Injectable, Module, UseGuards } from '@nestjs/common';
+import { sql } from 'drizzle-orm';
 import {
   SessionGuard,
   PermissionGuard,
   RequirePermission,
   RequirePluginEnabled,
   PluginEnabledGuard,
+  DB_TOKEN,
 } from '@khirby/plugin-host';
 
-@Controller('plugins/${input.name.replace(/^crm_/, '')}')
-@UseGuards(SessionGuard, PermissionGuard, PluginEnabledGuard)
-@RequirePluginEnabled('${input.name}')
-@RequirePermission('integrations', 'manage')
-class PluginController {
-  @Get()
-  ping() {
-    return { ok: true, plugin: '${input.name}' };
+@Injectable()
+export class PluginStatsService {
+  constructor(@Inject(DB_TOKEN) private readonly db: { execute: (q: unknown) => Promise<unknown> }) {}
+
+  private async count(table: string): Promise<number> {
+    const rows = (await this.db.execute(sql.raw(\`select count(*)::int as c from \${table}\`))) as Array<{ c: number }>;
+    return rows[0]?.c ?? 0;
+  }
+
+  async stats() {
+    const [leads, users, contacts] = await Promise.all([
+      this.count('leads'),
+      this.count('users'),
+      this.count('contacts'),
+    ]);
+    return {
+      stats: [
+        { label: 'Leady', value: leads },
+        { label: 'Użytkownicy', value: users },
+        { label: 'Kontakty', value: contacts },
+      ],
+      footer: '',
+    };
   }
 }
 
-@Module({ controllers: [PluginController] })
-class PluginNestModule {}
+@Controller('plugins/${routeSlug}')
+@UseGuards(SessionGuard, PermissionGuard, PluginEnabledGuard)
+@RequirePluginEnabled('${input.name}')
+@RequirePermission('integrations', 'manage')
+export class PluginController {
+  constructor(private readonly stats: PluginStatsService) {}
+
+  @Get()
+  index() {
+    return this.stats.stats();
+  }
+}
+
+@Module({ controllers: [PluginController], providers: [PluginStatsService] })
+export class PluginNestModule {}
 `
     : '';
 
   const nestMethods = input.nest
     ? `
   getNestModule() {
-    return PluginNestModule;
+    require('reflect-metadata');
+    require('ts-node').register({
+      transpileOnly: true,
+      compilerOptions: {
+        module: 'commonjs',
+        experimentalDecorators: true,
+        emitDecoratorMetadata: true,
+        esModuleInterop: true,
+      },
+    });
+    const path = require('path');
+    const { createRequire } = require('module');
+    const pkgRoot = path.join(__dirname, '..');
+    const nativeRequire = createRequire(path.join(pkgRoot, 'package.json'));
+    return nativeRequire('./src/nest-module.ts').PluginNestModule;
+  }
+
+  getFrontendRoutes() {
+    return [
+      {
+        path: '/plugins/${routeSlug}',
+        name: 'plugin-${routeSlug}',
+        navLabel: ${JSON.stringify(displayName)},
+        navIcon: 'plugins',
+        showInNav: true,
+      },
+    ];
   }
 `
     : '';
 
   const index = `import type { CrmPlugin, CrmEvent, PluginContext } from '@khirby/plugin-sdk';
-${nestBlock}
+
 export class GeneratedPlugin implements CrmPlugin {
   name = '${input.name}';
   displayName = ${JSON.stringify(displayName)};
@@ -89,13 +151,19 @@ export function createPlugin(): CrmPlugin {
       '@khirby/plugin-sdk': '*',
       '@khirby/plugin-host': '*',
       '@nestjs/common': '*',
+      'drizzle-orm': '*',
+      'ts-node': '*',
     },
   };
 
-  return {
+  const files: Record<string, string> = {
     'package.json': `${JSON.stringify(pkg, null, 2)}\n`,
     'src/index.ts': index,
   };
+  if (input.nest) {
+    files['src/nest-module.ts'] = nestModule;
+  }
+  return files;
 }
 
 export function writeScaffold(root: string, input: InstancePluginScaffoldInput): string[] {

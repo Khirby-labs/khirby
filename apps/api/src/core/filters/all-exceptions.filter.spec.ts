@@ -104,4 +104,27 @@ describe('AllExceptionsFilter', () => {
       message: 'Internal server error',
     });
   });
+
+  it('does not send twice when reply was already sent (SSE hijack)', () => {
+    const sent = {} as { status: number; body: ApiErrorBody; sendCount: number };
+    sent.sendCount = 0;
+    const reply = {
+      sent: true,
+      raw: { writableEnded: false },
+      status(code: number) {
+        sent.status = code;
+        return this;
+      },
+      send(body: ApiErrorBody) {
+        sent.sendCount += 1;
+        sent.body = body;
+      },
+    };
+    const host = {
+      switchToHttp: () => ({ getResponse: () => reply }),
+    } as unknown as ArgumentsHost;
+
+    new AllExceptionsFilter().catch(AppException.notFound('role', 'r1'), host);
+    expect(sent.sendCount).toBe(0);
+  });
 });

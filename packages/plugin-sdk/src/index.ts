@@ -267,6 +267,12 @@ export interface CrmPlugin {
   onMigrate?(sql: PluginSqlClient): Promise<void>;
 
   /**
+   * Optional hook called by PluginRegistryService on uninstall.
+   * Drop plugin-owned tables and other persistent artifacts.
+   */
+  onUninstall?(sql: PluginSqlClient): Promise<void>;
+
+  /**
    * Wywoływane raz przy rejestracji pluginu.
    */
   onInit?(ctx: PluginContext): Promise<void> | void;

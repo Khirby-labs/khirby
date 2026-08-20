@@ -47,3 +47,12 @@ export function parseCorsOrigin(raw: string | undefined, isDev: boolean): string
   if (list.length === 1) return list[0];
   return list;
 }
+
+/**
+ * Nest listen port. `.env` documents `API_PORT`; Docker/PaaS typically inject `PORT`.
+ */
+export function resolveListenPort(env: NodeJS.ProcessEnv = process.env): number {
+  const raw = env.API_PORT ?? env.PORT ?? '3000';
+  const port = Number(raw);
+  return Number.isFinite(port) && port > 0 ? port : 3000;
+}

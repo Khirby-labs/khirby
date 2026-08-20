@@ -181,6 +181,23 @@ const staticRoutes: RouteRecordRaw[] = [
         meta: { titleKey: 'nav.workspace.mail' },
       },
 
+      {
+        path: 'ask',
+        meta: { layout: 'chat-focus', titleKey: 'nav.workspace.ask' },
+        children: [
+          {
+            path: '',
+            name: 'ask-new',
+            component: () => import('../views/agent/AskKhirbyView.vue'),
+          },
+          {
+            path: ':conversationId',
+            name: 'ask-thread',
+            component: () => import('../views/agent/AskKhirbyView.vue'),
+          },
+        ],
+      },
+
       // Back-compat: the old top-level admin routes now live under Settings
       { path: 'users', redirect: '/settings/members' },
       { path: 'roles', redirect: '/settings/roles' },
@@ -303,6 +320,10 @@ router.beforeEach(async (to) => {
       if (retry.name !== 'not-found') {
         return { path: to.fullPath, replace: true };
       }
+    }
+
+    if (to.path.startsWith('/ask') && !auth.hasPermission('agent', 'use')) {
+      return;
     }
   }
 });

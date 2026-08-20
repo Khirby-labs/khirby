@@ -17,6 +17,7 @@
   "palette.placeholder": "Placeholder in the palette input. Mentions contacts and pages. Ends with an ellipsis.",
   "palette.createTag": "Tiny mono tag on palette rows that create something rather than navigate. 1 word.",
   "palette.noMatches": "Shown when nothing matches. {query} is what the user typed and must be wrapped in the locale's own quotation marks (Polish „…”, English \"…\").",
+  "palette.askKhirby": "Fallback palette row when the input is empty — opens Ask Khirby. Product name stays English. ≤2 words.",
   "account.logOut": "Menu item that ends the session. Imperative, ≤2 words.",
   "account.trigger": "aria-label of the sidebar-footer account button. {email} is the signed-in address. Names what the button opens.",
   "account.unknownEmail": "Fallback shown in place of the email when the session has no user loaded yet. 1 word.",

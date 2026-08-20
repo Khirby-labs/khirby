@@ -134,6 +134,8 @@ export interface SessionUser {
    * with `isLocaleCode` before applying it.
    */
   locale: string | null;
+  /** Effective RBAC grants for this session; `[]` when the user has no roles. */
+  permissions: RolePermission[];
 }
 
 export interface LoginResponse {
@@ -296,6 +298,10 @@ export interface Plugin {
   installedAt: string;
   updatedAt: string;
   frontendRoutes?: PluginFrontendRoute[];
+  /** True when this process loaded the plugin code (image or hot-load). */
+  codeLoaded?: boolean;
+  /** False for native image plugins that cannot be removed from the instance. */
+  canUninstall?: boolean;
 }
 
 /**
@@ -313,19 +319,30 @@ export const PERMISSION_RESOURCES = [
   'roles',
   'users',
   'boards',
+  'agent',
 ] as const;
 
 export type PermissionResource = (typeof PERMISSION_RESOURCES)[number];
 
-export const PERMISSION_ACTIONS = ['manage'] as const;
+export const PERMISSION_ACTIONS = ['manage', 'use'] as const;
 
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
 
-/** Every valid (resource, action) pair — used to grant super-admin full access. */
+/**
+ * Every assignable (resource, action) pair — explicit list, not a cartesian product.
+ * Only `agent` may use `use`; all other resources stay `manage`-only.
+ */
 export const ALL_PERMISSIONS: ReadonlyArray<{
   resource: PermissionResource;
   action: PermissionAction;
-}> = PERMISSION_RESOURCES.map((resource) => ({ resource, action: 'manage' as const }));
+}> = [
+  ...PERMISSION_RESOURCES.filter((r) => r !== 'agent').map((resource) => ({
+    resource,
+    action: 'manage' as const,
+  })),
+  { resource: 'agent', action: 'use' },
+  { resource: 'agent', action: 'manage' },
+];
 
 // --- Locales (ADR-0011) ---
 

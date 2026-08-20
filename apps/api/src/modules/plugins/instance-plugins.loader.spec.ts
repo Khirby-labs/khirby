@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -8,6 +8,7 @@ import {
   INSTANCE_MANIFEST,
   isSafeLocalSegment,
   isSafeRelPath,
+  findInstanceLocalDirForPlugin,
   listInstancePluginFiles,
   loadInstancePlugins,
   loadPluginFromDir,
@@ -167,6 +168,49 @@ describe('instance-plugins.loader', () => {
     );
   });
 
+  it('loads nest module when getNestModule is called', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-nest-module-'));
+    const repoRoot = findRepoRoot(join(__dirname, '..'));
+    if (repoRoot) {
+      symlinkSync(join(repoRoot, 'apps/api/node_modules'), join(root, 'node_modules'));
+    }
+    scaffoldInstancePlugin(root, {
+      directory: 'crm-plugin-nest-mod',
+      name: 'crm_nest_mod',
+      displayName: 'Nest Mod',
+      nest: true,
+    });
+    const plugin = loadPluginFromDir(join(root, 'crm-plugin-nest-mod'));
+    require('reflect-metadata');
+    require('ts-node').register({
+      transpileOnly: true,
+      compilerOptions: {
+        module: 'commonjs',
+        experimentalDecorators: true,
+        emitDecoratorMetadata: true,
+        esModuleInterop: true,
+      },
+    });
+    expect(plugin.getNestModule?.()).toBeDefined();
+  });
+
+  it('loads a nest scaffold when node_modules is linked', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-nest-load-'));
+    const repoRoot = findRepoRoot(join(__dirname, '..'));
+    if (repoRoot) {
+      symlinkSync(join(repoRoot, 'apps/api/node_modules'), join(root, 'node_modules'));
+    }
+    scaffoldInstancePlugin(root, {
+      directory: 'crm-plugin-nest',
+      name: 'crm_nest_load',
+      displayName: 'Nest Load',
+      nest: true,
+    });
+    const plugin = loadPluginFromDir(join(root, 'crm-plugin-nest'));
+    expect(plugin.name).toBe('crm_nest_load');
+    expect(plugin.getFrontendRoutes?.()[0].navLabel).toBe('Nest Load');
+  });
+
   it('scaffoldInstancePlugin writes createPlugin and bare host imports', () => {
     const root = mkdtempSync(join(tmpdir(), 'instance-scaffold-'));
     const result = scaffoldInstancePlugin(root, {
@@ -174,14 +218,26 @@ describe('instance-plugins.loader', () => {
       name: 'crm_demo',
       nest: true,
     });
-    expect(result.files).toEqual(expect.arrayContaining(['package.json', 'src/index.ts']));
+    expect(result.files).toEqual(
+      expect.arrayContaining(['package.json', 'src/index.ts', 'src/nest-module.ts']),
+    );
     const src = readFileSync(join(result.directory, 'src/index.ts'), 'utf8');
     expect(src).toContain('export function createPlugin');
-    expect(src).toContain("from '@khirby/plugin-host'");
-    expect(src).not.toContain('packages/plugin-host/src');
-    expect(src).toContain("RequirePermission('integrations', 'manage')");
+    expect(src).not.toContain('@khirby/plugin-host');
+    expect(src).toContain('createRequire');
+    const nestSrc = readFileSync(join(result.directory, 'src/nest-module.ts'), 'utf8');
+    expect(nestSrc).toContain("from '@khirby/plugin-host'");
     expect(scaffoldFileMap({ directory: 'x', name: 'crm_x' })['package.json']).toContain(
       '@khirby/plugin-sdk',
     );
+  });
+
+  it('findInstanceLocalDirForPlugin resolves manifest and disk entries', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-find-'));
+    const local = 'hello-world';
+    writePlugin(join(root, local), { name: 'crm_hello_world' });
+    appendInstanceManifest(root, 'pkg-hello', local);
+    expect(findInstanceLocalDirForPlugin(root, 'crm_hello_world')).toBe(local);
+    expect(findInstanceLocalDirForPlugin(root, 'crm_missing')).toBeNull();
   });
 });

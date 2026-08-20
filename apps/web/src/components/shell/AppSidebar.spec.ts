@@ -1,9 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import { createRouter, createWebHistory } from 'vue-router';
+import type { SessionUser } from '@khirby/types';
 import { mountWithI18n, withLocale, resetLocale } from '../../test/i18n';
 import AppSidebar from './AppSidebar.vue';
 import { usePluginsStore } from '../../stores/plugins.store';
+import { useAuthStore } from '../../stores/auth.store';
+import { useUiStore } from '../../stores/ui.store';
 
 /**
  * The first spec in components/shell/ — there was none, which is precisely why
@@ -34,12 +37,15 @@ function makeRouter() {
   });
 }
 
-async function mountSidebar(plugins: unknown[] = []) {
+async function mountSidebar(plugins: unknown[] = [], permissions: SessionUser['permissions'] = []) {
   const pinia = createPinia();
   setActivePinia(pinia);
 
   const store = usePluginsStore();
   store.plugins = plugins as never;
+
+  const auth = useAuthStore();
+  auth.user = { id: 'u1', email: 'admin@example.com', locale: null, permissions };
 
   const router = makeRouter();
   await router.push('/contacts');
@@ -142,5 +148,70 @@ describe('AppSidebar — section order', () => {
     expect(link!.html()).not.toBe(pluginLink!.html());
     // The storefront path is unique to the marketplace glyph.
     expect(link!.html()).toContain('M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8');
+  });
+
+  it('falls back plugin nav label to displayName when navLabel is missing', async () => {
+    const wrapper = await mountSidebar([
+      {
+        ...pluginWithRoute,
+        displayName: 'Hello World',
+        frontendRoutes: [
+          {
+            path: '/plugins/hello-world',
+            name: 'plugin-hello-world',
+            navIcon: 'plugins',
+          },
+        ],
+      },
+    ]);
+
+    expect(wrapper.text()).toContain('Hello World');
+  });
+});
+
+describe('AppSidebar — Ask Khirby visibility', () => {
+  it('hides Ask Khirby without agent:use', async () => {
+    const wrapper = await mountSidebar([], []);
+    const targets = wrapper.findAll('nav a').map((a) => a.attributes('href'));
+    expect(targets).not.toContain('/ask');
+  });
+
+  it('shows Ask Khirby when agent:use is granted', async () => {
+    const wrapper = await mountSidebar([], [{ resource: 'agent', action: 'use' }]);
+    const targets = wrapper.findAll('nav a').map((a) => a.attributes('href'));
+    expect(targets).toContain('/ask');
+    expect(wrapper.text()).toContain('Ask Khirby');
+  });
+});
+
+describe('AppSidebar — chat-focus rail', () => {
+  async function mountOnAsk() {
+    const pinia = createPinia();
+    setActivePinia(pinia);
+    const auth = useAuthStore();
+    auth.user = {
+      id: 'u1',
+      email: 'admin@example.com',
+      locale: null,
+      permissions: [{ resource: 'agent', action: 'use' }],
+    };
+    const router = createRouter({
+      history: createWebHistory(),
+      routes: [{ path: '/ask', component: { template: '<div />' } }],
+    });
+    await router.push('/ask');
+    await router.isReady();
+    return {
+      wrapper: mountWithI18n(AppSidebar, { global: { plugins: [pinia, router] } }),
+      ui: useUiStore(),
+    };
+  }
+
+  it('honours railCollapsed on the ask route instead of forcing collapse', async () => {
+    const { wrapper, ui } = await mountOnAsk();
+    ui.railCollapsed = false;
+    await wrapper.vm.$nextTick();
+    expect(wrapper.find('aside').classes()).not.toContain('md:w-16');
+    expect(wrapper.text()).toContain('Workspace');
   });
 });

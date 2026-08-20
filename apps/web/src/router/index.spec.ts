@@ -17,7 +17,7 @@ import { api } from '../test/api-base';
  * own redirect is what we measure, with no client-side navigation side effect.
  */
 
-const user = { id: 'u1', email: 'admin@example.com' };
+const user = { id: 'u1', email: 'admin@example.com', locale: null, permissions: [] };
 
 const listmonkPlugin = (enabled: boolean): Plugin => ({
   id: 'p1',

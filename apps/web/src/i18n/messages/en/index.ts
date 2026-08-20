@@ -20,6 +20,7 @@ import settings from './settings.json';
 import shell from './shell.json';
 import boards from './boards.json';
 import users from './users.json';
+import agent from './agent.json';
 
 export default {
   auth,
@@ -39,4 +40,5 @@ export default {
   shell,
   boards,
   users,
+  agent,
 };

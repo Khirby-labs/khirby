@@ -1,5 +1,7 @@
 import { Injectable, Inject, OnModuleInit, Logger, Optional, HttpException } from '@nestjs/common';
-import { LazyModuleLoader } from '@nestjs/core';
+import { existsSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { LazyModuleLoader, ModuleRef } from '@nestjs/core';
 import { eq } from 'drizzle-orm';
 import { Db } from '../../core/database/db';
 import { DB_TOKEN } from '../../core/database/database.module';
@@ -14,14 +16,19 @@ import {
   appendInstanceManifest,
   defaultInstancePluginsDir,
   ensureInstanceDir,
+  findInstanceLocalDirForPlugin,
   listInstancePluginFiles,
   loadPluginFromDir,
   pluginVolumeRoot,
   readInstancePluginFile,
+  readPackageName,
+  removeInstanceManifest,
   scaffoldInstancePlugin,
   writeInstancePluginFile,
 } from './instance-plugins.loader';
 import { INSTANCE_PLUGIN_CONTRACT } from './instance-plugin-contract';
+import { PluginNestHttpRegistrar } from './plugin-nest-http.registrar';
+import { InstancePluginHttpBridge } from './instance-plugin-http.bridge';
 
 type PluginRow = typeof plugins.$inferSelect;
 
@@ -50,6 +57,21 @@ export const RESERVED_INSTANCE_PLUGIN_NAMES: readonly string[] = [
   'crm_hello',
 ];
 
+export function isNativePlugin(name: string): boolean {
+  return (NATIVE_PLUGIN_NAMES as readonly string[]).includes(name);
+}
+
+/**
+ * Marketplace golden-path fixture (ADR-0035) — installable from Marketplace,
+ * not listed under Settings → Plugins. The row still exists while the demo
+ * path is exercised; operators manage it from Marketplace only.
+ */
+export const MARKETPLACE_DEMO_PLUGIN_NAMES = ['crm_hello'] as const;
+
+export function isMarketplaceDemoPlugin(name: string): boolean {
+  return (MARKETPLACE_DEMO_PLUGIN_NAMES as readonly string[]).includes(name);
+}
+
 @Injectable()
 export class PluginRegistryService implements OnModuleInit, InstancePluginsLike {
   private readonly logger = new Logger(PluginRegistryService.name);
@@ -58,8 +80,25 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
   constructor(
     @Inject(DB_TOKEN) private db: Db,
     @Inject(CRM_PLUGINS) private readonly registeredPlugins: CrmPlugin[],
+    private readonly moduleRef: ModuleRef,
     @Optional() private readonly lazyModuleLoader?: LazyModuleLoader,
   ) {}
+
+  private get pluginHttpRegistrar(): PluginNestHttpRegistrar | undefined {
+    try {
+      return this.moduleRef.get(PluginNestHttpRegistrar, { strict: false });
+    } catch {
+      return undefined;
+    }
+  }
+
+  private get instanceBridge(): InstancePluginHttpBridge | undefined {
+    try {
+      return this.moduleRef.get(InstancePluginHttpBridge, { strict: false });
+    } catch {
+      return undefined;
+    }
+  }
 
   /**
    * Boot no longer installs anything: a row in `plugins` IS the installation
@@ -87,6 +126,27 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       if (!row) continue;
       await this.syncInstalledPlugin(plugin, row);
     }
+
+    await this.bindVolumePluginHttp();
+  }
+
+  /**
+   * GET /api/plugins/:segment is owned by InstancePluginHttpBridgeController.
+   * Fastify matches that parametric route instead of the static Nest path from
+   * forRoot, so volume plugins must also bind handlers on the bridge at boot.
+   */
+  private async bindVolumePluginHttp(): Promise<void> {
+    for (const plugin of this.registeredPlugins) {
+      if (isNativePlugin(plugin.name)) continue;
+      const nestModule = plugin.getNestModule?.();
+      if (!nestModule) continue;
+      const paths = await this.pluginHttpRegistrar?.registerModuleRoutes(nestModule, {
+        pluginName: plugin.name,
+      });
+      if (paths?.length) {
+        this.logger.log(`Instance plugin ${plugin.name} HTTP routes: ${paths.join(', ')}`);
+      }
+    }
   }
 
   /** Seed the native set on a first boot, then bring each one up. */
@@ -109,6 +169,7 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     }
 
     this.logger.log(`First boot: seeded ${seeded} native plugin(s)`);
+    await this.bindVolumePluginHttp();
   }
 
   /**
@@ -233,7 +294,7 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
           ?.map(({ path, name, navLabel, navLabelKey, navIcon, showInNav }) => ({
             path,
             name,
-            navLabel,
+            navLabel: navLabel?.trim() || row.displayName || plugin.displayName || row.name,
             navLabelKey,
             navIcon,
             showInNav,
@@ -252,12 +313,16 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       descriptionKey: plugin?.descriptionKey,
       frontendRoutes,
       configSchema,
+      codeLoaded: !!plugin,
+      canUninstall: !isNativePlugin(row.name),
     };
   }
 
   async findAll() {
     const rows = await this.db.select().from(plugins);
-    return rows.map((row) => this.enrichRow(row));
+    return rows
+      .filter((row) => !isMarketplaceDemoPlugin(row.name))
+      .map((row) => this.enrichRow(row));
   }
 
   async findByName(name: string) {
@@ -394,7 +459,8 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       }
       return { name: plugin.name };
     } catch (err) {
-      const message = (err as Error).message;
+      const message =
+        err instanceof Error ? err.message || err.name || 'Plugin validation failed' : String(err);
       const errName = (err as Error).name;
       if (errName === 'web_not_hot_loadable' || message === 'web_not_hot_loadable') {
         throw AppException.badRequest('Vue ./web is not hot-loadable on an instance volume', {
@@ -414,6 +480,113 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       this.logger.error(`Cannot write instance manifest: ${(err as Error).message}`);
       throw AppException.upstreamFailed('instance-plugins');
     }
+  }
+
+  /**
+   * validate → manifest → hotLoad (first time) or enable/install row (retry).
+   * Safe to call when the plugin is already loaded in this process.
+   */
+  async installFromDirectory(
+    localDir: string,
+    packageName?: string,
+  ): Promise<{ name: string; status: 'installed' | 're-enabled' | 'already_active' }> {
+    const absDir = this.packageDir(localDir);
+    const { name } = this.validate(absDir);
+    const pkgName = packageName?.trim() || readPackageName(absDir);
+    this.appendManifest(pkgName, localDir);
+
+    if (!this.loadedNames().includes(name)) {
+      await this.hotLoad(absDir);
+      return { name, status: 'installed' };
+    }
+
+    const row = await this.findByName(name);
+    if (!row) {
+      await this.install(name);
+      return { name, status: 'installed' };
+    }
+    if (!row.enabled) {
+      await this.enable(name);
+      return { name, status: 're-enabled' };
+    }
+    await this.reloadFromDirectory(localDir);
+    return { name, status: 'already_active' };
+  }
+
+  /**
+   * Uninstall a non-native plugin: optional onUninstall, volume cleanup, row delete.
+   * In-memory code stays loaded until API restart (ADR-0036 append-only hotLoad).
+   */
+  async uninstall(name: string): Promise<{ name: string }> {
+    if (isNativePlugin(name)) {
+      throw AppException.badRequest(`Native plugin ${name} cannot be uninstalled`, {
+        reason: 'native_plugin',
+      });
+    }
+
+    const row = await this.findByName(name);
+    if (!row) throw AppException.notFound('plugin', name);
+
+    const plugin = this.registeredPlugins.find((p) => p.name === name);
+    this.contexts.delete(name);
+
+    if (plugin?.onUninstall) {
+      try {
+        await plugin.onUninstall((this.db as any).$client);
+        this.logger.log(`Plugin ${name}: uninstall migrations applied`);
+      } catch (err) {
+        this.logger.error(`Plugin ${name} onUninstall failed: ${(err as Error).message}`);
+        throw AppException.badRequest(`Plugin ${name} uninstall failed`);
+      }
+    }
+
+    const volumeDir = this.instanceDir();
+    const localDir = findInstanceLocalDirForPlugin(volumeDir, name);
+    if (localDir) {
+      const absDir = join(volumeDir, localDir);
+      if (existsSync(absDir)) {
+        rmSync(absDir, { recursive: true, force: true });
+      }
+      removeInstanceManifest(volumeDir, localDir);
+    }
+
+    this.instanceBridge?.unregisterPlugin(name);
+
+    await this.db.delete(plugins).where(eq(plugins.name, name));
+    this.logger.log(`Plugin uninstalled: ${name}`);
+    return { name };
+  }
+
+  /**
+   * Delete a volume plugin directory, its manifest entry, and DB row.
+   * Code stays in memory until API restart — disable routes by deleting the row.
+   */
+  async removeInstance(localDir: string): Promise<{ name: string }> {
+    const absDir = this.packageDir(localDir);
+    let name = localDir;
+    if (existsSync(absDir)) {
+      try {
+        name = loadPluginFromDir(absDir).name;
+      } catch {
+        // Orphan or broken tree — still remove files when no row exists.
+      }
+    }
+    let row = await this.findByName(name);
+    if (!row && /^crm_/.test(localDir)) {
+      row = await this.findByName(localDir);
+      if (row) name = localDir;
+    }
+    if (row) {
+      await this.uninstall(name);
+      this.logger.log(`Instance plugin removed from volume: ${localDir} (${name})`);
+      return { name };
+    }
+    if (existsSync(absDir)) {
+      rmSync(absDir, { recursive: true, force: true });
+    }
+    removeInstanceManifest(this.instanceDir(), localDir);
+    this.logger.log(`Instance plugin removed from volume: ${localDir} (${name})`);
+    return { name };
   }
 
   pluginContract(): string {
@@ -451,6 +624,44 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     } catch (err) {
       this.throwAuthoring(err);
     }
+  }
+
+  /**
+   * Re-jiti a volume plugin already in this process and rebind GET handlers on
+   * the HTTP bridge. Nest modules stay in the container (ADR-0036 append-only).
+   */
+  async reloadFromDirectory(
+    localDir: string,
+  ): Promise<{ name: string; status: 'reloaded' | 'not_loaded' }> {
+    const absDir = this.packageDir(localDir);
+    if (!existsSync(join(absDir, 'package.json'))) {
+      throw AppException.notFound('plugin', localDir);
+    }
+    const { name } = this.validate(absDir);
+    if (!this.loadedNames().includes(name)) {
+      return { name, status: 'not_loaded' };
+    }
+
+    const plugin = loadPluginFromDir(absDir);
+    const idx = this.registeredPlugins.findIndex((p) => p.name === name);
+    if (idx >= 0) this.registeredPlugins[idx] = plugin;
+    else this.registeredPlugins.push(plugin);
+
+    this.instanceBridge?.unregisterPlugin(name);
+
+    require('reflect-metadata');
+    const nestModule = plugin.getNestModule?.();
+    if (nestModule && this.lazyModuleLoader) {
+      await this.lazyModuleLoader.load(() => Promise.resolve(nestModule));
+      const paths = await this.pluginHttpRegistrar?.registerModuleRoutes(nestModule, {
+        replace: true,
+        pluginName: name,
+      });
+      if (paths?.length) {
+        this.logger.log(`Instance plugin ${name} HTTP routes reloaded: ${paths.join(', ')}`);
+      }
+    }
+    return { name, status: 'reloaded' };
   }
 
   readFile(directory: string, path: string): { directory: string; path: string; content: string } {
@@ -515,23 +726,38 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
 
     const plugin = loadPluginFromDir(absPackageDir);
     this.registeredPlugins.push(plugin);
+    this.logger.log(`Instance plugin loaded in-process: ${name} v${plugin.version}`);
 
-    const nestModule = plugin.getNestModule?.();
-    if (nestModule && this.lazyModuleLoader) {
-      // Instantiates providers only. Nest's LazyModuleLoader never maps
-      // controllers onto Fastify — GET /api/plugins/:name then swallows the
-      // same path with `null`. HTTP routes appear on the next process start,
-      // when PluginsModule.forRoot imports getNestModule() from the volume.
-      await this.lazyModuleLoader.load(() => Promise.resolve(nestModule));
-    }
-    if (nestModule) {
-      this.logger.warn(
-        `Plugin ${name} Nest HTTP is registered at API process start, not on hot-load — restart to expose controllers`,
-      );
-    }
+    try {
+      require('reflect-metadata');
+      const nestModule = plugin.getNestModule?.();
+      if (nestModule && this.lazyModuleLoader) {
+        await this.lazyModuleLoader.load(() => Promise.resolve(nestModule));
+        const paths = await this.pluginHttpRegistrar?.registerModuleRoutes(nestModule, {
+          pluginName: name,
+        });
+        if (paths?.length) {
+          this.logger.log(`Instance plugin ${name} HTTP routes: ${paths.join(', ')}`);
+        } else {
+          this.logger.warn(
+            `Instance plugin ${name}: Nest module loaded but no HTTP routes were registered`,
+          );
+        }
+      } else if (nestModule && !this.lazyModuleLoader) {
+        this.logger.warn(`Instance plugin ${name}: LazyModuleLoader unavailable — HTTP not wired`);
+      } else {
+        this.logger.log(`Instance plugin ${name}: no Nest module (UI page needs getNestModule)`);
+      }
 
-    await this.install(name);
-    return { name };
+      await this.install(name);
+      this.logger.log(`Instance plugin installed and enabled: ${name}`);
+      return { name };
+    } catch (err) {
+      const idx = this.registeredPlugins.lastIndexOf(plugin);
+      if (idx >= 0) this.registeredPlugins.splice(idx, 1);
+      this.instanceBridge?.unregisterPlugin(name);
+      throw err;
+    }
   }
 
   /**

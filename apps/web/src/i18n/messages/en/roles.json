@@ -66,6 +66,10 @@
   },
   "permissions": {
     "grantAria": "Grant access to {module}",
+    "agent": {
+      "use": "Use Ask Khirby",
+      "manage": "Manage Ask Khirby"
+    },
     "resource": {
       "contacts": "Contacts",
       "forms": "Forms",

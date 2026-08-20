@@ -19,18 +19,38 @@ function readRail(): boolean {
 export const useUiStore = defineStore('ui', () => {
   /** Desktop: sidebar collapsed to an icon rail. */
   const railCollapsed = ref(readRail());
+  /** Width/transform transition on the sidebar. */
+  const railAnimate = ref(true);
   /** Mobile: off-canvas sidebar drawer open. */
   const mobileNavOpen = ref(false);
   /** Global command palette (⌘K) visibility. */
   const commandOpen = ref(false);
 
-  function toggleRail() {
-    railCollapsed.value = !railCollapsed.value;
+  function persistRail() {
     try {
       localStorage.setItem(RAIL_STORAGE_KEY, railCollapsed.value ? '1' : '0');
     } catch {
       // storage unavailable — preference lives for this session only
     }
+  }
+
+  /** Programmatic rail toggle — animate defaults to true. */
+  function setRailCollapsed(value: boolean, options?: { animate?: boolean; persist?: boolean }) {
+    const animate = options?.animate !== false;
+    if (!animate) railAnimate.value = false;
+    railCollapsed.value = value;
+    if (options?.persist) persistRail();
+    if (!animate) {
+      requestAnimationFrame(() => {
+        railAnimate.value = true;
+      });
+    }
+  }
+
+  function toggleRail() {
+    railAnimate.value = true;
+    railCollapsed.value = !railCollapsed.value;
+    persistRail();
   }
 
   function openCommand() {
@@ -45,8 +65,10 @@ export const useUiStore = defineStore('ui', () => {
 
   return {
     railCollapsed,
+    railAnimate,
     mobileNavOpen,
     commandOpen,
+    setRailCollapsed,
     toggleRail,
     openCommand,
     closeCommand,

@@ -93,6 +93,8 @@ const I18N_ENFORCED = [
   'apps/web/src/components/ui/AppDateRangePicker.vue',
   // KBY-107 — Marketplace
   'apps/web/src/views/marketplace/MarketplaceView.vue',
+  // KBY-129 — Ask Khirby
+  'apps/web/src/views/agent/AskKhirbyView.vue',
   // Documentation, not enforcement, like the group above: the ratchet parses
   // <template> only, so listing a .ts file scans nothing. It is recorded here
   // because the store deliberately holds error CODES rather than sentences — the
@@ -158,6 +160,7 @@ const NOT_COPY = new Set([
  * the Title-Case check.
  */
 const PL_PROPER_NOUNS = new Set([
+  'Ask',
   'Khirby',
   'CRM',
   'Listmonk',

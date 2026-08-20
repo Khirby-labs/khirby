@@ -1,8 +1,10 @@
-<!DOCTYPE html>
+<!doctype html>
 <html data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <title>CRM</title>
     <script>
       // Pre-paint theme resolution — keep in sync with src/composables/useTheme.ts
@@ -12,7 +14,9 @@
           var pref = localStorage.getItem('crm-theme') || 'system';
           theme =
             pref === 'system'
-              ? (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+              ? window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light'
               : pref;
         } catch (e) {
           /* storage/matchMedia unavailable — stay dark */

@@ -35,4 +35,13 @@ describe('ui store', () => {
     ui.toggleCommand();
     expect(ui.commandOpen).toBe(true);
   });
+
+  it('collapses the rail instantly without persisting when animate is false', async () => {
+    const ui = useUiStore();
+    ui.setRailCollapsed(true, { animate: false });
+    expect(ui.railCollapsed).toBe(true);
+    expect(localStorage.getItem('crm-sidebar-rail')).toBeNull();
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    expect(ui.railAnimate).toBe(true);
+  });
 });

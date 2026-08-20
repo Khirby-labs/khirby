@@ -1,4 +1,4 @@
-import { parseCorsOrigin, resolveSessionSecret } from './bootstrap-env';
+import { parseCorsOrigin, resolveListenPort, resolveSessionSecret } from './bootstrap-env';
 
 describe('resolveSessionSecret', () => {
   const prev = process.env.SESSION_SECRET;
@@ -46,5 +46,20 @@ describe('parseCorsOrigin', () => {
       'https://a.com',
       'https://b.com',
     ]);
+  });
+});
+
+describe('resolveListenPort', () => {
+  it('prefers API_PORT over PORT', () => {
+    expect(resolveListenPort({ API_PORT: '4000', PORT: '3000' })).toBe(4000);
+  });
+
+  it('falls back to PORT, then 3000', () => {
+    expect(resolveListenPort({ PORT: '8080' })).toBe(8080);
+    expect(resolveListenPort({})).toBe(3000);
+  });
+
+  it('ignores non-numeric values', () => {
+    expect(resolveListenPort({ API_PORT: 'nope' })).toBe(3000);
   });
 });

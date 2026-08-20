@@ -51,9 +51,26 @@ describe('SetPermissionsDto', () => {
     expect(errors).toHaveLength(0);
   });
 
+  it('accepts agent use and manage pairs', async () => {
+    const { errors } = await errorsFor(SetPermissionsDto, {
+      permissions: [
+        { resource: 'agent', action: 'use' },
+        { resource: 'agent', action: 'manage' },
+      ],
+    });
+    expect(errors).toHaveLength(0);
+  });
+
   it('rejects an unknown resource', async () => {
     const { errors } = await errorsFor(SetPermissionsDto, {
       permissions: [{ resource: 'bogus', action: 'manage' }],
+    });
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('rejects contacts:use — use is only valid for agent', async () => {
+    const { errors } = await errorsFor(SetPermissionsDto, {
+      permissions: [{ resource: 'contacts', action: 'use' }],
     });
     expect(errors.length).toBeGreaterThan(0);
   });

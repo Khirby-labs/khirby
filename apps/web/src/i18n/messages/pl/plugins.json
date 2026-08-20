@@ -62,7 +62,8 @@
   "errors": {
     "load": "Nie udało się wczytać wtyczek",
     "saveConfig": "Nie udało się zapisać konfiguracji",
-    "toggle": "Nie udało się zmienić stanu wtyczki"
+    "toggle": "Nie udało się zmienić stanu wtyczki",
+    "uninstall": "Nie udało się odinstalować wtyczki"
   },
   "list": {
     "configure": "Konfiguruj",
@@ -76,8 +77,14 @@
     "enabled": "Włączona",
     "enableToConfigure": "Włącz wtyczkę, aby edytować jej ustawienia.",
     "installed": "Zainstalowano {date}",
+    "orphanWarning": "Kod wtyczki nie jest załadowany w tym procesie — odinstaluj, aby usunąć wpis.",
     "subtitle": "Zarządzanie zainstalowanymi wtyczkami i ich konfiguracją.",
-    "title": "Wtyczki"
+    "title": "Wtyczki",
+    "uninstall": "Odinstaluj",
+    "uninstallAria": "Odinstaluj wtyczkę {name}",
+    "uninstallConfirm": "Spowoduje to usunięcie wtyczki {name} i danych, które do niej należą. Uruchom ponownie API, aby wyrzucić kod z pamięci.",
+    "uninstallConfirmAction": "Odinstaluj {name}",
+    "uninstallTitle": "Odinstalować wtyczkę?"
   },
   "listmonk": {
     "config": {
@@ -107,7 +114,8 @@
   },
   "toast": {
     "disabled": "Wtyczka {name} została wyłączona.",
-    "enabled": "Wtyczka {name} została włączona."
+    "enabled": "Wtyczka {name} została włączona.",
+    "uninstalled": "Wtyczka {name} została odinstalowana."
   },
   "webhook": {
     "config": {

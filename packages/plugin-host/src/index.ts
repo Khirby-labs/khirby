@@ -51,6 +51,8 @@ export {
   POKELO_CONTEXT_SERVICE,
   type PokeloContextServiceLike,
   type PokeloFetchOpts,
+  AI_COMPOSE_LLM,
+  type AiComposeLlmLike,
   INSTANCE_PLUGINS,
   type InstancePluginsLike,
   type InstancePluginScaffoldInput,

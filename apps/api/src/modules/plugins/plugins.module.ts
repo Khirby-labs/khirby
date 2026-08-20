@@ -6,6 +6,9 @@ import {
   PluginEnabledGuard,
 } from '../../../../../packages/plugin-host/src';
 import { PluginRegistryService } from './plugin-registry.service';
+import { PluginNestHttpRegistrar } from './plugin-nest-http.registrar';
+import { InstancePluginHttpBridge } from './instance-plugin-http.bridge';
+import { InstancePluginHttpBridgeController } from './instance-plugin-http.controller';
 import { PluginsController } from './plugins.controller';
 import { RbacModule } from '../../core/rbac/rbac.module';
 import { PluginBridgeModule } from './plugin-bridge.module';
@@ -19,10 +22,12 @@ export class PluginsModule {
       module: PluginsModule,
       global: true,
       imports: [PluginBridgeModule, ...pluginNestModules],
-      controllers: [PluginsController],
+      controllers: [PluginsController, InstancePluginHttpBridgeController],
       providers: [
         { provide: CRM_PLUGINS, useValue: plugins },
         PluginRegistryService,
+        InstancePluginHttpBridge,
+        PluginNestHttpRegistrar,
         { provide: PLUGIN_REGISTRY, useExisting: PluginRegistryService },
         { provide: INSTANCE_PLUGINS, useExisting: PluginRegistryService },
         PluginEnabledGuard,

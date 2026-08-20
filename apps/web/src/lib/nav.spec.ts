@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import {
   buildCommandGroups,
   filterCommandGroups,
+  filterNavForUser,
   workspaceNav,
   marketplaceNav,
   settingsNav,
@@ -88,6 +89,25 @@ describe('buildCommandGroups', () => {
     const groups = buildCommandGroups(t, []);
     expect(groups[0].items.map((i) => i.label)).toContain('Kontakty');
     expect(groups[0].heading).not.toBe('Navigate');
+  });
+});
+
+describe('filterNavForUser', () => {
+  it('hides Ask Khirby without agent:use', () => {
+    const paths = filterNavForUser(workspaceNav, []).map((i) => i.to);
+    expect(paths).not.toContain('/ask');
+  });
+
+  it('shows Ask Khirby when agent:use is granted', () => {
+    const paths = filterNavForUser(workspaceNav, [{ resource: 'agent', action: 'use' }]).map(
+      (i) => i.to,
+    );
+    expect(paths).toContain('/ask');
+  });
+
+  it('leaves unrestricted nav entries visible', () => {
+    const paths = filterNavForUser(workspaceNav, []).map((i) => i.to);
+    expect(paths).toContain('/contacts');
   });
 });
 
