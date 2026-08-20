@@ -375,16 +375,16 @@ function buildToolFallbackSummaryFromTrace(
       failed
         .map((t) => t.summary)
         .filter(Boolean)
-        .join('\n\n') || 'Operacja nie powiodła się.'
+        .join('\n\n') || 'Operation failed.'
     );
   }
   const lastOk = [...toolTrace].reverse().find((t) => t.ok);
-  return lastOk?.summary ?? 'Gotowe.';
+  return lastOk?.summary ?? 'Done.';
 }
 
 function buildToolFallbackSummary(messages: LlmMessage[]): string {
   const toolLines = messages
     .filter((m) => m.role === 'tool' && m.content?.trim())
     .map((m) => m.content!.trim());
-  return toolLines.at(-1) ?? 'Gotowe.';
+  return toolLines.at(-1) ?? 'Done.';
 }

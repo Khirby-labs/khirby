@@ -1,6 +1,5 @@
 /**
- * CRM Khirby Plugin SDK
- * Minimalne interfejsy potrzebne do pisania pluginów.
+ * CRM Khirby Plugin SDK — minimal interfaces for authoring plugins.
  */
 
 /**
@@ -10,8 +9,6 @@
 export type PluginSqlClient = {
   unsafe: (query: string, params?: unknown[]) => Promise<unknown>;
 };
-
-// ─── Typy eventów ─────────────────────────────────────────────────────────────
 
 export interface ContactCreatedEvent {
   type: 'contact.created';
@@ -122,23 +119,15 @@ export type CrmEvent =
   | EmailReceivedEvent
   | EmailSentEvent;
 
-// ─── Kontekst pluginu ─────────────────────────────────────────────────────────
-
 export interface PluginContext {
-  /** Logger z prefiksem nazwy pluginu */
   log: (message: string, ...args: unknown[]) => void;
-  /** Konfiguracja z env vars / plugin settings */
   config: Record<string, string | undefined>;
 }
 
-// ─── Frontend pluginu ─────────────────────────────────────────────────────────
-
 export interface PluginFrontendRoute {
-  /** Ścieżka routera Vue, np. '/plugins/listmonk' */
   path: string;
-  /** Nazwa trasy, np. 'plugin-listmonk' */
   name: string;
-  /** Label w nawigacji — English literal, used as the fallback (ADR-0011) */
+  /** English literal used as the i18n fallback (ADR-0011) */
   navLabel: string;
   /**
    * Optional message key the SPA resolves instead of `navLabel`. The backend
@@ -146,7 +135,6 @@ export interface PluginFrontendRoute {
    * unknown key (a third-party plugin) falls back to the literal above.
    */
   navLabelKey?: string;
-  /** Ikona emoji */
   navIcon: string;
   /**
    * When false, the route is still registered but omitted from the sidebar
@@ -155,11 +143,9 @@ export interface PluginFrontendRoute {
    */
   showInNav?: boolean;
   /**
-   * Komponent Vue – lazy import, np.:
-   *   () => import('@khirby/plugin-listmonk/views/ListmonkView.vue')
-   * Plugin-sdk jest package-agnostic; konkretny plugin wstrzykuje funkcję importu.
-   * Prefer `exports["./web"]` (PluginWebEntry) for npm packages — the SPA merges
-   * the real component from the generated registry keyed by CrmPlugin.name.
+   * Lazy Vue component. Prefer `exports["./web"]` (`PluginWebEntry`) for npm
+   * packages — the SPA merges the real component from the generated registry
+   * keyed by `CrmPlugin.name`.
    */
   component: () => Promise<any>;
 }
@@ -172,7 +158,6 @@ export interface PluginFrontendRoute {
 export interface PluginWebChildRoute {
   path: string;
   name?: string;
-  /** Lazy component loader — supplied by the plugin's ./web entry */
   component?: () => Promise<unknown>;
   redirect?: string | { name: string };
   meta?: Record<string, unknown>;
@@ -194,8 +179,6 @@ export interface PluginWebEntry {
   };
 }
 
-// ─── Schemat konfiguracji (UI w panelu Plugins) ───────────────────────────────
-
 export type PluginConfigFieldType =
   'text' | 'password' | 'url' | 'select' | 'api-multiselect' | 'textarea' | 'multiselect';
 
@@ -214,9 +197,8 @@ export interface PluginConfigPlaceholder {
 }
 
 export interface PluginConfigField {
-  /** Klucz zapisywany w DB (np. LISTMONK_URL) */
   key: string;
-  /** Etykieta widoczna dla użytkownika — English literal, used as the fallback */
+  /** English literal used as the i18n fallback */
   label: string;
   /** Message key the SPA resolves instead of `label`; falls back to it if unknown */
   labelKey?: string;
@@ -226,21 +208,18 @@ export interface PluginConfigField {
   descriptionKey?: string;
   placeholder?: string;
   required?: boolean;
-  /** Dla type === 'select' | 'multiselect' */
   options?: PluginConfigOption[];
-  /** Dla type === 'api-multiselect' — ścieżka API zwracająca opcje */
+  /** For `api-multiselect` — API path that returns options */
   optionsUrl?: string;
   /** Legend of auto-filled `{{token}}` values (shown under textarea templates) */
   placeholders?: PluginConfigPlaceholder[];
 }
 
-// ─── Interfejs pluginu ────────────────────────────────────────────────────────
-
 export interface CrmPlugin {
-  /** Unikalny identyfikator pluginu (snake_case) */
+  /** Unique plugin id (snake_case) */
   name: string;
 
-  /** Czytelna nazwa — English literal, seeded into the DB and used as the fallback */
+  /** English literal, seeded into the DB and used as the i18n fallback */
   displayName: string;
 
   /**
@@ -250,13 +229,11 @@ export interface CrmPlugin {
    */
   displayNameKey?: string;
 
-  /** Krótki opis */
   description?: string;
 
   /** Message key the SPA resolves instead of `description` */
   descriptionKey?: string;
 
-  /** Wersja semver */
   version: string;
 
   /**
@@ -272,32 +249,17 @@ export interface CrmPlugin {
    */
   onUninstall?(sql: PluginSqlClient): Promise<void>;
 
-  /**
-   * Wywoływane raz przy rejestracji pluginu.
-   */
   onInit?(ctx: PluginContext): Promise<void> | void;
 
-  /**
-   * Obsługa eventów CRM.
-   */
   onEvent?(event: CrmEvent, ctx: PluginContext): Promise<void> | void;
 
-  /**
-   * Opcjonalny NestJS DynamicModule dostarczający własne kontrolery/serwisy.
-   * PluginsModule.forRoot() automatycznie go importuje.
-   */
+  /** Optional NestJS DynamicModule providing the plugin's own controllers/services */
   getNestModule?(): any;
 
-  /**
-   * Trasy frontendowe które plugin chce dodać do routera Vue.
-   * Zwracane tylko gdy plugin jest włączony.
-   */
+  /** Frontend routes to register when the plugin is enabled */
   getFrontendRoutes?(): PluginFrontendRoute[];
 
-  /**
-   * Pola konfiguracji wyświetlane w panelu Plugins → Configure.
-   * Brak metody = plugin bez ustawień w UI.
-   */
+  /** Fields shown in Plugins → Configure; omit for plugins with no UI settings */
   getConfigSchema?(): PluginConfigField[];
 }
 
@@ -306,7 +268,5 @@ export interface CrmPlugin {
  * Prefer named `createPlugin` over a default class export.
  */
 export type CreatePlugin = () => CrmPlugin;
-
-// ─── Token iniekcji NestJS ────────────────────────────────────────────────────
 
 export const CRM_PLUGINS = 'CRM_PLUGINS';
