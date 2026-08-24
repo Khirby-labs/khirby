@@ -30,6 +30,8 @@ Instance volume:
 - install_instance_plugin is safe to retry when already loaded (reloads live GET); remove_instance_plugin deletes the volume dir + DB row (restart API to drop in-memory Nest modules).
 - Uninstall (UI or DELETE /api/plugins/installed/:name) runs onUninstall when defined, then drops the row. Native image plugins cannot be uninstalled.
 - scaffold with nest: true (default) for sidebar pages; validation requires getNestModule + getFrontendRoutes + navLabel together.
+- Canonical SPA path: /plugins/<slug> where slug = plugin name without crm_ and with _ → - (e.g. crm_hello_stats → /plugins/hello-stats). Nest @Controller must be plugins/<slug> (same slug). Directory name is independent and must not be used to build the URL.
+- After a successful install the host reports each live getFrontendRoutes() path as SPA page: /plugins/… so agents can Markdown-link the user without guessing. Never invent a path from name or directory.
 
 Do not:
 - Set exports["./web"] or web: true — Vue is not hot-loadable; install returns 400 web_not_hot_loadable

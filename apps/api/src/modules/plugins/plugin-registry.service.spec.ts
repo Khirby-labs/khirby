@@ -458,6 +458,34 @@ describe('PluginRegistryService', () => {
     });
   });
 
+  describe('frontendPages', () => {
+    it('returns live /plugins/ paths without rewriting them', () => {
+      const plugin = makePlugin({
+        name: 'crm_widget',
+        getFrontendRoutes: () => [
+          {
+            path: '/plugins/widget',
+            name: 'plugin-widget',
+            navLabel: 'Widget',
+            navIcon: 'plugins',
+          } as any,
+          {
+            path: '/stats-board',
+            name: 'legacy-non-canonical',
+            navLabel: 'Ignored',
+            navIcon: 'plugins',
+          } as any,
+        ],
+      });
+      const { db } = makeBootDb({ table: [] });
+      const svc = makeService([plugin], db);
+      expect(svc.frontendPages('crm_widget')).toEqual([
+        { path: '/plugins/widget', navLabel: 'Widget' },
+      ]);
+      expect(svc.frontendPages('missing')).toEqual([]);
+    });
+  });
+
   describe('findByName', () => {
     it('zwraca plugin gdy istnieje', async () => {
       const row = { id: 'uuid-4', name: 'test_plugin', enabled: true };

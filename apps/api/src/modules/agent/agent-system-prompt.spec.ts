@@ -16,6 +16,13 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('Never paste raw tool output');
   });
 
+  it('instructs autonomous tool use without asking permission', () => {
+    const prompt = buildAgentSystemPrompt({ hasPokelo: false, hasPluginTools: false });
+    expect(prompt).toContain('Tool autonomy');
+    expect(prompt).toContain('do not ask whether you should');
+    expect(prompt).toContain('call them, then answer');
+  });
+
   it('includes Pokelo guidance when configured', () => {
     const prompt = buildAgentSystemPrompt({ hasPokelo: true, hasPluginTools: false });
     expect(prompt).toContain('search_knowledge_base');
@@ -27,6 +34,11 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('describe_plugin_contract');
     expect(prompt).toContain('InstancePluginView');
     expect(prompt).toContain('stats:');
+    expect(prompt).toContain('SPA page:');
+    expect(prompt).toContain('[tutaj]');
+    expect(prompt).toContain('/plugins/');
+    expect(prompt).toContain('never invent a URL');
+    expect(prompt).toContain('without a full page reload');
   });
 
   it('includes both Pokelo and plugin sections when both available', () => {

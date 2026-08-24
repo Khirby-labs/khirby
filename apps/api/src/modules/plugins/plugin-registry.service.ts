@@ -403,6 +403,20 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     return this.registeredPlugins.map((plugin) => plugin.name);
   }
 
+  frontendPages(name: string): Array<{ path: string; navLabel: string }> {
+    const plugin = this.registeredPlugins.find((p) => p.name === name);
+    const routes = plugin?.getFrontendRoutes?.() ?? [];
+    const visible = routes.filter((route) => route.showInNav !== false);
+    const chosen = visible.length ? visible : routes;
+    // Same prefix as assertInstancePluginShape — never surface a non-/plugins/ path to agents.
+    return chosen
+      .filter((route) => typeof route.path === 'string' && route.path.startsWith('/plugins/'))
+      .map((route) => ({
+        path: route.path,
+        navLabel: typeof route.navLabel === 'string' ? route.navLabel.trim() : '',
+      }));
+  }
+
   /**
    * Install a plugin that is present in this process but has no row.
    *

@@ -62,4 +62,17 @@ describe('plugin-agent-tracker', () => {
     ]);
     expect(summary).toContain('not installed');
   });
+
+  it('fallback turns a successful install with SPA page into a Markdown link', () => {
+    const summary = pluginAwareFallbackSummary([
+      {
+        name: 'scaffold_plugin',
+        args: { directory: 'demo' },
+        ok: true,
+        summary:
+          'Scaffolded and installed crm_demo (installed) — live in this API process. SPA page: /plugins/demo (Demo)',
+      },
+    ]);
+    expect(summary).toBe('Plugin installed. To see the new plugin, click [here](/plugins/demo).');
+  });
 });

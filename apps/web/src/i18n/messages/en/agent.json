@@ -35,5 +35,10 @@
     "ai_compose_unavailable": "AI Compose is not configured.",
     "network_error": "Connection lost. Try again.",
     "stream_in_progress": "Already streaming this thread."
+  },
+  "message": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyFailed": "Couldn't copy to clipboard. Try selecting the text manually."
   }
 }

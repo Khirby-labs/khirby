@@ -8,6 +8,7 @@ import {
 import { RbacService } from '../../../core/rbac/rbac.service';
 import type { LlmToolDef } from '../agent-llm.client';
 import type { ToolRunResult } from './crm-tools.adapter';
+import { formatSpaPageHint } from '../plugin-page-hint';
 
 @Injectable()
 export class PluginToolsAdapter {
@@ -22,7 +23,7 @@ export class PluginToolsAdapter {
       fn('describe_plugin_contract', 'Show instance plugin authoring contract', {}),
       fn(
         'scaffold_plugin',
-        'Scaffold a new instance plugin directory and install it (defaults nest: true, install: true)',
+        'Scaffold a new instance plugin directory and install it (defaults nest: true, install: true). Success summary includes SPA page: <path> from getFrontendRoutes — copy that exact path into a Markdown link; never invent a URL',
         {
           directory: { type: 'string', description: 'One-segment folder under plugins/' },
           name: { type: 'string', description: 'crm_* plugin id' },
@@ -75,7 +76,7 @@ export class PluginToolsAdapter {
       ),
       fn(
         'install_instance_plugin',
-        'validate → manifest → hotLoad (retries when already loaded)',
+        'validate → manifest → hotLoad (retries when already loaded). Success summary includes SPA page: <path> from getFrontendRoutes — copy that exact path into a Markdown link; never invent a URL',
         {
           directory: { type: 'string' },
           packageName: {
@@ -120,7 +121,7 @@ export class PluginToolsAdapter {
             const result = await this.instancePlugins.installFromDirectory(directory);
             return {
               ok: true,
-              summary: `Scaffolded and installed ${result.name} (${result.status}) — live in this API process`,
+              summary: `Scaffolded and installed ${result.name} (${result.status}) — live in this API process. ${formatSpaPageHint(this.instancePlugins.frontendPages(result.name))}`,
             };
           } catch (err) {
             return {
@@ -179,7 +180,10 @@ export class PluginToolsAdapter {
             result.status === 'already_active'
               ? 'already active in this API process'
               : 'live in this API process';
-          return { ok: true, summary: `Installed ${result.name} (${result.status}) — ${note}` };
+          return {
+            ok: true,
+            summary: `Installed ${result.name} (${result.status}) — ${note}. ${formatSpaPageHint(this.instancePlugins.frontendPages(result.name))}`,
+          };
         }
         default:
           return { ok: false, code: 'unknown_tool', summary: 'Unknown tool' };

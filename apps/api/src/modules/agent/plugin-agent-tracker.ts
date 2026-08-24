@@ -1,5 +1,7 @@
 /** Tracks instance-plugin directories that were mutated but not yet installed in this turn. */
 
+import { spaPathFromSummary } from './plugin-page-hint';
+
 export type PluginTraceEntry = {
   name: string;
   args?: Record<string, unknown>;
@@ -72,7 +74,12 @@ export function pluginAwareFallbackSummary(trace: PluginTraceEntry[]): string | 
 
   if (trace.some((t) => pluginInstallSucceeded(t.name, t))) {
     const last = [...trace].reverse().find((t) => pluginInstallSucceeded(t.name, t));
-    return last?.summary ?? null;
+    if (!last) return null;
+    const path = spaPathFromSummary(last.summary);
+    if (path) {
+      return `Plugin installed. To see the new plugin, click [here](${path}).`;
+    }
+    return last.summary;
   }
 
   const failed = [...trace]

@@ -35,5 +35,10 @@
     "ai_compose_unavailable": "AI Compose nie jest skonfigurowany.",
     "network_error": "Utracono połączenie. Spróbuj ponownie.",
     "stream_in_progress": "Ten wątek już odpowiada."
+  },
+  "message": {
+    "copy": "Kopiuj",
+    "copied": "Skopiowano",
+    "copyFailed": "Nie udało się skopiować do schowka. Spróbuj wybrać tekst ręcznie."
   }
 }

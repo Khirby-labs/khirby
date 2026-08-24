@@ -23,6 +23,7 @@ describe('PluginToolsAdapter', () => {
       | 'installFromDirectory'
       | 'removeInstance'
       | 'reloadFromDirectory'
+      | 'frontendPages'
     >
   >;
 
@@ -44,6 +45,9 @@ describe('PluginToolsAdapter', () => {
       installFromDirectory: jest.fn().mockResolvedValue({ name: 'my_plugin', status: 'installed' }),
       removeInstance: jest.fn().mockResolvedValue({ name: 'my_plugin' }),
       reloadFromDirectory: jest.fn().mockResolvedValue({ name: 'my_plugin', status: 'reloaded' }),
+      frontendPages: jest
+        .fn()
+        .mockReturnValue([{ path: '/plugins/my-plugin', navLabel: 'My Plugin' }]),
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -76,7 +80,11 @@ describe('PluginToolsAdapter', () => {
     expect(instancePlugins.scaffold).toHaveBeenCalledWith(expect.objectContaining({ nest: true }));
     expect(instancePlugins.installFromDirectory).toHaveBeenCalledWith('crm-plugin-demo');
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.summary).toContain('Scaffolded and installed');
+    if (result.ok) {
+      expect(result.summary).toContain('Scaffolded and installed');
+      expect(result.summary).toContain('SPA page: /plugins/my-plugin (My Plugin)');
+    }
+    expect(instancePlugins.frontendPages).toHaveBeenCalledWith('my_plugin');
   });
 
   it('rejects write before scaffold', async () => {
@@ -137,8 +145,21 @@ describe('PluginToolsAdapter', () => {
       directory: 'my_plugin',
     });
     expect(result.ok).toBe(true);
-    if (result.ok) expect(result.summary).toContain('Installed my_plugin');
+    if (result.ok) {
+      expect(result.summary).toContain('Installed my_plugin');
+      expect(result.summary).toContain('SPA page: /plugins/my-plugin (My Plugin)');
+    }
     expect(instancePlugins.installFromDirectory).toHaveBeenCalledWith('my_plugin', undefined);
+    expect(instancePlugins.frontendPages).toHaveBeenCalledWith('my_plugin');
+  });
+
+  it('reports SPA page: none when the installed plugin has no UI route', async () => {
+    instancePlugins.frontendPages.mockReturnValue([]);
+    const result = await adapter.run('user-1', 'install_instance_plugin', {
+      directory: 'my_plugin',
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.summary).toContain('SPA page: none');
   });
 
   it('removes an instance plugin', async () => {

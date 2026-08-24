@@ -48,17 +48,30 @@
                   :key="msg.id"
                   :class="msg.role === 'user' ? 'flex justify-end' : 'w-full min-w-0'"
                 >
-                  <div
-                    v-if="msg.role === 'user'"
-                    class="max-w-xl rounded-xl bg-accent px-4 py-3 text-sm text-accent-ink"
-                  >
-                    <p class="whitespace-pre-wrap">{{ msg.content }}</p>
+                  <div v-if="msg.role === 'user'" class="flex max-w-xl flex-col items-end gap-1">
+                    <div class="rounded-xl bg-accent px-4 py-3 text-sm text-accent-ink">
+                      <p class="whitespace-pre-wrap">{{ msg.content }}</p>
+                    </div>
+                    <div
+                      v-if="showMessageMeta(msg)"
+                      class="flex items-center gap-2 px-1 text-[11px] text-text-ghost"
+                    >
+                      <time :datetime="msg.createdAt">{{ messageTimeLabel(msg.createdAt) }}</time>
+                      <button
+                        type="button"
+                        class="text-text-muted transition-colors hover:text-text-secondary"
+                        @click="copyMessage(msg)"
+                      >
+                        {{ t('agent.message.copy') }}
+                      </button>
+                    </div>
                   </div>
                   <div v-else class="w-full min-w-0">
                     <div
                       v-if="msg.content?.trim()"
                       class="md-prose text-sm"
                       v-html="renderMarkdown(msg.content)"
+                      @click="onMarkdownClick"
                     />
                     <p
                       v-else-if="showInlineStatus(msg)"
@@ -92,6 +105,19 @@
                       >
                         {{ pill.name }}
                       </span>
+                    </div>
+                    <div
+                      v-if="showMessageMeta(msg)"
+                      class="mt-2 flex items-center gap-2 text-[11px] text-text-ghost"
+                    >
+                      <time :datetime="msg.createdAt">{{ messageTimeLabel(msg.createdAt) }}</time>
+                      <button
+                        type="button"
+                        class="text-text-muted transition-colors hover:text-text-secondary"
+                        @click="copyMessage(msg)"
+                      >
+                        {{ t('agent.message.copy') }}
+                      </button>
                     </div>
                   </div>
                 </article>
@@ -130,27 +156,34 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter, RouterLink } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { useAuthStore } from '../../stores/auth.store';
 import { useAgentChatStore, type AgentMessage } from '../../stores/agent-chat.store';
+import { useToastStore } from '../../stores/toast.store';
 import { renderMarkdown } from '../../utils/markdown';
+import { inAppPathFromClick } from '../../utils/in-app-path';
+import { formatRelativeTime } from '../../utils/relative-time';
 import AskKhirbyHistoryRail from './AskKhirbyHistoryRail.vue';
 
 withDefaults(defineProps<{ historyOpen?: boolean }>(), { historyOpen: true });
 
-const { t } = useI18n();
+const { t, d, locale } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const auth = useAuthStore();
 const chat = useAgentChatStore();
+const toast = useToastStore();
 const { messages, isStreaming, statusCode, errorCode, activeConversationId } = storeToRefs(chat);
 
 const draft = ref('');
 const scrollEl = ref<HTMLElement | null>(null);
 const composerTextarea = ref<HTMLTextAreaElement | null>(null);
+/** Ticks so relative labels (5 min ago → 6 min ago) stay fresh. */
+const nowMs = ref(Date.now());
+let nowTimer: ReturnType<typeof setInterval> | null = null;
 
 /** Cap growth so long prompts stay readable without eating the whole viewport. */
 const COMPOSER_MAX_HEIGHT_PX = 192;
@@ -214,6 +247,29 @@ function showToolStatus(msg: AgentMessage) {
   );
 }
 
+function showMessageMeta(msg: AgentMessage) {
+  if (!msg.content?.trim()) return false;
+  if (isStreaming.value && msg === lastAssistant.value) return false;
+  return Boolean(msg.createdAt);
+}
+
+function messageTimeLabel(iso: string) {
+  // Depend on nowMs so labels recompute every tick.
+  void nowMs.value;
+  return formatRelativeTime(iso, String(locale.value), (date) => d(date, 'dateTime'), nowMs.value);
+}
+
+async function copyMessage(msg: AgentMessage) {
+  const text = msg.content?.trim();
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.success(t('agent.message.copied'));
+  } catch {
+    toast.error(t('agent.message.copyFailed'));
+  }
+}
+
 /** Keep the latest bubble in view while tokens stream and after history loads. */
 const scrollAnchor = computed(() => {
   const list = messages.value;
@@ -224,7 +280,7 @@ const scrollAnchor = computed(() => {
 function scrollToBottom(behavior: 'auto' | 'instant' | 'smooth' = 'smooth') {
   void nextTick(() => {
     const el = scrollEl.value;
-    if (!el) return;
+    if (!el || typeof el.scrollTo !== 'function') return;
     el.scrollTo({ top: el.scrollHeight, behavior });
   });
 }
@@ -232,6 +288,10 @@ function scrollToBottom(behavior: 'auto' | 'instant' | 'smooth' = 'smooth') {
 watch(scrollAnchor, () => scrollToBottom(isStreaming.value ? 'auto' : 'smooth'));
 
 onMounted(async () => {
+  nowTimer = setInterval(() => {
+    nowMs.value = Date.now();
+  }, 30_000);
+
   if (!hasAccess.value) return;
   const stateDraft = (history.state as { draft?: string } | null)?.draft;
   if (stateDraft) draft.value = stateDraft;
@@ -243,6 +303,11 @@ onMounted(async () => {
     scrollToBottom('auto');
   }
   void nextTick(() => fitComposer());
+});
+
+onUnmounted(() => {
+  if (nowTimer) clearInterval(nowTimer);
+  nowTimer = null;
 });
 
 watch(
@@ -282,6 +347,13 @@ async function onSend() {
   resetComposerHeight();
   scrollToBottom('smooth');
   await chat.sendMessage(text, activeConversationId.value);
+}
+
+function onMarkdownClick(event: MouseEvent) {
+  const path = inAppPathFromClick(event);
+  if (!path) return;
+  event.preventDefault();
+  void router.push(path);
 }
 </script>
 

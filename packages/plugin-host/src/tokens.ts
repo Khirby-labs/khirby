@@ -298,6 +298,12 @@ export interface InstancePluginsLike {
   /** Plugins already in this process (image + previously hot-loaded). */
   loadedNames(): string[];
   /**
+   * SPA pages from a loaded plugin's `getFrontendRoutes()` — only paths under
+   * `/plugins/` (same rule as instance validation). Empty when unknown / no UI.
+   * Callers must copy these paths; never invent URLs from name or directory.
+   */
+  frontendPages(name: string): Array<{ path: string; navLabel: string }>;
+  /**
    * Load `createPlugin()` from a directory on the volume, push onto the live
    * registry, optionally LazyModuleLoader, then install+activate.
    */

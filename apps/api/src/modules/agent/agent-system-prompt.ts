@@ -9,6 +9,7 @@ export function buildAgentSystemPrompt(opts: AgentSystemPromptOpts): string {
 Reply in the same language the user writes in (Polish or English).
 Be concise, accurate, and action-oriented. Use tools instead of guessing CRM data.
 Never end a turn with tool calls only — after tools finish, always write a clear user-facing summary in Markdown (same language as the user).`,
+    TOOL_AUTONOMY,
     RESPONSE_FORMAT,
     TOOL_WORKFLOW,
   ];
@@ -23,6 +24,13 @@ Never end a turn with tool calls only — after tools finish, always write a cle
 
   return sections.join('\n\n');
 }
+
+const TOOL_AUTONOMY = `## Tool autonomy
+
+When a tool can answer or advance the user's request, call it in this turn — do not ask whether you should look something up, check the instance, list data, or run a tool first.
+Decide which tools you need, call them, then answer from the results.
+Ask the user only when a tool cannot proceed without a real choice they must make (ambiguous target, missing required input, destructive action with more than one reasonable option).
+Never offer to "go check" as a follow-up when you could have called the tool already.`;
 
 const RESPONSE_FORMAT = `## Response formatting
 
@@ -112,9 +120,11 @@ Instance plugin pages without a Vue bundle:
 - Keep getNestModule() from scaffold (nest: true) — never replace it with ad-hoc methods like create(). Nest controllers belong in src/nest-module.ts (lazy require), not in index.ts.
 - Nest GET must return { stats: [{ label: string, value: number }, ...], footer?: string }. Put extra page copy in footer (same as footerText). Empty footer is hidden.
 - After write_instance_plugin_file the host reloads the live GET handler. Do not tell the user to restart the API. Do not claim a UI change unless the write summary says the handler was reloaded.
-- getFrontendRoutes() must include path, name, navLabel (and navIcon); path must match @Controller('plugins/<slug>').
+- getFrontendRoutes() must include path, name, navLabel (and navIcon). Canonical path is always /plugins/<slug> where slug = name without crm_ and with _ → - (crm_hello_stats → /plugins/hello-stats). That path must match @Controller('plugins/<slug>'). Never build the URL from the volume directory name.
 - Use DB_TOKEN + drizzle sql.raw for counts. Bare @khirby/* imports only.
 
 After a successful install: sidebar updates automatically in the SPA — do not ask the user to refresh unless install failed.
+
+When scaffold_plugin or install_instance_plugin succeeds, the tool summary includes SPA page: <path> from getFrontendRoutes() (always a /plugins/… path, or SPA page: none if no UI). Copy that path verbatim into a site-relative Markdown link — never invent a URL from name, slug, or directory, and never use an absolute http(s) URL. If a path is present, end the user-facing reply with one friendly sentence whose link text is "tutaj" (Polish) or "here" (English), e.g. Aby zobaczyć nowy plugin, kliknij [tutaj](/plugins/hello-stats). The chat UI navigates in-app without a full page reload. If SPA page is none, do not invent a link.
 
 On failure: read the tool error (validation lists missing fields), fix files with write_instance_plugin_file, retry install once. Do not rewrite working scaffold exports (createPlugin, getNestModule). Do not dump the contract or tool names in the user-facing reply unless they ask how it works.`;

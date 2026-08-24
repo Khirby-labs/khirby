@@ -21,5 +21,8 @@
   "status.runningTool": "Inline status while a tool runs. {tool} is the tool name from the API. Ends with an ellipsis.",
   "errors.ai_compose_unavailable": "Error when the AI Compose plugin is missing or not configured. One sentence.",
   "errors.network_error": "Error when the SSE connection drops. One sentence with a retry hint.",
-  "errors.stream_in_progress": "Error when the user sends while this thread is already streaming. One sentence."
+  "errors.stream_in_progress": "Error when the user sends while this thread is already streaming. One sentence.",
+  "message.copy": "Button under a chat bubble that copies the message text to the clipboard. Imperative, 1 word. Width-constrained.",
+  "message.copied": "Brief toast after a successful copy from a chat bubble. Past tense / confirmation, ≤2 words.",
+  "message.copyFailed": "Toast when clipboard write fails. What happened + what to do. One short sentence."
 }
