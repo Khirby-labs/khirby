@@ -23,13 +23,22 @@ const WORKSPACE_DIRS = {
   '@khirby/plugin-pokelo': 'crm-plugin-pokelo',
 };
 
+const pluginsRoot = join(root, 'plugins');
+
 function workspacePluginDir(packageName) {
   const mapped = WORKSPACE_DIRS[packageName];
   if (mapped) {
-    const dir = join(root, 'plugins', mapped);
+    const dir = join(pluginsRoot, mapped);
     if (existsSync(join(dir, 'package.json'))) return dir;
   }
   return null;
+}
+
+/** Same local-only signal as vendor-plugins-for-build (ADR-0037). */
+function useLocalPluginWorkspace() {
+  return (
+    process.env.KHIRBY_PLUGINS_WORKSPACE === '1' || existsSync(join(pluginsRoot, '.git'))
+  );
 }
 
 function resolveDepRange(entry) {
@@ -40,14 +49,15 @@ function resolveDepRange(entry) {
   /*
    * A `local` entry lives in this repository (examples/*) and is never published,
    * so it is ALWAYS a workspace link — deliberately independent of
-   * KHIRBY_PLUGINS_WORKSPACE, which only governs the optional plugins/ checkout.
-   * A semver range here would send CI's `pnpm install --frozen-lockfile` to the
-   * registry looking for a package that does not exist there.
+   * KHIRBY_PLUGINS_WORKSPACE / plugins/.git, which only govern the optional
+   * plugins/ checkout. A semver range here would send CI's
+   * `pnpm install --frozen-lockfile` to the registry looking for a package that
+   * does not exist there.
    */
   if (typeof entry.local === 'string' && entry.local) {
     return 'workspace:*';
   }
-  if (process.env.KHIRBY_PLUGINS_WORKSPACE === '1' && workspacePluginDir(name)) {
+  if (useLocalPluginWorkspace() && workspacePluginDir(name)) {
     return 'workspace:*';
   }
   if (entry.version && typeof entry.version === 'string') {
