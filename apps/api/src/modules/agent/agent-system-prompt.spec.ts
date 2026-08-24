@@ -8,6 +8,7 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('list_board_modules');
     expect(prompt).toContain('list_mail_threads');
     expect(prompt).not.toContain('search_knowledge_base');
+    expect(prompt).not.toContain('list_marketplace_plugins');
   });
 
   it('includes Markdown formatting guidance', () => {
@@ -21,6 +22,7 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('Tool autonomy');
     expect(prompt).toContain('do not ask whether you should');
     expect(prompt).toContain('call them, then answer');
+    expect(prompt).toContain('answer immediately');
   });
 
   it('includes Pokelo guidance when configured', () => {
@@ -29,11 +31,27 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('Use it eagerly');
   });
 
+  it('includes Marketplace guidance when marketplace tools are exposed', () => {
+    const prompt = buildAgentSystemPrompt({
+      hasPokelo: false,
+      hasPluginTools: false,
+      hasMarketplaceTools: true,
+    });
+    expect(prompt).toContain('list_marketplace_plugins');
+    expect(prompt).toContain('install_marketplace_plugin');
+    expect(prompt).toContain('catalogNewer');
+    expect(prompt).toContain('inCatalog');
+    expect(prompt).toContain('NOT published');
+    expect(prompt).toContain('NO update/upgrade tool');
+    expect(prompt).toContain('/marketplace');
+  });
+
   it('includes plugin authoring workflow when plugin tools are exposed', () => {
     const prompt = buildAgentSystemPrompt({ hasPokelo: false, hasPluginTools: true });
     expect(prompt).toContain('describe_plugin_contract');
     expect(prompt).toContain('InstancePluginView');
     expect(prompt).toContain('stats:');
+    expect(prompt).toContain('list_installed_plugins once');
     expect(prompt).toContain('SPA page:');
     expect(prompt).toContain('[tutaj]');
     expect(prompt).toContain('/plugins/');

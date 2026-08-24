@@ -13,6 +13,6 @@ import { MarketplaceService } from './marketplace.service';
   imports: [RbacModule],
   controllers: [MarketplaceController],
   providers: [MarketplaceCatalogService, MarketplaceService],
-  exports: [MarketplaceCatalogService],
+  exports: [MarketplaceCatalogService, MarketplaceService],
 })
 export class MarketplaceModule {}

@@ -4,22 +4,25 @@ import { ContactsModule } from '../contacts/contacts.module';
 import { LeadsModule } from '../leads/leads.module';
 import { BoardsModule } from '../boards/boards.module';
 import { MailModule } from '../mail/mail.module';
+import { MarketplaceModule } from '../marketplace/marketplace.module';
 import { AgentChatController } from './agent-chat.controller';
 import { AgentConversationsController } from './agent-conversations.controller';
 import { AgentChatService } from './agent-chat.service';
 import { AgentConversationsService } from './agent-conversations.service';
 import { CrmToolsAdapter } from './tools/crm-tools.adapter';
 import { MailToolsAdapter } from './tools/mail-tools.adapter';
+import { MarketplaceToolsAdapter } from './tools/marketplace-tools.adapter';
 import { PluginToolsAdapter, PokeloToolsAdapter } from './tools/plugin-tools.adapter';
 
 @Module({
-  imports: [RbacModule, ContactsModule, LeadsModule, BoardsModule, MailModule],
+  imports: [RbacModule, ContactsModule, LeadsModule, BoardsModule, MailModule, MarketplaceModule],
   controllers: [AgentChatController, AgentConversationsController],
   providers: [
     AgentChatService,
     AgentConversationsService,
     CrmToolsAdapter,
     MailToolsAdapter,
+    MarketplaceToolsAdapter,
     PluginToolsAdapter,
     PokeloToolsAdapter,
   ],

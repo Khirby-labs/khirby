@@ -61,9 +61,16 @@ describe('PluginToolsAdapter', () => {
     adapter = moduleRef.get(PluginToolsAdapter);
   });
 
-  it('lists installed plugins when permitted', async () => {
+  it('lists installed plugins with SPA page paths when permitted', async () => {
+    instancePlugins.frontendPages.mockImplementation((name: string) =>
+      name === 'crm_hello' ? [{ path: '/plugins/hello', navLabel: 'Hello' }] : [],
+    );
     const result = await adapter.run('user-1', 'list_installed_plugins', {});
-    expect(result).toEqual({ ok: true, summary: 'crm_hello' });
+    expect(result).toEqual({
+      ok: true,
+      summary: 'crm_hello | SPA page: /plugins/hello (Hello)',
+    });
+    expect(instancePlugins.frontendPages).toHaveBeenCalledWith('crm_hello');
   });
 
   it('requires integrations:manage and agent:use', async () => {

@@ -4,6 +4,7 @@ import { AgentChatService, MAX_ITERATIONS } from './agent-chat.service';
 import { AgentConversationsService } from './agent-conversations.service';
 import { CrmToolsAdapter } from './tools/crm-tools.adapter';
 import { MailToolsAdapter } from './tools/mail-tools.adapter';
+import { MarketplaceToolsAdapter } from './tools/marketplace-tools.adapter';
 import { PluginToolsAdapter, PokeloToolsAdapter } from './tools/plugin-tools.adapter';
 import { AI_COMPOSE_LLM } from '../../../../../packages/plugin-host/src/tokens';
 import { AgentLlmClient } from './agent-llm.client';
@@ -49,6 +50,7 @@ describe('AgentChatService', () => {
         { provide: AgentConversationsService, useValue: conversations },
         { provide: CrmToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PokeloToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
@@ -197,6 +199,7 @@ describe('AgentChatService', () => {
           },
         },
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PokeloToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
@@ -278,6 +281,7 @@ describe('AgentChatService', () => {
           },
         },
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PokeloToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
@@ -355,6 +359,7 @@ describe('AgentChatService', () => {
         { provide: AgentConversationsService, useValue: conversations },
         { provide: CrmToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         {
           provide: PluginToolsAdapter,
           useValue: {

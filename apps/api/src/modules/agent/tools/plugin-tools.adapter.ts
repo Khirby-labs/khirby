@@ -8,7 +8,7 @@ import {
 import { RbacService } from '../../../core/rbac/rbac.service';
 import type { LlmToolDef } from '../agent-llm.client';
 import type { ToolRunResult } from './crm-tools.adapter';
-import { formatSpaPageHint } from '../plugin-page-hint';
+import { formatInstalledPluginsSummary, formatSpaPageHint } from '../plugin-page-hint';
 
 @Injectable()
 export class PluginToolsAdapter {
@@ -19,7 +19,11 @@ export class PluginToolsAdapter {
 
   definitions(): LlmToolDef[] {
     return [
-      fn('list_installed_plugins', 'List plugins loaded in this process', {}),
+      fn(
+        'list_installed_plugins',
+        'List plugins loaded in this process. Each line is name | SPA page: /plugins/… (or SPA page: none). Use those paths for in-app links — do not invent URLs',
+        {},
+      ),
       fn('describe_plugin_contract', 'Show instance plugin authoring contract', {}),
       fn(
         'scaffold_plugin',
@@ -99,8 +103,15 @@ export class PluginToolsAdapter {
 
     try {
       switch (name) {
-        case 'list_installed_plugins':
-          return { ok: true, summary: this.instancePlugins.loadedNames().join(', ') || 'none' };
+        case 'list_installed_plugins': {
+          const names = this.instancePlugins.loadedNames();
+          return {
+            ok: true,
+            summary: formatInstalledPluginsSummary(names, (n) =>
+              this.instancePlugins.frontendPages(n),
+            ),
+          };
+        }
         case 'describe_plugin_contract':
           return { ok: true, summary: this.instancePlugins.pluginContract().slice(0, 500) };
         case 'scaffold_plugin': {

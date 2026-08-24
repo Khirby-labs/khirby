@@ -13,6 +13,7 @@ import {
 } from './agent-llm.client';
 import { CrmToolsAdapter } from './tools/crm-tools.adapter';
 import { MailToolsAdapter } from './tools/mail-tools.adapter';
+import { MarketplaceToolsAdapter } from './tools/marketplace-tools.adapter';
 import { PluginToolsAdapter, PokeloToolsAdapter } from './tools/plugin-tools.adapter';
 import { buildAgentSystemPrompt } from './agent-system-prompt';
 import {
@@ -39,6 +40,7 @@ export class AgentChatService {
     private conversations: AgentConversationsService,
     private crmTools: CrmToolsAdapter,
     private mailTools: MailToolsAdapter,
+    private marketplaceTools: MarketplaceToolsAdapter,
     private pluginTools: PluginToolsAdapter,
     private pokeloTools: PokeloToolsAdapter,
     @Optional() @Inject(AI_COMPOSE_LLM) private llmProvider: AiComposeLlmLike | null,
@@ -73,11 +75,13 @@ export class AgentChatService {
       }
 
       const history = await this.conversations.loadHistory(conversationId);
+      const marketplaceToolDefs = this.marketplaceTools.definitions();
       const pluginToolDefs = this.pluginTools.definitions();
       const pokeloToolDefs = this.pokeloTools.definitions();
       const tools = [
         ...this.crmTools.definitions(),
         ...this.mailTools.definitions(),
+        ...marketplaceToolDefs,
         ...pluginToolDefs,
         ...pokeloToolDefs,
       ];
@@ -88,6 +92,7 @@ export class AgentChatService {
           content: buildAgentSystemPrompt({
             hasPokelo: pokeloToolDefs.length > 0,
             hasPluginTools: pluginToolDefs.length > 0,
+            hasMarketplaceTools: marketplaceToolDefs.length > 0,
           }),
         },
         ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
@@ -302,10 +307,16 @@ export class AgentChatService {
 
   private resolveToolRunner(name: string) {
     const mailNames = new Set(this.mailTools.definitions().map((d) => d.function.name));
+    const marketplaceNames = new Set(
+      this.marketplaceTools.definitions().map((d) => d.function.name),
+    );
     const pluginNames = new Set(this.pluginTools.definitions().map((d) => d.function.name));
     const pokeloNames = new Set(this.pokeloTools.definitions().map((d) => d.function.name));
     if (mailNames.has(name))
       return (uid: string, n: string, a: Record<string, unknown>) => this.mailTools.run(uid, n, a);
+    if (marketplaceNames.has(name))
+      return (uid: string, n: string, a: Record<string, unknown>) =>
+        this.marketplaceTools.run(uid, n, a);
     if (pluginNames.has(name))
       return (uid: string, n: string, a: Record<string, unknown>) =>
         this.pluginTools.run(uid, n, a);

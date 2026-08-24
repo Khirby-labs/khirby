@@ -43,3 +43,5 @@ docs/journal/plans/*
 **/coverage/
 **/test-results/
 **/playwright-report/
+
+.tmp-plugins-local-backup*/

@@ -9,6 +9,15 @@ export function formatSpaPageHint(pages: PluginPageRef[]): string {
     .join(', ')}`;
 }
 
+/** One line per loaded plugin so agents can answer “what’s the link?” from list_installed_plugins. */
+export function formatInstalledPluginsSummary(
+  names: string[],
+  pagesFor: (name: string) => PluginPageRef[],
+): string {
+  if (!names.length) return 'none';
+  return names.map((name) => `${name} | ${formatSpaPageHint(pagesFor(name))}`).join('\n');
+}
+
 /** First in-app /plugins/ path from a tool summary, or null when none. */
 export function spaPathFromSummary(summary: string): string | null {
   if (/SPA page:\s*none\b/i.test(summary)) return null;
