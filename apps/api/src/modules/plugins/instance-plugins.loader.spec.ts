@@ -2,7 +2,6 @@ import { mkdirSync, mkdtempSync, writeFileSync, readFileSync, symlinkSync } from
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import 'reflect-metadata';
-import { register as registerTsNode } from 'ts-node';
 import {
   appendInstanceManifest,
   defaultInstancePluginsDir,
@@ -17,10 +16,11 @@ import {
   packageDeclaresWeb,
   pluginVolumeRoot,
   readInstancePluginFile,
+  resolveInstancePluginDirectory,
   scaffoldInstancePlugin,
   writeInstancePluginFile,
 } from './instance-plugins.loader';
-import { scaffoldFileMap } from './instance-plugin-scaffold';
+import { pluginClassName, scaffoldFileMap } from './instance-plugin-scaffold';
 
 function writePlugin(dir: string, opts: { name: string; web?: boolean; skipCreate?: boolean }) {
   mkdirSync(join(dir, 'src'), { recursive: true });
@@ -168,6 +168,18 @@ describe('instance-plugins.loader', () => {
     expect(readInstancePluginFile(root, 'my-demo', 'src/index.ts').content).toBe(
       'export const x = 1\n',
     );
+    expect(() => listInstancePluginFiles(root, 'missing-dir')).toThrow('not_found');
+  });
+
+  it('resolveInstancePluginDirectory maps SPA slug and crm_* name to the volume folder', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-resolve-'));
+    const local = 'hello-world';
+    writePlugin(join(root, local), { name: 'crm_hello_world_stats' });
+    expect(resolveInstancePluginDirectory(root, local)).toBe(local);
+    expect(resolveInstancePluginDirectory(root, 'crm_hello_world_stats')).toBe(local);
+    expect(resolveInstancePluginDirectory(root, 'hello-world-stats')).toBe(local);
+    expect(resolveInstancePluginDirectory(root, '/plugins/hello-world-stats')).toBe(local);
+    expect(() => resolveInstancePluginDirectory(root, 'no-such-plugin')).toThrow('not_found');
   });
 
   it('loads nest module when getNestModule is called', () => {
@@ -183,15 +195,6 @@ describe('instance-plugins.loader', () => {
       nest: true,
     });
     const plugin = loadPluginFromDir(join(root, 'crm-plugin-nest-mod'));
-    registerTsNode({
-      transpileOnly: true,
-      compilerOptions: {
-        module: 'commonjs',
-        experimentalDecorators: true,
-        emitDecoratorMetadata: true,
-        esModuleInterop: true,
-      },
-    });
     expect(plugin.getNestModule?.()).toBeDefined();
   });
 
@@ -224,13 +227,29 @@ describe('instance-plugins.loader', () => {
     );
     const src = readFileSync(join(result.directory, 'src/index.ts'), 'utf8');
     expect(src).toContain('export function createPlugin');
-    expect(src).not.toContain('@khirby/plugin-host');
-    expect(src).toContain('createRequire');
+    expect(src).toContain('DemoPlugin');
+    expect(src).toContain('loadVolumeNestModule');
+    expect(src).toContain("from '@khirby/plugin-host/volume-nest'");
+    expect(src).not.toMatch(/from '@khirby\/plugin-host';/);
+    expect(src).not.toContain("from './nest-module'");
+    expect(src).not.toContain('require(');
+    expect(src).not.toContain('ts-node');
+    expect(src).not.toContain('createRequire');
+    expect(src).not.toContain('GeneratedPlugin');
     const nestSrc = readFileSync(join(result.directory, 'src/nest-module.ts'), 'utf8');
     expect(nestSrc).toContain("from '@khirby/plugin-host'");
+    expect(nestSrc).toContain('DemoController');
+    expect(nestSrc).toContain('DemoNestModule');
+    expect(nestSrc).toContain('as PluginNestModule');
+    expect(nestSrc).toContain('stats:');
+    expect(nestSrc).not.toContain('require(');
     expect(scaffoldFileMap({ directory: 'x', name: 'crm_x' })['package.json']).toContain(
       '@khirby/plugin-sdk',
     );
+    expect(scaffoldFileMap({ directory: 'x', name: 'crm_x' })['package.json']).not.toContain(
+      'ts-node',
+    );
+    expect(pluginClassName('crm_hello_world_stats')).toBe('HelloWorldStatsPlugin');
   });
 
   it('findInstanceLocalDirForPlugin resolves manifest and disk entries', () => {

@@ -11,6 +11,10 @@
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./volume-nest": {
+      "types": "./src/volume-nest.ts",
+      "default": "./src/volume-nest.ts"
     }
   },
   "publishConfig": {
@@ -22,6 +26,11 @@
         "types": "./dist/index.d.ts",
         "require": "./dist/index.js",
         "default": "./dist/index.js"
+      },
+      "./volume-nest": {
+        "types": "./dist/volume-nest.d.ts",
+        "require": "./dist/volume-nest.js",
+        "default": "./dist/volume-nest.js"
       }
     },
     "registry": "https://registry.npmjs.org"

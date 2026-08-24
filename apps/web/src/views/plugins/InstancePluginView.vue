@@ -37,8 +37,8 @@ const footer = ref<string | null>(null);
 const statsLoading = ref(false);
 
 watch(
-  plugin,
-  async (p) => {
+  [plugin, plugins],
+  async ([p]) => {
     stats.value = null;
     footer.value = null;
     if (!p) return;

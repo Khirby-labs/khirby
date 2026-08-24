@@ -51,8 +51,12 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('describe_plugin_contract');
     expect(prompt).toContain('InstancePluginView');
     expect(prompt).toContain('stats:');
+    expect(prompt).toContain('https://khirby.com/docs/plugins/create');
+    expect(prompt).toContain('https://khirby.com/docs/plugins/host');
+    expect(prompt).toContain('https://khirby.com/docs/plugins/self-build');
+    expect(prompt).toContain('loadVolumeNestModule');
     expect(prompt).toContain('list_installed_plugins once');
-    expect(prompt).toContain('SPA page:');
+    expect(prompt).toContain('SPA page');
     expect(prompt).toContain('[tutaj]');
     expect(prompt).toContain('/plugins/');
     expect(prompt).toContain('never invent a URL');

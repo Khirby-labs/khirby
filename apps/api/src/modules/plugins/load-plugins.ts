@@ -6,8 +6,8 @@ import type { CrmPlugin } from '@khirby/plugin-sdk';
  * Image plugins (generated from plugins.manifest.json) plus packages in
  * `plugins/` that are not first-party (ADR-0036, ADR-0039). The returned array
  * is the `CRM_PLUGINS` value — it must stay the same reference so a later `push`
- * is visible to `emit()`. Volume Nest controllers are registered only at this
- * boot and on instance-plugin hotLoad via PluginNestHttpRegistrar.
+ * is visible to `emit()`. Volume Nest controllers bind on InstancePluginHttpBridge
+ * (boot + hotLoad + reload) — they are not imported into PluginsModule.forRoot.
  */
 export function loadPlugins(): CrmPlugin[] {
   const image = loadImagePlugins();

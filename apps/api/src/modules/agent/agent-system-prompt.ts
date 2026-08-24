@@ -129,23 +129,21 @@ const PLUGIN_GUIDANCE = `## Instance plugins (authoring)
 
 You own the technical workflow — users describe intent only. Never ask them for directory names, package exports, guard names, or file paths unless something failed and you need a decision.
 
-Before scaffolding, always call describe_plugin_contract and follow it.
+Before scaffolding, always call describe_plugin_contract and follow it. That contract plus https://khirby.com/docs/plugins/self-build and https://khirby.com/docs/plugins/create (events: https://khirby.com/docs/plugins/events, host tokens: https://khirby.com/docs/plugins/host) is the spec — do not invent a second file layout. Prefer search_knowledge_base for the same pages when Pokelo is available.
 
-Standard flow for a NEW plugin: describe_plugin_contract → list_installed_plugins → scaffold_plugin only (it scaffolds AND installs — do not hand-write src/index.ts or nest-module.ts).
-write_instance_plugin_file is for small fixes AFTER scaffold — never to bootstrap a plugin from empty directory.
+Standard flow for a NEW plugin: describe_plugin_contract → list_installed_plugins → scaffold_plugin only (it scaffolds AND installs). The scaffold is the boilerplate: ESM imports at file top, named CrmPlugin class, createPlugin(), Nest in src/nest-module.ts, getNestModule() already wired via loadVolumeNestModule. Extend those files for the user's intent. Never bootstrap by hand-writing src/index.ts, never add require()/ts-node/createRequire, never import './nest-module' from index.ts, never rename the class to GeneratedPlugin.
+
+write_instance_plugin_file is for small fixes AFTER scaffold — never to create a plugin from an empty directory.
+
+Standard flow for EDITING an existing instance plugin: list_installed_plugins → use the directory: field (or crm_* name, or SPA slug) with list/read/write. After write, the live GET handler reloads in this CRM process — that is publication here; do not use Marketplace. directory: none means an image/native plugin — you cannot edit those files.
+Never treat the SPA path /plugins/… as a volume directory. Slug and folder are independent; list_instance_plugin_files returns the resolved folder as directory: <folder>.
 
 Never claim the plugin is ready unless scaffold_plugin or install_instance_plugin returned ok:true with "installed" in the summary. If install failed, show the validation error — do not say "gotowe".
 
-Instance plugin pages without a Vue bundle:
-- Do not set exports["./web"]. The SPA uses InstancePluginView — it shows displayName, fetches GET /api{route.path}, and renders stats plus optional footer.
-- Keep getNestModule() from scaffold (nest: true) — never replace it with ad-hoc methods like create(). Nest controllers belong in src/nest-module.ts (lazy require), not in index.ts.
-- Nest GET must return { stats: [{ label: string, value: number }, ...], footer?: string }. Put extra page copy in footer (same as footerText). Empty footer is hidden.
-- After write_instance_plugin_file the host reloads the live GET handler. Do not tell the user to restart the API. Do not claim a UI change unless the write summary says the handler was reloaded.
-- getFrontendRoutes() must include path, name, navLabel (and navIcon). Canonical path is always /plugins/<slug> where slug = name without crm_ and with _ → - (crm_hello_stats → /plugins/hello-stats). That path must match @Controller('plugins/<slug>'). Never build the URL from the volume directory name.
-- Use DB_TOKEN + drizzle sql.raw for counts. Bare @khirby/* imports only.
+Volume UI (no Vue ./web — banned): the SPA uses InstancePluginView. Nest GET /api{route.path} returns { stats: [{ label: string, value: number }, ...], footer?: string }. Empty stats is valid until the user asks for tiles/copy. After write_instance_plugin_file the host reloads the live GET handler — do not tell the user to restart the API, and do not claim a UI change unless the write summary says the handler was reloaded.
 
-After a successful install: sidebar updates automatically in the SPA — do not ask the user to refresh unless install failed.
+getFrontendRoutes() path is always /plugins/<slug> (slug = name without crm_, _ → -). That path must match @Controller('plugins/<slug>'). Copy SPA page: <path> from tool results into a site-relative Markdown link — never invent a URL. For “where is this plugin?”: list_installed_plugins once, then answer with that SPA page. If a path is present, include a friendly sentence whose link text is "tutaj" (Polish) or "here" (English), e.g. Aby zobaczyć plugin, kliknij [tutaj](/plugins/hello-stats). The chat UI navigates in-app without a full page reload. If SPA page is none, say there is no in-app page.
 
-When scaffold_plugin or install_instance_plugin succeeds, or when list_installed_plugins returns lines with SPA page: <path>, that path comes from getFrontendRoutes() (always /plugins/…, or SPA page: none if no UI). Copy it verbatim into a site-relative Markdown link — never invent a URL from name, slug, or directory, and never use an absolute http(s) URL. For “where is / link to this plugin?” questions: call list_installed_plugins once, then answer with the SPA page from that result. If a path is present, include a friendly sentence whose link text is "tutaj" (Polish) or "here" (English), e.g. Aby zobaczyć plugin, kliknij [tutaj](/plugins/hello-stats). The chat UI navigates in-app without a full page reload. If SPA page is none, say there is no in-app page — do not invent a link.
+After a successful install: sidebar updates automatically — do not ask the user to refresh unless install failed.
 
-On failure: read the tool error (validation lists missing fields), fix files with write_instance_plugin_file, retry install once. Do not rewrite working scaffold exports (createPlugin, getNestModule). Do not dump the contract or tool names in the user-facing reply unless they ask how it works.`;
+On failure: read the tool error, fix files with write_instance_plugin_file, retry install once. Do not rewrite working scaffold exports (createPlugin, getNestModule). Do not dump the contract or tool names in the user-facing reply unless they ask how it works.`;

@@ -18,16 +18,20 @@ import {
   defaultInstancePluginsDir,
   ensureInstanceDir,
   findInstanceLocalDirForPlugin,
+  isSafeLocalSegment,
   listInstancePluginFiles,
   loadPluginFromDir,
+  normalizeInstancePluginRef,
   pluginVolumeRoot,
   readInstancePluginFile,
   readPackageName,
   removeInstanceManifest,
+  resolveInstancePluginDirectory,
   scaffoldInstancePlugin,
   writeInstancePluginFile,
 } from './instance-plugins.loader';
 import { INSTANCE_PLUGIN_CONTRACT } from './instance-plugin-contract';
+import { loadImagePlugins } from './load-plugins';
 import { PluginNestHttpRegistrar } from './plugin-nest-http.registrar';
 import { InstancePluginHttpBridge } from './instance-plugin-http.bridge';
 
@@ -121,9 +125,9 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     const byName = new Map(rows.map((row) => [row.name, row]));
     for (const plugin of this.registeredPlugins) {
       const row = byName.get(plugin.name);
-      // No row → available, not installed. Its Nest module is still mounted
-      // (PluginsModule.forRoot mounts unconditionally), but isEnabled() stays
-      // false, so PluginEnabledGuard answers 503.
+      // No row → available, not installed. Image Nest modules are still mounted
+      // (PluginsModule.forRoot); volume GET is on the HTTP bridge. isEnabled()
+      // stays false, so PluginEnabledGuard answers 503.
       if (!row) continue;
       await this.syncInstalledPlugin(plugin, row);
     }
@@ -133,14 +137,18 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
 
   /**
    * GET /api/plugins/:segment is owned by InstancePluginHttpBridgeController.
-   * Fastify matches that parametric route instead of the static Nest path from
-   * forRoot, so volume plugins must also bind handlers on the bridge at boot.
+   * Volume Nest modules are not imported in forRoot (those become irreplaceable
+   * Fastify routes), so they must be lazy-loaded and bound on the bridge at boot.
    */
   private async bindVolumePluginHttp(): Promise<void> {
+    const imageNames = new Set(loadImagePlugins().map((plugin) => plugin.name));
     for (const plugin of this.registeredPlugins) {
-      if (isNativePlugin(plugin.name)) continue;
+      if (imageNames.has(plugin.name)) continue;
       const nestModule = plugin.getNestModule?.();
       if (!nestModule) continue;
+      if (this.lazyModuleLoader) {
+        await this.lazyModuleLoader.load(() => Promise.resolve(nestModule));
+      }
       const paths = await this.pluginHttpRegistrar?.registerModuleRoutes(nestModule, {
         pluginName: plugin.name,
       });
@@ -403,6 +411,10 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     return this.registeredPlugins.map((plugin) => plugin.name);
   }
 
+  instanceDirectory(name: string): string | null {
+    return findInstanceLocalDirForPlugin(this.instanceDir(), name);
+  }
+
   frontendPages(name: string): Array<{ path: string; navLabel: string }> {
     const plugin = this.registeredPlugins.find((p) => p.name === name);
     const routes = plugin?.getFrontendRoutes?.() ?? [];
@@ -454,7 +466,7 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
 
   packageDir(directory: string): string {
     try {
-      return pluginVolumeRoot(this.instanceDir(), directory);
+      return pluginVolumeRoot(this.instanceDir(), this.resolveDirOrSegment(directory));
     } catch (err) {
       this.throwAuthoring(err);
     }
@@ -505,10 +517,11 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     localDir: string,
     packageName?: string,
   ): Promise<{ name: string; status: 'installed' | 're-enabled' | 'already_active' }> {
-    const absDir = this.packageDir(localDir);
+    const resolved = this.resolveExistingDir(localDir);
+    const absDir = pluginVolumeRoot(this.instanceDir(), resolved);
     const { name } = this.validate(absDir);
     const pkgName = packageName?.trim() || readPackageName(absDir);
-    this.appendManifest(pkgName, localDir);
+    this.appendManifest(pkgName, resolved);
 
     if (!this.loadedNames().includes(name)) {
       await this.hotLoad(absDir);
@@ -524,7 +537,7 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       await this.enable(name);
       return { name, status: 're-enabled' };
     }
-    await this.reloadFromDirectory(localDir);
+    await this.reloadFromDirectory(resolved);
     return { name, status: 'already_active' };
   }
 
@@ -577,7 +590,8 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
    * Code stays in memory until API restart — disable routes by deleting the row.
    */
   async removeInstance(localDir: string): Promise<{ name: string }> {
-    const absDir = this.packageDir(localDir);
+    const resolved = this.resolveDirOrSegment(localDir);
+    const absDir = pluginVolumeRoot(this.instanceDir(), resolved);
     let name = localDir;
     if (existsSync(absDir)) {
       try {
@@ -593,14 +607,14 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     }
     if (row) {
       await this.uninstall(name);
-      this.logger.log(`Instance plugin removed from volume: ${localDir} (${name})`);
+      this.logger.log(`Instance plugin removed from volume: ${resolved} (${name})`);
       return { name };
     }
     if (existsSync(absDir)) {
       rmSync(absDir, { recursive: true, force: true });
     }
-    removeInstanceManifest(this.instanceDir(), localDir);
-    this.logger.log(`Instance plugin removed from volume: ${localDir} (${name})`);
+    removeInstanceManifest(this.instanceDir(), resolved);
+    this.logger.log(`Instance plugin removed from volume: ${resolved} (${name})`);
     return { name };
   }
 
@@ -622,7 +636,10 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     }
     try {
       ensureInstanceDir(this.instanceDir());
-      return scaffoldInstancePlugin(this.instanceDir(), input);
+      return scaffoldInstancePlugin(this.instanceDir(), {
+        ...input,
+        nest: input.nest === false ? false : true,
+      });
     } catch (err) {
       this.throwAuthoring(err);
     }
@@ -635,7 +652,8 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
   ): { directory: string; path: string; bytes: number } {
     try {
       ensureInstanceDir(this.instanceDir());
-      return writeInstancePluginFile(this.instanceDir(), directory, path, content);
+      const local = this.resolveDirOrSegment(directory);
+      return writeInstancePluginFile(this.instanceDir(), local, path, content);
     } catch (err) {
       this.throwAuthoring(err);
     }
@@ -648,9 +666,10 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
   async reloadFromDirectory(
     localDir: string,
   ): Promise<{ name: string; status: 'reloaded' | 'not_loaded' }> {
-    const absDir = this.packageDir(localDir);
+    const resolved = this.resolveExistingDir(localDir);
+    const absDir = pluginVolumeRoot(this.instanceDir(), resolved);
     if (!existsSync(join(absDir, 'package.json'))) {
-      throw AppException.notFound('plugin', localDir);
+      throw AppException.notFound('plugin', resolved);
     }
     const { name } = this.validate(absDir);
     if (!this.loadedNames().includes(name)) {
@@ -680,7 +699,8 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
 
   readFile(directory: string, path: string): { directory: string; path: string; content: string } {
     try {
-      return readInstancePluginFile(this.instanceDir(), directory, path);
+      const local = this.resolveExistingDir(directory);
+      return readInstancePluginFile(this.instanceDir(), local, path);
     } catch (err) {
       this.throwAuthoring(err);
     }
@@ -688,8 +708,29 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
 
   listFiles(directory: string): { directory: string; files: string[] } {
     try {
-      return listInstancePluginFiles(this.instanceDir(), directory);
+      const local = this.resolveExistingDir(directory);
+      return listInstancePluginFiles(this.instanceDir(), local);
     } catch (err) {
+      this.throwAuthoring(err);
+    }
+  }
+
+  private resolveExistingDir(ref: string): string {
+    try {
+      return resolveInstancePluginDirectory(this.instanceDir(), ref);
+    } catch (err) {
+      this.throwAuthoring(err);
+    }
+  }
+
+  private resolveDirOrSegment(ref: string): string {
+    try {
+      return resolveInstancePluginDirectory(this.instanceDir(), ref);
+    } catch (err) {
+      if ((err as Error).message === 'not_found') {
+        const raw = normalizeInstancePluginRef(ref);
+        if (isSafeLocalSegment(raw)) return raw;
+      }
       this.throwAuthoring(err);
     }
   }

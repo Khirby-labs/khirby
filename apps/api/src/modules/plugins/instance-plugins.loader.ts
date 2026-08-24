@@ -3,6 +3,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import 'reflect-metadata';
 import { createJiti } from 'jiti';
 import type { CrmPlugin } from '@khirby/plugin-sdk';
+import { loadVolumeNestModule } from '../../../../../packages/plugin-host/src/volume-nest';
 import { type InstancePluginScaffoldInput, writeScaffold } from './instance-plugin-scaffold';
 import { assertInstancePluginShape } from './instance-plugin-validate';
 
@@ -138,6 +139,49 @@ export function findInstanceLocalDirForPlugin(
   return null;
 }
 
+/** Strip `/plugins/` so an SPA path can be used as a volume ref. */
+export function normalizeInstancePluginRef(ref: string): string {
+  return ref
+    .trim()
+    .replace(/^\/plugins\//, '')
+    .replace(/\/+$/, '');
+}
+
+/**
+ * Map a tool argument to the volume folder.
+ * Accepts the exact `plugins/<dir>` segment, the `crm_*` plugin name, or the
+ * SPA slug (`hello-world-stats` from `/plugins/hello-world-stats`).
+ */
+export function resolveInstancePluginDirectory(volumeDir: string, ref: string): string {
+  const raw = normalizeInstancePluginRef(ref);
+  if (!raw) throw new Error('bad_path');
+
+  if (isSafeLocalSegment(raw)) {
+    try {
+      const root = pluginVolumeRoot(volumeDir, raw);
+      if (existsSync(join(root, 'package.json'))) return raw;
+    } catch (err) {
+      if ((err as Error).message === 'reserved_dir') throw err;
+      throw err;
+    }
+  } else if (!/^crm_[a-z0-9_]+$/.test(raw)) {
+    throw new Error('bad_path');
+  }
+
+  const byName = findInstanceLocalDirForPlugin(volumeDir, raw);
+  if (byName) return byName;
+
+  if (isSafeLocalSegment(raw) && !raw.startsWith('crm_')) {
+    const guessed = `crm_${raw.replace(/-/g, '_')}`;
+    if (/^crm_[a-z0-9_]+$/.test(guessed)) {
+      const bySlug = findInstanceLocalDirForPlugin(volumeDir, guessed);
+      if (bySlug) return bySlug;
+    }
+  }
+
+  throw new Error('not_found');
+}
+
 export function readPackageName(absDir: string): string {
   const pkgPath = join(absDir, 'package.json');
   if (!existsSync(pkgPath)) {
@@ -191,7 +235,6 @@ export function loadPluginFromDir(absDir: string): CrmPlugin {
     throw err;
   }
   const entry = resolvePackageEntry(absDir);
-  // Nest decorators in instance-plugin entry files need reflect-metadata at jiti eval time.
   purgeInstancePluginLoadCache(absDir);
   const jiti = createJiti(pkgPath, { moduleCache: false, fsCache: false });
   const loaded = jiti(entry) as {
@@ -206,8 +249,17 @@ export function loadPluginFromDir(absDir: string): CrmPlugin {
   if (!plugin?.name) {
     throw new Error('createPlugin returned no name');
   }
+  attachVolumeNestModule(plugin, absDir);
   assertInstancePluginShape(plugin);
   return plugin;
+}
+
+/** If src/nest-module.ts exists and the plugin omitted getNestModule, wire the host helper. */
+function attachVolumeNestModule(plugin: CrmPlugin, absDir: string): void {
+  const srcDir = join(absDir, 'src');
+  if (!existsSync(join(srcDir, 'nest-module.ts'))) return;
+  if (typeof plugin.getNestModule === 'function') return;
+  plugin.getNestModule = () => loadVolumeNestModule(srcDir);
 }
 
 /** Drop Node/jiti/ts-node cache for a volume plugin so the next load sees disk. */
@@ -396,5 +448,8 @@ export function listInstancePluginFiles(
   directory: string,
 ): { directory: string; files: string[] } {
   const root = pluginVolumeRoot(volumeDir, directory);
+  if (!existsSync(root)) {
+    throw new Error('not_found');
+  }
   return { directory, files: listRelFiles(root) };
 }

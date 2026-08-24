@@ -13,9 +13,17 @@ export function formatSpaPageHint(pages: PluginPageRef[]): string {
 export function formatInstalledPluginsSummary(
   names: string[],
   pagesFor: (name: string) => PluginPageRef[],
+  directoryFor?: (name: string) => string | null,
 ): string {
   if (!names.length) return 'none';
-  return names.map((name) => `${name} | ${formatSpaPageHint(pagesFor(name))}`).join('\n');
+  return names
+    .map((name) => {
+      const dir = directoryFor?.(name);
+      const dirPart =
+        directoryFor === undefined ? '' : ` | directory: ${dir && dir.trim() ? dir : 'none'}`;
+      return `${name}${dirPart} | ${formatSpaPageHint(pagesFor(name))}`;
+    })
+    .join('\n');
 }
 
 /** First in-app /plugins/ path from a tool summary, or null when none. */

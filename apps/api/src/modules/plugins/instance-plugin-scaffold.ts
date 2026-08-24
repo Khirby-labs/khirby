@@ -10,93 +10,81 @@ export type InstancePluginScaffoldInput = {
 
 /**
  * npm-shaped volume plugin. Bare host specifiers — the package is loaded by
- * jiti at runtime, not compiled into apps/api/dist (ADR-0036).
+ * jiti at runtime, not compiled into `apps/api/dist` (ADR-0036).
  *
+ * Layout matches published plugins + https://khirby.com/docs/plugins/create:
+ * ESM imports at file top, named class, `createPlugin()`, Nest in `src/nest-module.ts`.
+ * Volume Nest is attached with `loadVolumeNestModule` (do not import `./nest-module` from index).
  * Nest templates gate on `integrations:manage` (there is no `plugins` resource).
  */
 export function pluginRouteSlug(name: string): string {
   return name.replace(/^crm_/, '').replace(/_/g, '-');
 }
 
+/** crm_hello_world_stats → HelloWorldStatsPlugin */
+export function pluginClassName(name: string): string {
+  const stem = name.replace(/^crm_/, '');
+  const pascal = stem
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join('');
+  return `${pascal || 'Instance'}Plugin`;
+}
+
 export function scaffoldFileMap(input: InstancePluginScaffoldInput): Record<string, string> {
   const displayName = input.displayName?.trim() || input.name;
   const routeSlug = pluginRouteSlug(input.name);
+  const className = pluginClassName(input.name);
+
+  const controllerName = className.replace(/Plugin$/, 'Controller');
+  const nestModuleName = className.replace(/Plugin$/, 'NestModule');
 
   const nestModule = input.nest
-    ? `import 'reflect-metadata';
-import { Controller, Get, Inject, Injectable, Module, UseGuards } from '@nestjs/common';
-import { sql } from 'drizzle-orm';
+    ? `import { Controller, Get, Module, UseGuards } from '@nestjs/common';
 import {
   SessionGuard,
   PermissionGuard,
   RequirePermission,
   RequirePluginEnabled,
   PluginEnabledGuard,
-  DB_TOKEN,
 } from '@khirby/plugin-host';
 
-@Injectable()
-export class PluginStatsService {
-  constructor(@Inject(DB_TOKEN) private readonly db: { execute: (q: unknown) => Promise<unknown> }) {}
-
-  private async count(table: string): Promise<number> {
-    const rows = (await this.db.execute(sql.raw(\`select count(*)::int as c from \${table}\`))) as Array<{ c: number }>;
-    return rows[0]?.c ?? 0;
-  }
-
-  async stats() {
-    const [leads, users, contacts] = await Promise.all([
-      this.count('leads'),
-      this.count('users'),
-      this.count('contacts'),
-    ]);
-    return {
-      stats: [
-        { label: 'Leady', value: leads },
-        { label: 'Użytkownicy', value: users },
-        { label: 'Kontakty', value: contacts },
-      ],
-      footer: '',
-    };
-  }
-}
-
+/**
+ * Host page (no Vue ./web): GET /api/plugins/${routeSlug} is rendered by
+ * InstancePluginView as { stats: [{ label, value }], footer?: string }.
+ * Extend with host tokens (DB_TOKEN, CONTACTS_SERVICE, …) and
+ * https://khirby.com/docs/plugins/create — keep ESM imports at the top of this file.
+ */
 @Controller('plugins/${routeSlug}')
 @UseGuards(SessionGuard, PermissionGuard, PluginEnabledGuard)
 @RequirePluginEnabled('${input.name}')
 @RequirePermission('integrations', 'manage')
-export class PluginController {
-  constructor(private readonly stats: PluginStatsService) {}
-
+export class ${controllerName} {
   @Get()
   index() {
-    return this.stats.stats();
+    return { stats: [] as Array<{ label: string; value: number }>, footer: '' };
   }
 }
 
-@Module({ controllers: [PluginController], providers: [PluginStatsService] })
-export class PluginNestModule {}
+@Module({ controllers: [${controllerName}] })
+export class ${nestModuleName} {}
+export { ${nestModuleName} as PluginNestModule };
 `
     : '';
+
+  const nestImport = input.nest
+    ? `import type { CrmPlugin, PluginContext } from '@khirby/plugin-sdk';
+import { loadVolumeNestModule } from '@khirby/plugin-host/volume-nest';
+`
+    : `import type { CrmPlugin, PluginContext } from '@khirby/plugin-sdk';
+`;
 
   const nestMethods = input.nest
     ? `
   getNestModule() {
-    require('reflect-metadata');
-    require('ts-node').register({
-      transpileOnly: true,
-      compilerOptions: {
-        module: 'commonjs',
-        experimentalDecorators: true,
-        emitDecoratorMetadata: true,
-        esModuleInterop: true,
-      },
-    });
-    const path = require('path');
-    const { createRequire } = require('module');
-    const pkgRoot = path.join(__dirname, '..');
-    const nativeRequire = createRequire(path.join(pkgRoot, 'package.json'));
-    return nativeRequire('./src/nest-module.ts').PluginNestModule;
+    // Volume only — do not import './nest-module' from this file (jiti).
+    return loadVolumeNestModule(__dirname);
   }
 
   getFrontendRoutes() {
@@ -113,11 +101,11 @@ export class PluginNestModule {}
 `
     : '';
 
-  const index = `import type { CrmPlugin, CrmEvent, PluginContext } from '@khirby/plugin-sdk';
-
-export class GeneratedPlugin implements CrmPlugin {
+  const index = `${nestImport}
+export class ${className} implements CrmPlugin {
   name = '${input.name}';
   displayName = ${JSON.stringify(displayName)};
+  description = ${JSON.stringify(displayName)};
   version = '0.1.0';
 ${nestMethods}
   getConfigSchema() {
@@ -125,18 +113,12 @@ ${nestMethods}
   }
 
   onInit(ctx: PluginContext) {
-    ctx.log('${input.name} ready');
-  }
-
-  async onEvent(event: CrmEvent, ctx: PluginContext) {
-    if (event.type === 'contact.created') {
-      ctx.log(\`contact.created \${event.payload.email}\`);
-    }
+    ctx.log(${JSON.stringify(`${displayName} ready`)});
   }
 }
 
 export function createPlugin(): CrmPlugin {
-  return new GeneratedPlugin();
+  return new ${className}();
 }
 `;
 
@@ -144,6 +126,7 @@ export function createPlugin(): CrmPlugin {
     name: input.directory,
     version: '0.1.0',
     private: true,
+    keywords: ['khirby-plugin'],
     main: './src/index.ts',
     types: './src/index.ts',
     exports: { '.': './src/index.ts' },
@@ -152,7 +135,6 @@ export function createPlugin(): CrmPlugin {
       '@khirby/plugin-host': '*',
       '@nestjs/common': '*',
       'drizzle-orm': '*',
-      'ts-node': '*',
     },
   };
 

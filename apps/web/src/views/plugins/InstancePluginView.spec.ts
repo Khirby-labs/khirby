@@ -73,4 +73,30 @@ describe('InstancePluginView', () => {
     expect(wrapper.text()).toContain('3');
     expect(wrapper.text()).toContain('Testowy tekst na dole strony.');
   });
+
+  it('refetches GET when the plugins list is replaced after a live edit', async () => {
+    let payload = {
+      stats: [{ label: 'Leady', value: 1 }],
+      footer: 'przed edycją',
+    };
+    server.use(http.get(api('/api/plugins/hello-world-stats'), () => HttpResponse.json(payload)));
+
+    const wrapper = await mountPage();
+    await flushPromises();
+    expect(wrapper.text()).toContain('przed edycją');
+    expect(wrapper.text()).not.toContain('Testowy kafelek 1');
+
+    payload = {
+      stats: [
+        { label: 'Leady', value: 1 },
+        { label: 'Testowy kafelek 1', value: 1 },
+      ],
+      footer: 'po edycji',
+    };
+    usePluginsStore().plugins = [...usePluginsStore().plugins];
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Testowy kafelek 1');
+    expect(wrapper.text()).toContain('po edycji');
+  });
 });

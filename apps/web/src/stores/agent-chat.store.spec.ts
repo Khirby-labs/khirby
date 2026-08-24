@@ -72,6 +72,35 @@ describe('agent-chat store', () => {
     expect(fetchSpy).toHaveBeenCalledTimes(1);
   });
 
+  it('refetches plugins when write_instance_plugin_file succeeds', async () => {
+    apiPostStream.mockImplementation(async (_path, _body, onLine: (line: string) => void) => {
+      onLine(
+        `data: ${JSON.stringify({
+          type: 'tool_call',
+          id: 't1',
+          name: 'write_instance_plugin_file',
+          args: { directory: 'hello-world', path: 'src/nest-module.ts' },
+        })}`,
+      );
+      onLine(
+        `data: ${JSON.stringify({
+          type: 'tool_result',
+          id: 't1',
+          ok: true,
+          summary: 'Wrote src/nest-module.ts — live GET handler reloaded',
+        })}`,
+      );
+      onLine(`data: ${JSON.stringify({ type: 'done' })}`);
+    });
+
+    const plugins = usePluginsStore();
+    const fetchSpy = vi.spyOn(plugins, 'fetchPlugins').mockResolvedValue();
+
+    await useAgentChatStore().sendMessage('add a tile');
+
+    expect(fetchSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('refetches plugins when remove_instance_plugin succeeds', async () => {
     apiPostStream.mockImplementation(async (_path, _body, onLine: (line: string) => void) => {
       onLine(

@@ -24,6 +24,7 @@ describe('PluginToolsAdapter', () => {
       | 'removeInstance'
       | 'reloadFromDirectory'
       | 'frontendPages'
+      | 'instanceDirectory'
     >
   >;
 
@@ -48,6 +49,7 @@ describe('PluginToolsAdapter', () => {
       frontendPages: jest
         .fn()
         .mockReturnValue([{ path: '/plugins/my-plugin', navLabel: 'My Plugin' }]),
+      instanceDirectory: jest.fn().mockReturnValue(null),
     };
 
     const moduleRef = await Test.createTestingModule({
@@ -68,9 +70,39 @@ describe('PluginToolsAdapter', () => {
     const result = await adapter.run('user-1', 'list_installed_plugins', {});
     expect(result).toEqual({
       ok: true,
-      summary: 'crm_hello | SPA page: /plugins/hello (Hello)',
+      summary: 'crm_hello | directory: none | SPA page: /plugins/hello (Hello)',
     });
     expect(instancePlugins.frontendPages).toHaveBeenCalledWith('crm_hello');
+    expect(instancePlugins.instanceDirectory).toHaveBeenCalledWith('crm_hello');
+  });
+
+  it('lists a volume plugin with its editable directory', async () => {
+    instancePlugins.loadedNames.mockReturnValue(['crm_hello_world_stats']);
+    instancePlugins.instanceDirectory.mockReturnValue('hello-world');
+    instancePlugins.frontendPages.mockReturnValue([
+      { path: '/plugins/hello-world-stats', navLabel: 'Hello World' },
+    ]);
+    const result = await adapter.run('user-1', 'list_installed_plugins', {});
+    expect(result).toEqual({
+      ok: true,
+      summary:
+        'crm_hello_world_stats | directory: hello-world | SPA page: /plugins/hello-world-stats (Hello World)',
+    });
+  });
+
+  it('lists instance plugin files with the resolved directory', async () => {
+    instancePlugins.listFiles.mockReturnValue({
+      directory: 'hello-world',
+      files: ['package.json', 'src/index.ts'],
+    });
+    const result = await adapter.run('user-1', 'list_instance_plugin_files', {
+      directory: 'hello-world-stats',
+    });
+    expect(instancePlugins.listFiles).toHaveBeenCalledWith('hello-world-stats');
+    expect(result).toEqual({
+      ok: true,
+      summary: 'directory: hello-world — package.json, src/index.ts',
+    });
   });
 
   it('requires integrations:manage and agent:use', async () => {

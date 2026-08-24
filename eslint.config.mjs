@@ -25,6 +25,10 @@ export default tseslint.config(
       // Agent worktrees are separate checkouts of this repo — linting them here
       // double-reports and fails the gate on their in-progress state.
       '.claude/worktrees/**',
+      // Operator-authored instance plugins (ADR-0036/0039) are not first-party
+      // `crm-plugin-*` checkouts and are not linted with the host tree.
+      'plugins/!(crm-plugin-*)/**',
+      '.tmp-plugins*/**',
     ],
   },
 

@@ -23,6 +23,21 @@ describe('plugin-page-hint', () => {
     ).toBe('crm_a | SPA page: /plugins/a (A)\ncrm_b | SPA page: none');
   });
 
+  it('includes the volume directory when a resolver is provided', () => {
+    expect(
+      formatInstalledPluginsSummary(
+        ['crm_hello_world_stats', 'crm_mcp'],
+        (name) =>
+          name === 'crm_hello_world_stats'
+            ? [{ path: '/plugins/hello-world-stats', navLabel: 'Hello World' }]
+            : [],
+        (name) => (name === 'crm_hello_world_stats' ? 'hello-world' : null),
+      ),
+    ).toBe(
+      'crm_hello_world_stats | directory: hello-world | SPA page: /plugins/hello-world-stats (Hello World)\ncrm_mcp | directory: none | SPA page: none',
+    );
+  });
+
   it('parses the first path from a tool summary', () => {
     expect(
       spaPathFromSummary(

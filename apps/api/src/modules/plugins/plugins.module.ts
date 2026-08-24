@@ -12,11 +12,21 @@ import { InstancePluginHttpBridgeController } from './instance-plugin-http.contr
 import { PluginsController } from './plugins.controller';
 import { RbacModule } from '../../core/rbac/rbac.module';
 import { PluginBridgeModule } from './plugin-bridge.module';
+import { loadImagePlugins } from './load-plugins';
 
 @Module({ imports: [RbacModule] })
 export class PluginsModule {
   static forRoot(plugins: CrmPlugin[] = []): DynamicModule {
-    const pluginNestModules = plugins.map((p) => p.getNestModule?.()).filter(Boolean);
+    // Volume plugins must not become Fastify static routes: Fastify prefers a
+    // concrete @Controller('plugins/hello-world-stats') over GET plugins/:segment,
+    // so reloadFromDirectory would update the bridge while the SPA still hit the
+    // boot controller. Image plugins stay imported; instance GET goes through
+    // InstancePluginHttpBridge (ADR-0036).
+    const imageNames = new Set(loadImagePlugins().map((plugin) => plugin.name));
+    const pluginNestModules = plugins
+      .filter((plugin) => imageNames.has(plugin.name))
+      .map((plugin) => plugin.getNestModule?.())
+      .filter(Boolean);
 
     return {
       module: PluginsModule,

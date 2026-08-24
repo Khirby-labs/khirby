@@ -8,6 +8,7 @@ const PLUGIN_NAV_REFRESH_TOOLS = new Set([
   'scaffold_plugin',
   'install_instance_plugin',
   'remove_instance_plugin',
+  'write_instance_plugin_file',
 ]);
 
 export type AgentConversation = {

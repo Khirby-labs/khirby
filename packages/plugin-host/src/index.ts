@@ -58,3 +58,4 @@ export {
   type InstancePluginScaffoldInput,
   PLUGIN_NAME_KEY,
 } from './tokens';
+export { loadVolumeNestModule } from './volume-nest';

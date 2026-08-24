@@ -21,10 +21,14 @@ export class PluginToolsAdapter {
     return [
       fn(
         'list_installed_plugins',
-        'List plugins loaded in this process. Each line is name | SPA page: /plugins/… (or SPA page: none). Use those paths for in-app links — do not invent URLs',
+        'List plugins loaded in this process. Each line is name | directory: <folder or none> | SPA page: /plugins/… (or SPA page: none). Use directory for list/read/write/install — never the SPA path. directory: none means image/native (not editable). Copy SPA paths for in-app links — do not invent URLs',
         {},
       ),
-      fn('describe_plugin_contract', 'Show instance plugin authoring contract', {}),
+      fn(
+        'describe_plugin_contract',
+        'Authoring spec for instance plugins (public docs + volume rules). Call before scaffold and follow it — do not invent a second layout',
+        {},
+      ),
       fn(
         'scaffold_plugin',
         'Scaffold a new instance plugin directory and install it (defaults nest: true, install: true). Success summary includes SPA page: <path> from getFrontendRoutes — copy that exact path into a Markdown link; never invent a URL',
@@ -45,9 +49,13 @@ export class PluginToolsAdapter {
       ),
       fn(
         'write_instance_plugin_file',
-        'Patch ONE file in an existing scaffolded plugin — never create a plugin from scratch (use scaffold_plugin)',
+        'Patch ONE file in an existing scaffolded plugin — never create a plugin from scratch (use scaffold_plugin). After a successful write the live GET handler reloads in this CRM process (no Marketplace).',
         {
-          directory: { type: 'string' },
+          directory: {
+            type: 'string',
+            description:
+              'Volume folder from list_installed_plugins, or crm_* name, or SPA slug. Not the /plugins/ URL',
+          },
           path: { type: 'string' },
           content: { type: 'string' },
         },
@@ -55,18 +63,24 @@ export class PluginToolsAdapter {
       ),
       fn(
         'read_instance_plugin_file',
-        'Read a file from plugins/<dir>/',
+        'Read a file from plugins/<dir>/. directory accepts volume folder, crm_* name, or SPA slug',
         {
-          directory: { type: 'string' },
+          directory: {
+            type: 'string',
+            description: 'Volume folder, crm_* name, or SPA slug of the plugin to read',
+          },
           path: { type: 'string' },
         },
         ['directory', 'path'],
       ),
       fn(
         'list_instance_plugin_files',
-        'List files in plugins/<dir>/',
+        'List files in plugins/<dir>/. directory accepts volume folder, crm_* name, or SPA slug — not the SPA path. Summary starts with directory: <resolved folder>',
         {
-          directory: { type: 'string' },
+          directory: {
+            type: 'string',
+            description: 'Volume folder, crm_* name, or SPA slug of the plugin to list',
+          },
         },
         ['directory'],
       ),
@@ -74,7 +88,10 @@ export class PluginToolsAdapter {
         'remove_instance_plugin',
         'Delete plugins/<dir>/, manifest entry, and DB row (API restart clears in-memory code)',
         {
-          directory: { type: 'string' },
+          directory: {
+            type: 'string',
+            description: 'Volume folder, crm_* name, or SPA slug of the plugin to delete',
+          },
         },
         ['directory'],
       ),
@@ -82,7 +99,10 @@ export class PluginToolsAdapter {
         'install_instance_plugin',
         'validate → manifest → hotLoad (retries when already loaded). Success summary includes SPA page: <path> from getFrontendRoutes — copy that exact path into a Markdown link; never invent a URL',
         {
-          directory: { type: 'string' },
+          directory: {
+            type: 'string',
+            description: 'Volume folder, crm_* name, or SPA slug of the plugin to install/reload',
+          },
           packageName: {
             type: 'string',
             description: 'Optional; defaults to package.json name',
@@ -107,13 +127,15 @@ export class PluginToolsAdapter {
           const names = this.instancePlugins.loadedNames();
           return {
             ok: true,
-            summary: formatInstalledPluginsSummary(names, (n) =>
-              this.instancePlugins.frontendPages(n),
+            summary: formatInstalledPluginsSummary(
+              names,
+              (n) => this.instancePlugins.frontendPages(n),
+              (n) => this.instancePlugins.instanceDirectory(n),
             ),
           };
         }
         case 'describe_plugin_contract':
-          return { ok: true, summary: this.instancePlugins.pluginContract().slice(0, 500) };
+          return { ok: true, summary: this.instancePlugins.pluginContract() };
         case 'scaffold_plugin': {
           const directory = String(args.directory);
           const out = this.instancePlugins.scaffold({
@@ -169,11 +191,14 @@ export class PluginToolsAdapter {
         }
         case 'read_instance_plugin_file': {
           const out = this.instancePlugins.readFile(String(args.directory), String(args.path));
-          return { ok: true, summary: out.content.slice(0, 500) };
+          return { ok: true, summary: out.content };
         }
         case 'list_instance_plugin_files': {
           const out = this.instancePlugins.listFiles(String(args.directory));
-          return { ok: true, summary: out.files.join(', ') || 'empty' };
+          return {
+            ok: true,
+            summary: `directory: ${out.directory} — ${out.files.join(', ') || 'empty'}`,
+          };
         }
         case 'remove_instance_plugin': {
           const removed = await this.instancePlugins.removeInstance(String(args.directory));

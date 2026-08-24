@@ -1044,7 +1044,50 @@ export function createPlugin() {
         expect(file.content).toContain('export function createPlugin');
         expect(svc.pluginContract()).toContain('contact.created');
         expect(svc.pluginContract()).toContain('plugins/');
+        expect(svc.pluginContract()).toContain('https://khirby.com/docs/plugins/create');
+        expect(svc.pluginContract()).toContain('https://khirby.com/docs/plugins/host');
+        expect(svc.pluginContract()).toContain('https://khirby.com/docs/plugins/self-build');
+        expect(svc.pluginContract()).toContain('ESM imports');
+        expect(svc.pluginContract()).toContain('loadVolumeNestModule');
         expect(svc.packageDir('my-demo')).toContain('my-demo');
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('lists and reads files when the agent passes the SPA slug instead of the folder', () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      const volume = mkdtempSync(join(tmpdir(), 'instance-slug-'));
+      process.env.INSTANCE_PLUGINS_DIR = volume;
+      try {
+        const svc = makeService([], emptyDb());
+        svc.scaffold({
+          directory: 'hello-world',
+          name: 'crm_hello_world_stats',
+          displayName: 'Hello World',
+          nest: false,
+        });
+        const listed = svc.listFiles('hello-world-stats');
+        expect(listed.directory).toBe('hello-world');
+        expect(listed.files).toEqual(expect.arrayContaining(['package.json', 'src/index.ts']));
+        expect(svc.readFile('/plugins/hello-world-stats', 'src/index.ts').content).toContain(
+          'crm_hello_world_stats',
+        );
+        expect(svc.instanceDirectory('crm_hello_world_stats')).toBe('hello-world');
+        const original = svc.readFile('hello-world-stats', 'src/index.ts').content;
+        const written = svc.writeFile(
+          'hello-world-stats',
+          'src/index.ts',
+          original.replace('Hello World', 'Hello World (edited)'),
+        );
+        expect(written.directory).toBe('hello-world');
+        expect(svc.readFile('crm_hello_world_stats', 'src/index.ts').content).toContain(
+          'Hello World (edited)',
+        );
+        expect(svc.readFile('crm_hello_world_stats', 'src/index.ts').content).toContain(
+          'HelloWorldStatsPlugin',
+        );
       } finally {
         if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
         else process.env.INSTANCE_PLUGINS_DIR = prev;

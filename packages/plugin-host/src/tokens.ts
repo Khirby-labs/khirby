@@ -297,6 +297,8 @@ export interface InstancePluginsLike {
   reservedNames(): readonly string[];
   /** Plugins already in this process (image + previously hot-loaded). */
   loadedNames(): string[];
+  /** Volume folder for a loaded `crm_*` name, or null when the plugin is not on the instance volume. */
+  instanceDirectory(name: string): string | null;
   /**
    * SPA pages from a loaded plugin's `getFrontendRoutes()` — only paths under
    * `/plugins/` (same rule as instance validation). Empty when unknown / no UI.

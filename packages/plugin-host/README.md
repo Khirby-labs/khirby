@@ -23,3 +23,7 @@ pnpm add @khirby/plugin-host @khirby/plugin-sdk
 ```
 
 Docs: [Host API](https://khirby.com/docs/plugins/host) · [Create a plugin](https://khirby.com/docs/plugins/create)
+
+Instance-volume plugins (not `tsc`-compiled) load Nest via
+`loadVolumeNestModule` from `@khirby/plugin-host/volume-nest`. Published npm
+plugins import the Nest class in `getNestModule()` instead.
