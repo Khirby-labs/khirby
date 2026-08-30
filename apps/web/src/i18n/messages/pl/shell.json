@@ -24,7 +24,8 @@
     "listAria": "Wyniki",
     "placeholder": "Szukaj kontaktów, stron…",
     "createTag": "Utwórz",
-    "noMatches": "Brak wyników dla „{query}”"
+    "noMatches": "Brak wyników dla „{query}”",
+    "askKhirby": "Ask Khirby"
   },
   "account": {
     "logOut": "Wyloguj się",

@@ -58,10 +58,23 @@
               <p class="mt-2 text-xs text-text-ghost">
                 {{ t('plugins.list.installed', { date: formatDate(plugin.installedAt) }) }}
               </p>
+              <p v-if="plugin.codeLoaded === false" class="mt-2 text-xs text-warning">
+                {{ t('plugins.list.orphanWarning') }}
+              </p>
             </div>
 
-            <!-- Right: toggle + configure -->
+            <!-- Right: toggle + configure + uninstall -->
             <div class="flex items-center gap-2 flex-shrink-0">
+              <button
+                v-if="plugin.canUninstall"
+                type="button"
+                class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors bg-surface-raise hover:bg-surface-raise2 text-danger"
+                :disabled="uninstallingPlugin === plugin.name"
+                :aria-label="t('plugins.list.uninstallAria', { name: pluginDisplayName(plugin) })"
+                @click="handleUninstall(plugin)"
+              >
+                {{ t('plugins.list.uninstall') }}
+              </button>
               <button
                 v-if="hasConfig(plugin)"
                 class="px-3 py-1.5 text-sm font-medium rounded-md transition-colors"
@@ -133,6 +146,7 @@ import { SwitchRoot, SwitchThumb } from 'reka-ui';
 import { useI18n } from 'vue-i18n';
 import { usePluginsStore, type Plugin } from '../../stores/plugins.store';
 import { useToastStore } from '../../stores/toast.store';
+import { useConfirm } from '../../composables/useConfirm';
 import { useServerText } from '../../composables/useServerText';
 import { pluginSettingsPanels } from '../../plugins/plugin-registry';
 import PluginConfigForm from '../../components/PluginConfigForm.vue';
@@ -147,10 +161,12 @@ const { t, d } = useI18n();
 const { pluginDisplayName, pluginDescription } = useServerText();
 const store = usePluginsStore();
 const toast = useToastStore();
+const askConfirm = useConfirm();
 const error = ref<string | null>(null);
 
 const expandedConfigs = reactive(new Set<string>());
 const togglingPlugin = ref<string | null>(null);
+const uninstallingPlugin = ref<string | null>(null);
 const savingConfig = ref<string | null>(null);
 const configSaved = ref<string | null>(null);
 
@@ -219,6 +235,28 @@ async function handleSaveConfig(plugin: Plugin, config: Record<string, string>) 
     error.value = e instanceof Error ? e.message : t('plugins.errors.saveConfig');
   } finally {
     savingConfig.value = null;
+  }
+}
+
+async function handleUninstall(plugin: Plugin) {
+  if (uninstallingPlugin.value) return;
+  const displayName = pluginDisplayName(plugin);
+  const confirmed = await askConfirm({
+    title: t('plugins.list.uninstallTitle'),
+    message: t('plugins.list.uninstallConfirm', { name: displayName }),
+    confirmLabel: t('plugins.list.uninstallConfirmAction', { name: displayName }),
+  });
+  if (!confirmed) return;
+  uninstallingPlugin.value = plugin.name;
+  error.value = null;
+  try {
+    await store.uninstallPlugin(plugin.name);
+    expandedConfigs.delete(plugin.name);
+    toast.success(t('plugins.toast.uninstalled', { name: displayName }));
+  } catch (e: unknown) {
+    error.value = e instanceof Error ? e.message : t('plugins.errors.uninstall');
+  } finally {
+    uninstallingPlugin.value = null;
   }
 }
 

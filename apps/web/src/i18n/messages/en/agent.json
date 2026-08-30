@@ -1,0 +1,44 @@
+{
+  "accessDenied": {
+    "title": "No access to Ask Khirby",
+    "message": "Your role does not include chat access. Ask an administrator for the agent:use permission."
+  },
+  "empty": {
+    "title": "Ask Khirby",
+    "subtitle": "Ask questions about your CRM data, pipeline, or plugins.",
+    "integrationsCta": "Configure AI Compose in Integrations"
+  },
+  "composer": {
+    "placeholder": "Ask about contacts, leads, plugins…",
+    "send": "Send"
+  },
+  "history": {
+    "title": "Threads",
+    "new": "New chat",
+    "deleteAction": "Delete thread",
+    "deleteAria": "Delete thread {title}",
+    "deleteTitle": "Delete thread?",
+    "deleteMessage": "Remove “{title}” and its messages. This cannot be undone.",
+    "deleteConfirm": "Delete thread"
+  },
+  "suggestions": {
+    "contacts": "Who joined this week?",
+    "pipeline": "Summarize my pipeline",
+    "plugins": "What plugins are installed?"
+  },
+  "status": {
+    "thinking": "Thinking…",
+    "writing": "Writing…",
+    "runningTool": "Running {tool}…"
+  },
+  "errors": {
+    "ai_compose_unavailable": "AI Compose is not configured.",
+    "network_error": "Connection lost. Try again.",
+    "stream_in_progress": "Already streaming this thread."
+  },
+  "message": {
+    "copy": "Copy",
+    "copied": "Copied",
+    "copyFailed": "Couldn't copy to clipboard. Try selecting the text manually."
+  }
+}

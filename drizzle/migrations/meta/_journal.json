@@ -64,6 +64,13 @@
       "when": 1786099635703,
       "tag": "0008_boards_canceled",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1786105000000,
+      "tag": "0009_agent_chat",
+      "breakpoints": true
     }
   ]
 }

@@ -23,9 +23,12 @@ describe('renderMarkdown', () => {
   });
 
   it('strips style attributes', () => {
-    // marked won't emit style; inject via a crafted HTML-looking payload after parse
-    // by using a raw HTML block that marked may pass through in some configs.
     const html = renderMarkdown('<p style="color:red">x</p>');
     expect(html).not.toContain('style=');
+  });
+
+  it('keeps site-relative /plugins/ hrefs so in-app pages can be linked', () => {
+    const html = renderMarkdown('[tutaj](/plugins/hello-stats)');
+    expect(html).toContain('href="/plugins/hello-stats"');
   });
 });

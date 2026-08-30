@@ -36,9 +36,12 @@ docs/journal/plans/*
 # editors / OS
 .idea/
 .vscode/
+.cursor/plans/
 *.swp
 *~
 # test artifacts
 **/coverage/
 **/test-results/
 **/playwright-report/
+
+.tmp-plugins-local-backup*/

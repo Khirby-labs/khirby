@@ -117,7 +117,7 @@ export const LOCAL_CATALOG: CatalogDocument = {
     {
       package: '@khirby/plugin-mcp',
       name: 'crm_mcp',
-      version: '1.0.0',
+      version: '1.1.0',
       category: 'integration',
       vendor: 'Khirby',
       icon: 'plugins',
@@ -126,7 +126,7 @@ export const LOCAL_CATALOG: CatalogDocument = {
     {
       package: '@khirby/plugin-ai-compose',
       name: 'crm_ai_compose',
-      version: '1.0.0',
+      version: '1.1.0',
       category: 'ai',
       vendor: 'Khirby',
       icon: 'mail',

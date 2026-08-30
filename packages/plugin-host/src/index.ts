@@ -30,6 +30,8 @@ export {
   LEADS_SERVICE,
   type LeadsServiceLike,
   type LeadPriority,
+  USERS_SERVICE,
+  type UsersServiceLike,
   PIPELINE_STAGES_SERVICE,
   type PipelineStagesServiceLike,
   EVENTS_SERVICE,
@@ -49,5 +51,11 @@ export {
   POKELO_CONTEXT_SERVICE,
   type PokeloContextServiceLike,
   type PokeloFetchOpts,
+  AI_COMPOSE_LLM,
+  type AiComposeLlmLike,
+  INSTANCE_PLUGINS,
+  type InstancePluginsLike,
+  type InstancePluginScaffoldInput,
   PLUGIN_NAME_KEY,
 } from './tokens';
+export { loadVolumeNestModule } from './volume-nest';

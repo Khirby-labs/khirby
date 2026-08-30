@@ -74,6 +74,9 @@ services:
       # network request. This list is explicit, so a variable absent from it never
       # reaches the container however well it is documented elsewhere (ADR-0034).
       MARKETPLACE_CATALOG_URL: ${MARKETPLACE_CATALOG_URL:-}
+      INSTANCE_PLUGINS_DIR: /app/plugins
+    volumes:
+      - ${DATA_PATH:-/srv/container-data/khirby}/plugins:/app/plugins
     networks:
       - proxy
       - khirby-network
@@ -90,8 +93,12 @@ services:
         delay: 10s
         max_attempts: 5
         window: 120s
+      placement:
+        constraints:
+          - node.labels.storage == hdd
+          - node.labels.tier == always-on
       update_config:
-        order: start-first
+        order: stop-first
         failure_action: rollback
       labels:
         - 'traefik.enable=true'

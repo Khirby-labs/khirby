@@ -129,3 +129,42 @@ export function apiPut<T = unknown>(path: string, body: unknown): Promise<T> {
     body: JSON.stringify(body),
   });
 }
+
+/** POST that reads an SSE response line-by-line (Ask Khirby). */
+export async function apiPostStream(
+  path: string,
+  body: unknown,
+  onLine: (line: string) => void,
+  signal?: AbortSignal,
+): Promise<void> {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(body),
+    signal,
+  });
+
+  if (!res.ok) {
+    const errBody = await readErrorBody(res);
+    if (res.status === 401 && !AUTH_ATTEMPT_CODES.has(errBody.code)) {
+      import('../router').then((mod) => mod.router.push('/login'));
+      throw new ApiError({ ...errBody, code: 'SESSION_EXPIRED', message: 'Session expired' });
+    }
+    throw new ApiError(errBody);
+  }
+
+  if (!res.body) return;
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop() ?? '';
+    for (const line of lines) onLine(line);
+  }
+  if (buffer.trim()) onLine(buffer);
+}

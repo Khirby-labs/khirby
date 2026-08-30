@@ -66,6 +66,10 @@
   },
   "permissions": {
     "grantAria": "Przyznaj dostęp do modułu {module}",
+    "agent": {
+      "use": "Korzystaj z Ask Khirby",
+      "manage": "Zarządzaj Ask Khirby"
+    },
     "resource": {
       "contacts": "Kontakty",
       "forms": "Formularze",

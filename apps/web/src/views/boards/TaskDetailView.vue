@@ -135,7 +135,7 @@
               <p class="text-xs text-text-ghost">
                 {{ c.userEmail ?? '—' }} · {{ d(new Date(c.createdAt), 'dateTime') }}
               </p>
-              <div class="md-comment text-sm text-text-primary" v-html="renderMarkdown(c.body)" />
+              <div class="md-prose text-sm" v-html="renderMarkdown(c.body)" />
             </div>
             <div class="space-y-2">
               <textarea
@@ -550,15 +550,3 @@ watch(
   { immediate: true },
 );
 </script>
-
-<style scoped>
-.md-comment :deep(p) {
-  margin: 0.25em 0;
-}
-.md-comment :deep(code) {
-  font-size: 0.85em;
-  background: var(--surface-raise);
-  border-radius: 0.25rem;
-  padding: 0.05em 0.3em;
-}
-</style>

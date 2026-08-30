@@ -64,6 +64,8 @@ describe('PluginsView — configure affordance (ADR-0023)', () => {
           installedAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
           frontendRoutes: [],
+          canUninstall: false,
+          codeLoaded: true,
         },
         {
           id: '2',
@@ -78,6 +80,8 @@ describe('PluginsView — configure affordance (ADR-0023)', () => {
           installedAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
           frontendRoutes: [],
+          canUninstall: false,
+          codeLoaded: true,
         },
         {
           id: '3',
@@ -91,6 +95,23 @@ describe('PluginsView — configure affordance (ADR-0023)', () => {
           installedAt: '2026-01-01T00:00:00.000Z',
           updatedAt: '2026-01-01T00:00:00.000Z',
           frontendRoutes: [],
+          canUninstall: false,
+          codeLoaded: true,
+        },
+        {
+          id: '4',
+          name: 'crm_hello_world',
+          displayName: 'Hello World',
+          description: null,
+          version: '0.1.0',
+          enabled: false,
+          config: {},
+          configSchema: [],
+          installedAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          frontendRoutes: [],
+          canUninstall: true,
+          codeLoaded: false,
         },
       ]),
       http.get(api('/api/plugins/mcp/token'), () => HttpResponse.json({ configured: false })),
@@ -115,5 +136,13 @@ describe('PluginsView — configure affordance (ADR-0023)', () => {
 
     expect(wrapper.text()).toContain('Endpoint');
     expect(wrapper.text()).toContain('/api/mcp');
+  });
+
+  it('shows Uninstall for non-native plugins but not for natives', async () => {
+    const wrapper = mountView();
+    await flushPromises();
+
+    const uninstallButtons = wrapper.findAll('button').filter((b) => b.text() === 'Uninstall');
+    expect(uninstallButtons).toHaveLength(1);
   });
 });

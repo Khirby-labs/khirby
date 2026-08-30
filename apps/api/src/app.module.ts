@@ -17,6 +17,7 @@ import { loadPlugins } from './modules/plugins/load-plugins';
 import { HealthModule } from './core/health/health.module';
 import { EventsModule } from './core/events/events.module';
 import { MailModule } from './modules/mail/mail.module';
+import { AgentModule } from './modules/agent/agent.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { MailModule } from './modules/mail/mail.module';
     MarketplaceModule,
     HealthModule,
     MailModule,
+    AgentModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
