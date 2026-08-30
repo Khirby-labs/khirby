@@ -7,6 +7,13 @@ import fastifyCors from '@fastify/cors';
 import fastifyCookie from '@fastify/cookie';
 import fastifySession from '@fastify/session';
 import Redis from 'ioredis';
+import { AllExceptionsFilter } from './core/filters/all-exceptions.filter';
+import { validationExceptionFactory } from './core/errors/validation-exception-factory';
+import {
+  parseCorsOrigin,
+  resolveListenPort,
+  resolveSessionSecret,
+} from './core/security/bootstrap-env';
 
 // connect-redis v9 requires node-redis API (sendCommand) — incompatible with ioredis.
 // Minimal express-compatible session store wrapping ioredis directly.
@@ -38,9 +45,6 @@ class IoRedisSessionStore {
     }
   }
 }
-import { AllExceptionsFilter } from './core/filters/all-exceptions.filter';
-import { validationExceptionFactory } from './core/errors/validation-exception-factory';
-import { parseCorsOrigin, resolveSessionSecret } from './core/security/bootstrap-env';
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -80,7 +84,6 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new AllExceptionsFilter());
 
-  // Security headers
   await app.register(fastifyHelmet, {
     contentSecurityPolicy: isDev ? false : undefined,
   });
@@ -120,7 +123,6 @@ async function bootstrap() {
     },
   });
 
-  // Redis session store
   const redisClient = new Redis(process.env.REDIS_URL ?? 'redis://localhost:6379');
 
   await app.register(fastifyCookie);
@@ -137,15 +139,14 @@ async function bootstrap() {
     },
   });
 
-  // Swagger — tylko w dev
   if (isDev) {
     const { DocumentBuilder, SwaggerModule } = await import('@nestjs/swagger');
     const config = new DocumentBuilder()
       .setTitle('CRM Khirby API')
       .setDescription(
-        'REST API dla CRM Khirby. ' +
-          'Uwierzytelnianie przez session cookie — najpierw POST /api/auth/login, ' +
-          'cookie connect.sid zostanie ustawione automatycznie.',
+        'REST API for CRM Khirby. ' +
+          'Authenticate via session cookie — POST /api/auth/login first; ' +
+          'the connect.sid cookie is set automatically.',
       )
       .setVersion('1.0')
       .addCookieAuth(
@@ -153,13 +154,13 @@ async function bootstrap() {
         { type: 'apiKey', in: 'cookie', name: 'connect.sid' },
         'session',
       )
-      .addTag('auth', 'Logowanie, wylogowanie, profil, zmiana hasła')
-      .addTag('users', 'Zarządzanie użytkownikami (admin)')
-      .addTag('contacts', 'Kontakty CRM')
-      .addTag('forms', 'Formularze i zgłoszenia')
-      .addTag('roles', 'Role i uprawnienia RBAC')
-      .addTag('newsletter', 'Listy newslettera (Listmonk)')
-      .addTag('plugins', 'Integracje i wtyczki')
+      .addTag('auth', 'Login, logout, profile, password change')
+      .addTag('users', 'User management (admin)')
+      .addTag('contacts', 'CRM contacts')
+      .addTag('forms', 'Forms and submissions')
+      .addTag('roles', 'RBAC roles and permissions')
+      .addTag('newsletter', 'Newsletter lists (Listmonk)')
+      .addTag('plugins', 'Integrations and plugins')
       .build();
     const document = SwaggerModule.createDocument(app, config);
     await SwaggerModule.setup('api/docs', app, document, {
@@ -170,11 +171,11 @@ async function bootstrap() {
         withCredentials: true,
       },
     });
-    const port = process.env.PORT ?? 3000;
+    const port = resolveListenPort();
     logger.log(`Swagger UI: http://localhost:${port}/api/docs`);
   }
 
-  const port = process.env.PORT ?? 3000;
+  const port = resolveListenPort();
   await app.listen(port, '0.0.0.0');
   logger.log(`API listening on http://0.0.0.0:${port} [${isDev ? 'development' : 'production'}]`);
 }

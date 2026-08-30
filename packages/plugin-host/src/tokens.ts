@@ -29,6 +29,7 @@ export interface PluginRegistryLike {
 
 export const CONTACTS_SERVICE = 'CRM_CONTACTS_SERVICE';
 export const LEADS_SERVICE = 'CRM_LEADS_SERVICE';
+export const USERS_SERVICE = 'CRM_USERS_SERVICE';
 export const PIPELINE_STAGES_SERVICE = 'CRM_PIPELINE_STAGES_SERVICE';
 export const EVENTS_SERVICE = 'CRM_EVENTS_SERVICE';
 export const MAIL_THREAD_SERVICE = 'CRM_MAIL_THREAD_SERVICE';
@@ -81,6 +82,11 @@ export interface LeadsServiceLike {
       ownerId?: string | null;
     },
   ): Promise<unknown>;
+}
+
+/** Narrow users surface for plugins / MCP. */
+export interface UsersServiceLike {
+  findAll(currentUserId?: string): Promise<unknown>;
 }
 
 export interface PipelineStagesServiceLike {
@@ -269,5 +275,83 @@ export interface PokeloContextServiceLike {
   listProjects?(): Promise<Array<{ id: string; name: string }>>;
 }
 
+/**
+ * Instance-volume plugins (ADR-0036, ADR-0038). Provided by PluginsModule.
+ * MCP and in-app chat consume this token — never import `apps/api`.
+ */
+export const INSTANCE_PLUGINS = 'CRM_INSTANCE_PLUGINS';
+
+export type InstancePluginScaffoldInput = {
+  directory: string;
+  name: string;
+  displayName?: string;
+  nest?: boolean;
+};
+
+export interface InstancePluginsLike {
+  /** Writable `plugins/` dir (`INSTANCE_PLUGINS_DIR` or repo `plugins/`). */
+  instanceDir(): string;
+  /** Absolute package dir for one volume segment (rejects `..` / nested paths). */
+  packageDir(directory: string): string;
+  /** Names that must not be scaffolded or hot-loaded (natives + `crm_hello`). */
+  reservedNames(): readonly string[];
+  /** Plugins already in this process (image + previously hot-loaded). */
+  loadedNames(): string[];
+  /** Volume folder for a loaded `crm_*` name, or null when the plugin is not on the instance volume. */
+  instanceDirectory(name: string): string | null;
+  /**
+   * SPA pages from a loaded plugin's `getFrontendRoutes()` — only paths under
+   * `/plugins/` (same rule as instance validation). Empty when unknown / no UI.
+   * Callers must copy these paths; never invent URLs from name or directory.
+   */
+  frontendPages(name: string): Array<{ path: string; navLabel: string }>;
+  /**
+   * Load `createPlugin()` from a directory on the volume, push onto the live
+   * registry, optionally LazyModuleLoader, then install+activate.
+   */
+  hotLoad(absPackageDir: string): Promise<{ name: string }>;
+  /** Same rules as hotLoad, without mutating the process. */
+  validate(absPackageDir: string): { name: string };
+  /** validate → manifest → hotLoad (first time) or enable/install row (retry). */
+  installFromDirectory(
+    localDir: string,
+    packageName?: string,
+  ): Promise<{ name: string; status: 'installed' | 're-enabled' | 'already_active' }>;
+  /** Delete volume files, manifest entry, and DB row (process memory until restart). */
+  removeInstance(localDir: string): Promise<{ name: string }>;
+  appendManifest(packageName: string, localDir: string): void;
+  /** Shared authoring contract (events, volume, ./web ban). */
+  pluginContract(): string;
+  scaffold(input: InstancePluginScaffoldInput): { directory: string; files: string[] };
+  writeFile(
+    directory: string,
+    path: string,
+    content: string,
+  ): { directory: string; path: string; bytes: number };
+  /**
+   * Re-read a volume plugin already in this process and rebind its GET handlers.
+   * No-op (not_loaded) when the name is not in the live registry yet.
+   */
+  reloadFromDirectory(
+    localDir: string,
+  ): Promise<{ name: string; status: 'reloaded' | 'not_loaded' }>;
+  readFile(directory: string, path: string): { directory: string; path: string; content: string };
+  listFiles(directory: string): { directory: string; files: string[] };
+}
+
 /** Marker metadata key for PluginEnabledGuard */
 export const PLUGIN_NAME_KEY = 'crm-plugin-name';
+
+/**
+ * BYOK LLM config from crm-plugin-ai-compose (ADR-0040).
+ * Agent chat consumes this token — @Optional() when plugin is absent.
+ */
+export const AI_COMPOSE_LLM = 'AI_COMPOSE_LLM';
+
+export interface AiComposeLlmLike {
+  getCompletionConfig(): Promise<{
+    baseUrl: string;
+    apiKey: string;
+    model: string;
+  } | null>;
+}

@@ -62,7 +62,8 @@
   "errors": {
     "load": "Couldn't load plugins",
     "saveConfig": "Couldn't save the configuration",
-    "toggle": "Couldn't change the plugin's state"
+    "toggle": "Couldn't change the plugin's state",
+    "uninstall": "Couldn't uninstall the plugin"
   },
   "list": {
     "configure": "Configure",
@@ -76,8 +77,14 @@
     "enabled": "Enabled",
     "enableToConfigure": "Enable this plugin to edit its settings.",
     "installed": "Installed {date}",
+    "orphanWarning": "Plugin code is not loaded in this process — uninstall to remove the stale entry.",
     "subtitle": "Manage installed plugins and their configuration.",
-    "title": "Plugins"
+    "title": "Plugins",
+    "uninstall": "Uninstall",
+    "uninstallAria": "Uninstall {name}",
+    "uninstallConfirm": "This removes {name} and any data the plugin owns. Restart the API to drop code from memory.",
+    "uninstallConfirmAction": "Uninstall {name}",
+    "uninstallTitle": "Uninstall plugin?"
   },
   "listmonk": {
     "config": {
@@ -107,7 +114,8 @@
   },
   "toast": {
     "disabled": "{name} is now disabled.",
-    "enabled": "{name} is now enabled."
+    "enabled": "{name} is now enabled.",
+    "uninstalled": "{name} was uninstalled."
   },
   "webhook": {
     "config": {
@@ -253,5 +261,9 @@
       "rotate": "Couldn't generate token",
       "revoke": "Couldn't revoke token"
     }
+  },
+  "hello": {
+    "displayName": "Hello example",
+    "description": "A minimal example plugin: it writes a log line whenever a contact is created."
   }
 }

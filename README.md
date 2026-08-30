@@ -71,7 +71,7 @@ docker/           Dockerfiles, nginx, Swarm/Compose
 docs/             Internal ADRs, journal, design system (not the public site)
 ```
 
-First-party plugins install from **npm** via [`plugins.manifest.json`](./plugins.manifest.json) (`pnpm sync:plugins`). Docker builds do not copy a host `plugins/` tree — sources are vendored from `node_modules` for Nest compile. Plugin authors can clone [Khirby-labs/plugins](https://github.com/Khirby-labs/plugins) with `./scripts/checkout-plugins.sh` and set `KHIRBY_PLUGINS_WORKSPACE=1` to link locally.
+First-party plugins install from **npm** via [`plugins.manifest.json`](./plugins.manifest.json) (`pnpm sync:plugins`). Docker builds do not copy a host `plugins/` tree — sources are vendored from `node_modules` for Nest compile. Vendor is **hybrid** (ADR-0037): existing `plugins/<dir>` is kept; npm fills only the gaps. Plugin authors can clone [Khirby-labs/plugins](https://github.com/Khirby-labs/plugins) with `./scripts/checkout-plugins.sh` and set `KHIRBY_PLUGINS_WORKSPACE=1` for local-only (no npm vendor).
 
 Published from this repo (npm):
 

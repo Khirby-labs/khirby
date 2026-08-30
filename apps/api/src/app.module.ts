@@ -12,10 +12,12 @@ import { BoardsModule } from './modules/boards/boards.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
 import { PluginsModule } from './modules/plugins/plugins.module';
+import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { loadPlugins } from './modules/plugins/load-plugins';
 import { HealthModule } from './core/health/health.module';
 import { EventsModule } from './core/events/events.module';
 import { MailModule } from './modules/mail/mail.module';
+import { AgentModule } from './modules/agent/agent.module';
 
 @Module({
   imports: [
@@ -32,8 +34,11 @@ import { MailModule } from './modules/mail/mail.module';
     RolesModule,
     UsersModule,
     PluginsModule.forRoot(loadPlugins()),
+    // After PluginsModule: the Marketplace reads the registry that module provides.
+    MarketplaceModule,
     HealthModule,
     MailModule,
+    AgentModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

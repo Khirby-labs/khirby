@@ -13,9 +13,16 @@ export const useAuthStore = defineStore('auth', () => {
 
   const isAuthenticated = computed(() => !!user.value);
 
+  function sessionHasPermissions(u: SessionUser | null): u is SessionUser {
+    return u !== null && Array.isArray(u.permissions);
+  }
+
   // Sprawdź aktywną sesję przy starcie aplikacji
   async function checkSession(): Promise<void> {
-    if (checked.value) return;
+    // A tab left open across a deploy (or Vite HMR) may still hold a user row
+    // from before /auth/me started returning permissions — re-fetch until the
+    // payload is complete.
+    if (checked.value && sessionHasPermissions(user.value)) return;
     try {
       const data = await apiGet<SessionUser>('/api/auth/me');
       user.value = data;
@@ -73,6 +80,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function hasPermission(resource: string, action: string): boolean {
+    return (user.value?.permissions ?? []).some(
+      (p) => p.resource === resource && p.action === action,
+    );
+  }
+
   return {
     user,
     loading,
@@ -83,5 +96,6 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     logout,
     saveLocale,
+    hasPermission,
   };
 });

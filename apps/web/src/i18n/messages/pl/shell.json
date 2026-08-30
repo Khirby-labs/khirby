@@ -8,7 +8,8 @@
     "plugins": "Wtyczki",
     "expand": "Rozwiń pasek boczny",
     "collapse": "Zwiń",
-    "collapseAria": "Zwiń pasek boczny"
+    "collapseAria": "Zwiń pasek boczny",
+    "extensions": "Rozszerzenia"
   },
   "topbar": {
     "openNav": "Otwórz nawigację",
@@ -23,7 +24,8 @@
     "listAria": "Wyniki",
     "placeholder": "Szukaj kontaktów, stron…",
     "createTag": "Utwórz",
-    "noMatches": "Brak wyników dla „{query}”"
+    "noMatches": "Brak wyników dla „{query}”",
+    "askKhirby": "Ask Khirby"
   },
   "account": {
     "logOut": "Wyloguj się",

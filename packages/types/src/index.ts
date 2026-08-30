@@ -134,6 +134,8 @@ export interface SessionUser {
    * with `isLocaleCode` before applying it.
    */
   locale: string | null;
+  /** Effective RBAC grants for this session; `[]` when the user has no roles. */
+  permissions: RolePermission[];
 }
 
 export interface LoginResponse {
@@ -215,6 +217,71 @@ export interface PluginConfigField {
   placeholders?: PluginConfigPlaceholder[];
 }
 
+// --- Marketplace (GET /api/marketplace/plugins) ---
+
+/**
+ * Closed set of catalog categories, mirrored from the API's `catalog.ts`. The web
+ * filter enumerates these and each needs its own translated label, so the union
+ * must stay closed — a free-form string would render as a raw token.
+ */
+export const MARKETPLACE_CATEGORIES = [
+  'communication',
+  'marketing',
+  'automation',
+  'ai',
+  'integration',
+  'other',
+] as const;
+
+export type MarketplaceCategory = (typeof MARKETPLACE_CATEGORIES)[number];
+
+/** `installed` = a row exists in `plugins`; `available` = loaded but no row (ADR-0032). */
+export type MarketplaceStatus = 'installed' | 'available';
+
+/**
+ * One Marketplace card.
+ *
+ * Name and description travel the same road as Settings — the plugin's English
+ * literal plus an optional message key the SPA resolves (ADR-0011) — while the
+ * catalog contributes only metadata.
+ *
+ * `category` is never absent: an installed plugin whose catalog entry is missing
+ * resolves to `other` with a null vendor and no docs link, so the filter can still
+ * reach it and the view needs no absent-metadata branch.
+ */
+export interface MarketplacePlugin {
+  name: string;
+  displayName: string;
+  displayNameKey?: string;
+  description: string | null;
+  descriptionKey?: string;
+  version: string;
+  status: MarketplaceStatus;
+  /** False for anything `available`; for `installed` it comes from the row. */
+  enabled: boolean;
+  category: MarketplaceCategory;
+  vendor: string | null;
+  icon: string;
+  docsUrl: string | null;
+  configSchema: PluginConfigField[];
+}
+
+/**
+ * A plugin present in this process that the operator has NOT installed — no row
+ * in the `plugins` table (ADR-0032). It carries the same localizable field set
+ * as an installed row, so a Marketplace card renders identically either side of
+ * the install: the SPA resolves `*Key` and falls back to the English literal.
+ */
+export interface AvailablePlugin {
+  name: string;
+  displayName: string;
+  displayNameKey?: string;
+  description: string | null;
+  descriptionKey?: string;
+  version: string;
+  configSchema: PluginConfigField[];
+}
+
 export interface Plugin {
   id: string;
   name: string;
@@ -231,6 +298,10 @@ export interface Plugin {
   installedAt: string;
   updatedAt: string;
   frontendRoutes?: PluginFrontendRoute[];
+  /** True when this process loaded the plugin code (image or hot-load). */
+  codeLoaded?: boolean;
+  /** False for native image plugins that cannot be removed from the instance. */
+  canUninstall?: boolean;
 }
 
 /**
@@ -248,19 +319,30 @@ export const PERMISSION_RESOURCES = [
   'roles',
   'users',
   'boards',
+  'agent',
 ] as const;
 
 export type PermissionResource = (typeof PERMISSION_RESOURCES)[number];
 
-export const PERMISSION_ACTIONS = ['manage'] as const;
+export const PERMISSION_ACTIONS = ['manage', 'use'] as const;
 
 export type PermissionAction = (typeof PERMISSION_ACTIONS)[number];
 
-/** Every valid (resource, action) pair — used to grant super-admin full access. */
+/**
+ * Every assignable (resource, action) pair — explicit list, not a cartesian product.
+ * Only `agent` may use `use`; all other resources stay `manage`-only.
+ */
 export const ALL_PERMISSIONS: ReadonlyArray<{
   resource: PermissionResource;
   action: PermissionAction;
-}> = PERMISSION_RESOURCES.map((resource) => ({ resource, action: 'manage' as const }));
+}> = [
+  ...PERMISSION_RESOURCES.filter((r) => r !== 'agent').map((resource) => ({
+    resource,
+    action: 'manage' as const,
+  })),
+  { resource: 'agent', action: 'use' },
+  { resource: 'agent', action: 'manage' },
+];
 
 // --- Locales (ADR-0011) ---
 

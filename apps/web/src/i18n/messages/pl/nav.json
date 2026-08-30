@@ -4,7 +4,8 @@
     "pipeline": "Pipeline",
     "boards": "Boards",
     "forms": "Formularze",
-    "mail": "Poczta"
+    "mail": "Poczta",
+    "ask": "Ask Khirby"
   },
   "settings": {
     "general": "Ogólne",
@@ -22,6 +23,10 @@
     "navigate": "Nawigacja",
     "plugins": "Wtyczki",
     "create": "Tworzenie",
-    "contacts": "Kontakty"
+    "contacts": "Kontakty",
+    "ask": "Ask Khirby"
+  },
+  "extensions": {
+    "marketplace": "Marketplace"
   }
 }

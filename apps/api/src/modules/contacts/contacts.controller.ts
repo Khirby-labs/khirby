@@ -29,8 +29,8 @@ export class ContactsController {
   constructor(private contacts: ContactsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lista kontaktów (stronicowana)' })
-  @ApiResponse({ status: 200, description: 'Lista kontaktów' })
+  @ApiOperation({ summary: 'List contacts (paginated)' })
+  @ApiResponse({ status: 200, description: 'Contact list' })
   findAll(@Query() query: ListContactsQueryDto) {
     return this.contacts.findAll({
       page: query.page ?? 1,
@@ -47,30 +47,30 @@ export class ContactsController {
   }
 
   @Get(':id')
-  @ApiOperation({ summary: 'Pobierz kontakt po ID' })
-  @ApiResponse({ status: 200, description: 'Kontakt' })
+  @ApiOperation({ summary: 'Get contact by ID' })
+  @ApiResponse({ status: 200, description: 'Contact' })
   findOne(@Param('id') id: string) {
     return this.contacts.findById(id);
   }
 
   @Post()
-  @ApiOperation({ summary: 'Utwórz kontakt' })
-  @ApiResponse({ status: 201, description: 'Kontakt utworzony' })
+  @ApiOperation({ summary: 'Create contact' })
+  @ApiResponse({ status: 201, description: 'Contact created' })
   create(@Body() dto: CreateContactDto) {
     return this.contacts.create(dto);
   }
 
   @Patch(':id')
-  @ApiOperation({ summary: 'Zaktualizuj kontakt' })
-  @ApiResponse({ status: 200, description: 'Kontakt zaktualizowany' })
+  @ApiOperation({ summary: 'Update contact' })
+  @ApiResponse({ status: 200, description: 'Contact updated' })
   update(@Param('id') id: string, @Body() dto: UpdateContactDto) {
     return this.contacts.update(id, dto);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Usuń kontakt' })
-  @ApiResponse({ status: 204, description: 'Kontakt usunięty' })
+  @ApiOperation({ summary: 'Delete contact' })
+  @ApiResponse({ status: 204, description: 'Contact deleted' })
   delete(@Param('id') id: string) {
     return this.contacts.delete(id);
   }

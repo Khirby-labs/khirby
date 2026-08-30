@@ -1,18 +1,15 @@
 {
   "actions.new": "The '+ New' top-bar button that opens the create menu. ≤2 words, sits next to a + glyph rendered separately.",
-
   "sidebar.navLabel": "aria-label on the main sidebar <nav>. Screen-reader only, names the region.",
   "sidebar.workspace": "Sidebar group heading over the day-to-day pages. CSS uppercases it, so give sentence case. 1 word.",
   "sidebar.plugins": "Sidebar group heading over enabled plugin pages. 1 word, plural.",
   "sidebar.expand": "Tooltip AND aria-label of the button that expands the collapsed icon rail back to full width. ≤2 words.",
   "sidebar.collapse": "Visible label of the button that collapses the sidebar to an icon rail. ≤1 word — it sits in a narrow row.",
   "sidebar.collapseAria": "aria-label of that same collapse button. Says what it acts on, unlike the terser visible label.",
-
   "topbar.openNav": "aria-label of the hamburger button that opens the nav drawer on mobile. ≤3 words.",
   "topbar.breadcrumb": "aria-label of the breadcrumb <nav>. Screen-reader only. Keep the standard accessibility term.",
   "topbar.search": "Placeholder-style label inside the search button that opens the command palette. Ends with an ellipsis character.",
   "topbar.searchAria": "aria-label of that search button. {shortcut} is the spoken keyboard shortcut, e.g. 'Command + K' on a Mac and 'Control + K' elsewhere — it is platform-derived, never translated.",
-
   "palette.title": "Screen-reader-only dialog title of the ⌘K search palette. ≤2 words.",
   "palette.description": "Screen-reader-only description of the palette. One short sentence: navigate, create, or find a contact.",
   "palette.inputAria": "aria-label of the palette's text input. ≤3 words.",
@@ -20,8 +17,9 @@
   "palette.placeholder": "Placeholder in the palette input. Mentions contacts and pages. Ends with an ellipsis.",
   "palette.createTag": "Tiny mono tag on palette rows that create something rather than navigate. 1 word.",
   "palette.noMatches": "Shown when nothing matches. {query} is what the user typed and must be wrapped in the locale's own quotation marks (Polish „…”, English \"…\").",
-
+  "palette.askKhirby": "Fallback palette row when the input is empty — opens Ask Khirby. Product name stays English. ≤2 words.",
   "account.logOut": "Menu item that ends the session. Imperative, ≤2 words.",
   "account.trigger": "aria-label of the sidebar-footer account button. {email} is the signed-in address. Names what the button opens.",
-  "account.unknownEmail": "Fallback shown in place of the email when the session has no user loaded yet. 1 word."
+  "account.unknownEmail": "Fallback shown in place of the email when the session has no user loaded yet. 1 word.",
+  "sidebar.extensions": "Heading of the sidebar section between Workspace and the plugin pages, containing Marketplace. Styled uppercase by CSS, so give sentence case. Noun, plural, 1 word — it names the family of things that extend the CRM, not the act of extending it."
 }

@@ -46,19 +46,43 @@ function workspacePluginDir(packageName) {
   return null;
 }
 
-function importSpecifier(packageName) {
-  const dir = workspacePluginDir(packageName);
+/**
+ * Where an entry's TypeScript sources live.
+ *
+ * A `local` entry names its directory outright (examples/*). That is not a
+ * convenience: the heuristic below only ever looks under plugins/, so a local
+ * package would fall through to the bare package-name specifier — which resolves
+ * through node_modules in a workspace checkout and points at a .ts file that
+ * `nest build` (plain tsc) cannot emit for. The two environments would disagree,
+ * and only the image build would notice.
+ */
+function pluginSourceDir(entry) {
+  if (typeof entry.local === 'string' && entry.local) {
+    const dir = join(root, entry.local);
+    if (!existsSync(join(dir, 'package.json'))) {
+      throw new Error(
+        `plugins.manifest.json: ${entry.package} declares local "${entry.local}", which has no package.json`,
+      );
+    }
+    return dir;
+  }
+  return workspacePluginDir(entry.package);
+}
+
+function importSpecifier(entry) {
+  const dir = pluginSourceDir(entry);
   if (dir) {
     const target = join(dir, 'src');
     let rel = relative(apiGenDir, target).replace(/\\/g, '/');
     if (!rel.startsWith('.')) rel = './' + rel;
     return rel;
   }
-  return packageName;
+  return entry.package;
 }
 
-function packageHasWebExport(packageName) {
-  const dir = workspacePluginDir(packageName);
+function packageHasWebExport(entry) {
+  const packageName = entry.package;
+  const dir = pluginSourceDir(entry);
   const candidates = [
     dir ? join(dir, 'package.json') : null,
     join(root, 'apps/api/node_modules', ...packageName.split('/'), 'package.json'),
@@ -73,9 +97,7 @@ function packageHasWebExport(packageName) {
 }
 
 const apiImports = plugins
-  .map(
-    (p, i) => `import { createPlugin as createPlugin_${i} } from '${importSpecifier(p.package)}';`,
-  )
+  .map((p, i) => `import { createPlugin as createPlugin_${i} } from '${importSpecifier(p)}';`)
   .join('\n');
 const apiReturns = plugins.map((_, i) => `    createPlugin_${i}(),`).join('\n');
 
@@ -98,7 +120,7 @@ if (existsSync(apiGenDir)) {
   console.log(`Skipped API loader (${apiGenDir} not present)`);
 }
 
-const webEntries = plugins.filter((p) => packageHasWebExport(p.package));
+const webEntries = plugins.filter((p) => packageHasWebExport(p));
 
 const webOut = `/** Generated — do not edit. Source: plugins.manifest.json */
 

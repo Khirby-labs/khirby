@@ -113,6 +113,13 @@ const staticRoutes: RouteRecordRaw[] = [
         },
       },
 
+      {
+        path: 'marketplace',
+        name: 'marketplace',
+        component: () => import('../views/marketplace/MarketplaceView.vue'),
+        meta: { titleKey: 'nav.extensions.marketplace' },
+      },
+
       // Settings console — admin area with its own sub-nav (Members/Roles/Plugins moved here)
       {
         path: 'settings',
@@ -172,6 +179,23 @@ const staticRoutes: RouteRecordRaw[] = [
         name: 'mail',
         component: () => import('../views/mail/MailInboxView.vue'),
         meta: { titleKey: 'nav.workspace.mail' },
+      },
+
+      {
+        path: 'ask',
+        meta: { layout: 'chat-focus', titleKey: 'nav.workspace.ask' },
+        children: [
+          {
+            path: '',
+            name: 'ask-new',
+            component: () => import('../views/agent/AskKhirbyView.vue'),
+          },
+          {
+            path: ':conversationId',
+            name: 'ask-thread',
+            component: () => import('../views/agent/AskKhirbyView.vue'),
+          },
+        ],
       },
 
       // Back-compat: the old top-level admin routes now live under Settings
@@ -235,8 +259,12 @@ export function registerPluginRoutes(
   for (const plugin of plugins) {
     if (!plugin.enabled || !plugin.frontendRoutes?.length) continue;
     for (const route of plugin.frontendRoutes) {
-      const component = pluginComponentMap[plugin.name];
-      if (!component) continue;
+      // Image plugins ship Vue via exports["./web"] (generated map). Instance
+      // plugins declare the tab with getFrontendRoutes() and reuse one host
+      // page — ./web is not hot-loadable (ADR-0036).
+      const component =
+        pluginComponentMap[plugin.name] ??
+        (() => import('../views/plugins/InstancePluginView.vue'));
 
       enabledRouteNames.add(route.name);
 
@@ -292,6 +320,10 @@ router.beforeEach(async (to) => {
       if (retry.name !== 'not-found') {
         return { path: to.fullPath, replace: true };
       }
+    }
+
+    if (to.path.startsWith('/ask') && !auth.hasPermission('agent', 'use')) {
+      return;
     }
   }
 });

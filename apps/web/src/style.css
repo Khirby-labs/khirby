@@ -308,4 +308,115 @@ kbd {
   .crm-cal-day-range[data-disabled] {
     @apply pointer-events-none opacity-40;
   }
+
+  /*
+   * Sanitized markdown (`renderMarkdown`) — boards, agent chat, comments.
+   * Token-only colors; never rely on browser defaults inside v-html.
+   */
+  .md-prose {
+    @apply text-text-secondary leading-relaxed;
+  }
+  .md-prose :where(p) {
+    margin: 0.45em 0;
+  }
+  .md-prose :where(p:first-child) {
+    margin-top: 0;
+  }
+  .md-prose :where(p:last-child) {
+    margin-bottom: 0;
+  }
+  .md-prose :where(h1, h2, h3, h4) {
+    @apply font-semibold text-text-primary;
+    margin: 1em 0 0.4em;
+    line-height: 1.35;
+  }
+  .md-prose :where(h1) {
+    font-size: 1.35rem;
+  }
+  .md-prose :where(h2) {
+    font-size: 1.15rem;
+  }
+  .md-prose :where(h3) {
+    font-size: 1.05rem;
+  }
+  .md-prose :where(h4) {
+    font-size: 0.95rem;
+  }
+  .md-prose :where(ul, ol) {
+    margin: 0.5em 0;
+    padding-left: 1.4rem;
+  }
+  .md-prose :where(li) {
+    margin: 0.2em 0;
+  }
+  .md-prose :where(li > p) {
+    margin: 0.15em 0;
+  }
+  .md-prose :where(code) {
+    font-family: 'Geist Mono Variable', ui-monospace, monospace;
+    font-size: 0.85em;
+    background: var(--surface-raise);
+    border: 1px solid var(--border-default);
+    border-radius: 0.25rem;
+    padding: 0.1em 0.35em;
+  }
+  .md-prose :where(pre) {
+    margin: 0.75em 0;
+    padding: 0.85rem 1rem;
+    background: rgb(var(--surface-input));
+    border: 1px solid var(--border-default);
+    border-radius: 0.5rem;
+    overflow-x: auto;
+  }
+  .md-prose :where(pre code) {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+  }
+  .md-prose :where(a) {
+    @apply text-accent underline underline-offset-2 hover:text-accent-hover;
+  }
+  .md-prose :where(blockquote) {
+    margin: 0.65em 0;
+    padding-left: 0.9rem;
+    border-left: 3px solid var(--border-strong);
+    @apply text-text-muted;
+  }
+  .md-prose :where(hr) {
+    border: none;
+    border-top: 1px solid var(--border-default);
+    margin: 1.25em 0;
+  }
+  .md-prose :where(table) {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.75em 0;
+    font-size: 0.875rem;
+    display: block;
+    overflow-x: auto;
+  }
+  .md-prose :where(th, td) {
+    border: 1px solid var(--border-default);
+    padding: 0.45rem 0.65rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  .md-prose :where(th) {
+    background: var(--surface-raise);
+    @apply font-semibold text-text-primary;
+  }
+  .md-prose :where(tr:nth-child(even) td) {
+    background: var(--surface-raise);
+  }
+  .md-prose :where(input[type='checkbox']) {
+    margin-right: 0.4rem;
+  }
+  .md-prose :where(strong) {
+    @apply font-semibold text-text-primary;
+  }
+  .md-prose :where(em) {
+    font-style: italic;
+  }
 }

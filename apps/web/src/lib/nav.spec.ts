@@ -2,7 +2,9 @@ import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import {
   buildCommandGroups,
   filterCommandGroups,
+  filterNavForUser,
   workspaceNav,
+  marketplaceNav,
   settingsNav,
   quickCreateActions,
   type CommandItem,
@@ -36,7 +38,7 @@ describe('buildCommandGroups', () => {
     expect(groups.map((g) => g.heading)).toEqual(['Navigate', 'Plugins', 'Create']);
 
     const navigate = groups[0].items;
-    expect(navigate).toHaveLength(workspaceNav.length + settingsNav.length);
+    expect(navigate).toHaveLength(workspaceNav.length + marketplaceNav.length + settingsNav.length);
     expect(navigate.every((i) => i.kind === 'nav')).toBe(true);
 
     expect(groups[1].items).toEqual(pluginItems);
@@ -60,11 +62,52 @@ describe('buildCommandGroups', () => {
     expect(navigate.map((i) => i.to)).toContain('/settings/integrations');
   });
 
+  /*
+   * The regression guard the Marketplace section needs. `nav.ts` has no concept of
+   * a sidebar group — sections are written out in AppSidebar.vue — so a new nav
+   * section can render perfectly in the sidebar and be missing from ⌘K, and before
+   * this assertion nothing would have failed: the count above was exactly
+   * workspaceNav + settingsNav.
+   */
+  it('carries Marketplace into the palette, resolved in both languages', () => {
+    const labels = () => buildCommandGroups(t, [])[0].items.map((i) => i.label);
+    const targets = () => buildCommandGroups(t, [])[0].items.map((i) => i.to);
+
+    expect(targets()).toContain('/marketplace');
+    expect(labels()).toContain('Marketplace');
+
+    i18n.global.locale.value = 'pl';
+    expect(targets()).toContain('/marketplace');
+    // Established in Polish too, so the word itself does not change — what matters
+    // is that it resolves to copy rather than to a key.
+    expect(labels()).toContain('Marketplace');
+    expect(labels().some((l) => l.includes('nav.'))).toBe(false);
+  });
+
   it('follows the active locale', () => {
     i18n.global.locale.value = 'pl';
     const groups = buildCommandGroups(t, []);
     expect(groups[0].items.map((i) => i.label)).toContain('Kontakty');
     expect(groups[0].heading).not.toBe('Navigate');
+  });
+});
+
+describe('filterNavForUser', () => {
+  it('hides Ask Khirby without agent:use', () => {
+    const paths = filterNavForUser(workspaceNav, []).map((i) => i.to);
+    expect(paths).not.toContain('/ask');
+  });
+
+  it('shows Ask Khirby when agent:use is granted', () => {
+    const paths = filterNavForUser(workspaceNav, [{ resource: 'agent', action: 'use' }]).map(
+      (i) => i.to,
+    );
+    expect(paths).toContain('/ask');
+  });
+
+  it('leaves unrestricted nav entries visible', () => {
+    const paths = filterNavForUser(workspaceNav, []).map((i) => i.to);
+    expect(paths).toContain('/contacts');
   });
 });
 

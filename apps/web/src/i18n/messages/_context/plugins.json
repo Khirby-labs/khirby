@@ -42,6 +42,12 @@
   "list.title": "Page heading of the installed-plugins screen. Noun, plural, 1 word. Glossary: plugin → wtyczka.",
   "list.subtitle": "One sentence under that heading saying what the screen is for. Polish is a noun phrase ('Zarządzanie…'), not an address to the reader.",
   "list.installed": "Small line on a plugin card giving the day it was installed. {date} is rendered by d() — never format it in the message. ≤2 words plus the value.",
+  "list.orphanWarning": "Warning on a card whose DB row exists but the plugin code is not loaded in this API process (stale install). One sentence telling the operator to uninstall.",
+  "list.uninstall": "Button that removes a non-native installed plugin. Imperative, 1 word. Glossary: uninstall → odinstaluj.",
+  "list.uninstallAria": "aria-label for the uninstall button. {name} is the plugin display name from the API.",
+  "list.uninstallTitle": "Confirm-dialog title for uninstall. A question, ≤4 words.",
+  "list.uninstallConfirm": "Confirm-dialog body for uninstall. {name} is the display name. Mentions owned data and that API restart may be needed to drop in-memory code. One or two sentences.",
+  "list.uninstallConfirmAction": "Destructive confirm button — names the plugin being uninstalled. {name} is the display name. ≤3 words plus name.",
   "list.configure": "Button on a plugin card that expands its configuration form. This is the label shown while the form is collapsed; the expanded state uses common.actions.close. Imperative, 1 word.",
   "list.enableToConfigure": "Hint inside the expand panel when a custom settings UI (MCP / AI Compose / Pokelo) is opened while the plugin is still off — those APIs require the plugin enabled. One short sentence, impersonal.",
   "list.enabled": "Status word next to a plugin's on/off switch when the plugin is on. 1 word, and it must fit a narrow fixed-width slot. It always describes a plugin, so Polish agrees with 'wtyczka' (feminine).",
@@ -52,8 +58,10 @@
   "list.empty.message": "Body under it. One sentence: plugins are installed on the server, not from this screen.",
   "toast.enabled": "Toast confirming a plugin was switched on. A WHOLE sentence per branch — never interpolate 'enabled/disabled' into shared prose, because Polish adjectives must agree with their noun. {name} is the plugin's display name from the API.",
   "toast.disabled": "Toast confirming a plugin was switched off. A whole sentence, for the same reason as toast.enabled. {name} is the plugin's display name from the API.",
+  "toast.uninstalled": "Toast confirming a plugin was uninstalled. Whole sentence with {name} as display name from the API.",
   "errors.load": "Fallback in the error banner when the plugin list could not be fetched and the server gave no message. No trailing period.",
   "errors.toggle": "Fallback when switching a plugin on or off failed and the server gave no message. It covers both directions, so it must not name one. No trailing period.",
+  "errors.uninstall": "Fallback when uninstall failed and the server gave no message. No trailing period.",
   "errors.saveConfig": "Fallback when saving a plugin's configuration failed and the server gave no message. No trailing period.",
   "listmonk.displayName": "Title of the Listmonk plugin's card in the plugin list. The plugin declares this key and the backend seeds the English literal into the database; the key wins wherever the SPA knows it (ADR-0011). 'Listmonk' is a product name and stays as-is.",
   "listmonk.description": "One sentence under that title saying what the plugin does: contacts and form submissions end up on Listmonk lists. Glossary: submission → zgłoszenie.",
@@ -133,5 +141,7 @@
   "pokelo.project.saveButton": "Button label to save the selected projects.",
   "pokelo.status.tokenConfigured": "Badge when an MCP token is already stored.",
   "pokelo.status.saved": "Brief success confirmation after settings are saved.",
-  "pokelo.status.autoSelected": "Hint when the only visible project was auto-bound. {name} is the project name."
+  "pokelo.status.autoSelected": "Hint when the only visible project was auto-bound. {name} is the project name.",
+  "hello.displayName": "Title of the example plugin's Marketplace card and of its own page. It is a demonstration fixture, not a product — the name should read as an example, not as a feature. 'Hello' stays English in both languages (it is the package name).",
+  "hello.description": "One sentence under that title: this plugin exists to show the install path working, and all it does is write a line to the log when a contact is created. Plain, no marketing."
 }

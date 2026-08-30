@@ -27,12 +27,19 @@ export function useServerText() {
     resolveServerText(key, fallback, t, (k) => te(k));
 
   return {
+    /*
+     * Structural, not `Plugin`: a Marketplace card carries the same
+     * literal-plus-key pair without being a stored row (it has no id or config
+     * when the plugin is merely available). Narrowing to the fields actually read
+     * lets both surfaces share one resolver instead of duplicating the fallback.
+     */
+
     /** Plugin card title. */
-    pluginDisplayName: (plugin: Plugin): string =>
+    pluginDisplayName: (plugin: Pick<Plugin, 'displayName' | 'displayNameKey'>): string =>
       resolve(plugin.displayNameKey, plugin.displayName),
 
     /** Plugin card body. Empty string when the plugin ships no description. */
-    pluginDescription: (plugin: Plugin): string =>
+    pluginDescription: (plugin: Pick<Plugin, 'description' | 'descriptionKey'>): string =>
       plugin.description ? resolve(plugin.descriptionKey, plugin.description) : '',
 
     /** Sidebar and command-palette label of a plugin's own route. */

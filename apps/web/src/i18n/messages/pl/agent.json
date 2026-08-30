@@ -1,0 +1,44 @@
+{
+  "accessDenied": {
+    "title": "Brak dostępu do Ask Khirby",
+    "message": "Twoja rola nie obejmuje czatu. Poproś administratora o uprawnienie agent:use."
+  },
+  "empty": {
+    "title": "Ask Khirby",
+    "subtitle": "Zadawaj pytania o dane CRM, pipeline lub pluginy.",
+    "integrationsCta": "Skonfiguruj AI Compose w integracjach"
+  },
+  "composer": {
+    "placeholder": "Zapytaj o kontakty, leady, pluginy…",
+    "send": "Wyślij"
+  },
+  "history": {
+    "title": "Wątki",
+    "new": "Nowa rozmowa",
+    "deleteAction": "Usuń wątek",
+    "deleteAria": "Usuń wątek {title}",
+    "deleteTitle": "Usunąć wątek?",
+    "deleteMessage": "Usunie wątek „{title}” wraz z wiadomościami. Tej operacji nie można cofnąć.",
+    "deleteConfirm": "Usuń wątek"
+  },
+  "suggestions": {
+    "contacts": "Kto dołączył w tym tygodniu?",
+    "pipeline": "Podsumuj mój pipeline",
+    "plugins": "Jakie pluginy są zainstalowane?"
+  },
+  "status": {
+    "thinking": "Myślę…",
+    "writing": "Piszę…",
+    "runningTool": "Uruchamiam {tool}…"
+  },
+  "errors": {
+    "ai_compose_unavailable": "AI Compose nie jest skonfigurowany.",
+    "network_error": "Utracono połączenie. Spróbuj ponownie.",
+    "stream_in_progress": "Ten wątek już odpowiada."
+  },
+  "message": {
+    "copy": "Kopiuj",
+    "copied": "Skopiowano",
+    "copyFailed": "Nie udało się skopiować do schowka. Spróbuj wybrać tekst ręcznie."
+  }
+}

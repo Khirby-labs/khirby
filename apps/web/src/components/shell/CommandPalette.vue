@@ -90,7 +90,10 @@
             </button>
           </template>
 
-          <p v-if="totalCount === 0" class="px-2.5 py-6 text-center text-sm text-text-ghost">
+          <p
+            v-if="totalCount === 0 && !(auth.hasPermission('agent', 'use') && query.trim())"
+            class="px-2.5 py-6 text-center text-sm text-text-ghost"
+          >
             {{ t('shell.palette.noMatches', { query }) }}
           </p>
         </div>
@@ -121,13 +124,23 @@ import NavIcon from '../NavIcon.vue';
 import type { NavIconName } from '../nav-icons';
 import { useUiStore } from '../../stores/ui.store';
 import { usePluginsStore } from '../../stores/plugins.store';
-import { buildCommandGroups, filterCommandGroups, type CommandItem } from '../../lib/nav';
+import {
+  buildCommandGroups,
+  filterCommandGroups,
+  filterNavForUser,
+  workspaceNav,
+  marketplaceNav,
+  settingsNav,
+  type CommandItem,
+} from '../../lib/nav';
 import { useServerText } from '../../composables/useServerText';
+import { useAuthStore } from '../../stores/auth.store';
 import { apiGet } from '../../api/client';
 
 const { t } = useI18n();
-const { pluginNavLabel } = useServerText();
+const { pluginNavLabel, pluginDisplayName } = useServerText();
 const ui = useUiStore();
+const auth = useAuthStore();
 const router = useRouter();
 const pluginsStore = usePluginsStore();
 const { plugins } = storeToRefs(pluginsStore);
@@ -136,6 +149,7 @@ const inputEl = ref<HTMLInputElement | null>(null);
 const query = ref('');
 const highlighted = ref(0);
 const contactHits = ref<CommandItem[]>([]);
+const contactSearchDone = ref(true);
 let searchTimer: ReturnType<typeof setTimeout> | null = null;
 let searchSeq = 0;
 
@@ -156,16 +170,26 @@ const pluginCommands = computed<Command[]>(() =>
         .frontendRoutes!.filter((r) => r.showInNav !== false)
         .map((r) => ({
           kind: 'nav' as const,
-          label: pluginNavLabel(r),
+          label: pluginNavLabel(r) || pluginDisplayName(p),
           to: r.path,
           icon: 'plugins' as NavIconName,
         })),
     ),
 );
 
+const filteredNavItems = computed(() =>
+  filterNavForUser(
+    [...workspaceNav, ...marketplaceNav, ...settingsNav],
+    auth.user?.permissions ?? [],
+  ),
+);
+
 /** Filtered groups, each item tagged with its flat keyboard index. */
 const filteredGroups = computed(() => {
-  const navGroups = filterCommandGroups(buildCommandGroups(t, pluginCommands.value), query.value);
+  const navGroups = filterCommandGroups(
+    buildCommandGroups(t, pluginCommands.value, filteredNavItems.value),
+    query.value,
+  );
   const groups = [...navGroups];
   if (contactHits.value.length) {
     groups.unshift({
@@ -173,11 +197,44 @@ const filteredGroups = computed(() => {
       items: contactHits.value,
     });
   }
+
+  const q = query.value.trim();
+  const showAskFallback =
+    auth.hasPermission('agent', 'use') &&
+    q.length > 0 &&
+    contactSearchDone.value &&
+    flatItemsBase.value.length === 0;
+
+  if (showAskFallback) {
+    groups.push({
+      heading: t('nav.commandGroup.ask'),
+      items: [
+        {
+          kind: 'ask',
+          label: t('shell.palette.askKhirby'),
+          to: '/ask',
+          icon: 'ask',
+          draft: q,
+        },
+      ],
+    });
+  }
+
   let i = 0;
   return groups.map((g) => ({
     heading: g.heading,
     items: g.items.map((it) => ({ ...it, index: i++ })),
   }));
+});
+
+const flatItemsBase = computed(() => {
+  const navGroups = filterCommandGroups(
+    buildCommandGroups(t, pluginCommands.value, filteredNavItems.value),
+    query.value,
+  );
+  const items = navGroups.flatMap((g) => g.items);
+  if (contactHits.value.length) return [...contactHits.value, ...items];
+  return items;
 });
 
 const flatItems = computed(() => filteredGroups.value.flatMap((g) => g.items));
@@ -205,8 +262,10 @@ function scheduleContactSearch(raw: string) {
   const q = raw.trim();
   if (q.length < 2) {
     contactHits.value = [];
+    contactSearchDone.value = true;
     return;
   }
+  contactSearchDone.value = false;
   const seq = ++searchSeq;
   searchTimer = setTimeout(() => {
     void fetchContacts(q, seq);
@@ -237,6 +296,8 @@ async function fetchContacts(q: string, seq: number) {
   } catch {
     if (seq !== searchSeq) return;
     contactHits.value = [];
+  } finally {
+    if (seq === searchSeq) contactSearchDone.value = true;
   }
 }
 
@@ -262,6 +323,10 @@ function onKeydown(e: KeyboardEvent) {
 
 function run(item: Command) {
   ui.closeCommand();
+  if (item.kind === 'ask' && item.draft) {
+    router.push({ name: 'ask-new', state: { draft: item.draft } });
+    return;
+  }
   router.push(item.to);
 }
 </script>

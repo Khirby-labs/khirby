@@ -7,12 +7,14 @@ RUN corepack enable && corepack prepare pnpm@latest --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/web/package.json ./apps/web/
 COPY packages/types/package.json ./packages/types/
+COPY examples/crm-plugin-hello/package.json ./examples/crm-plugin-hello/
 
 RUN pnpm install --frozen-lockfile
 
 COPY apps/web ./apps/web
 COPY packages/types ./packages/types
 COPY plugins.manifest.json ./plugins.manifest.json
+COPY examples ./examples
 COPY scripts/generate-plugin-loader.mjs ./scripts/generate-plugin-loader.mjs
 
 RUN pnpm --filter web build

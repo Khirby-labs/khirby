@@ -9,6 +9,7 @@ import contacts from './contacts.json';
 import errors from './errors.json';
 import forms from './forms.json';
 import mail from './mail.json';
+import marketplace from './marketplace.json';
 import nav from './nav.json';
 import newsletter from './newsletter.json';
 import pipeline from './pipeline.json';
@@ -19,6 +20,7 @@ import settings from './settings.json';
 import shell from './shell.json';
 import boards from './boards.json';
 import users from './users.json';
+import agent from './agent.json';
 
 export default {
   auth,
@@ -27,6 +29,7 @@ export default {
   errors,
   forms,
   mail,
+  marketplace,
   nav,
   newsletter,
   pipeline,
@@ -37,4 +40,5 @@ export default {
   shell,
   boards,
   users,
+  agent,
 };

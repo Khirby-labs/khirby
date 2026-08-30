@@ -1,0 +1,16 @@
+# docs/journal/devlog/2026-08-18-kby-120-instance-hot-load.md
+Issue:    KBY-120 (Linear) · branch `pnajsarek/kby-120-self-build-narzedzia-mcp-i-hot-load-pluginu-z-volume` (based on Marketplace `dorzel/kby-103-…` @ 23e0585, not `origin/main`)
+
+Goal:     Self-build: MCP tools so Cursor/Claude can scaffold, validate, and hot-load an API-only plugin onto a live instance volume — without image rebuild, npm publish, or Marketplace.
+
+Done:     Host: `INSTANCE_PLUGINS` token; `instance-plugins.loader.ts` (manifest, one-segment `local`, jiti `createPlugin()`, skip `..` / image name clash / `./web`); boot concat in `loadPlugins()` with a mutable `CRM_PLUGINS` array; registry `validate` / `appendManifest` / `hotLoad` then existing `install()`; Docker volume + `INSTANCE_PLUGINS_DIR`; gitignore `instance-plugins/`; ADR-0036 + PLUGINS.md. MCP (`plugins/crm-plugin-mcp`, gitignored checkout): `describe_plugin_contract`, `scaffold_plugin`, `validate_plugin`, `install_instance_plugin`; npm-shaped templates with bare `@khirby/plugin-sdk` / `@khirby/plugin-host`. `jiti` is a production dep of `apps/api`.
+
+Why so:   Marketplace `install()` only writes a row for code already in the image (ADR-0032). ADR-0016 forbids unloading a Nest DynamicModule, so hot-load is append-only (`LazyModuleLoader` once, never unload). Vue `exports["./web"]` is generated at SPA build — reject it. Volume packages are not compiled into `apps/api/dist`, so templates must use bare host specifiers (the relative `packages/plugin-host/src` path is only for code that *is* compiled into the image). The boot array must be a new array that later `push` mutates — wrapping the generated loader in a fresh literal would hide hot-loads from `emit()`.
+
+Failed:   - First `git checkout -b` from `origin/main` dropped Marketplace (`NATIVE_PLUGIN_NAMES`, `install()`, `loadedNames()`). Reset onto `dorzel/kby-103-…`. Tracking still says `origin/main` (12 ahead) — push must set upstream to this branch, not rebase onto main.
+          - `plugins/` on disk is populated but has **no `.git`**. `checkout-plugins.sh` therefore refuses to clone. MCP tool files live only in the gitignored tree; `.tmp-plugins-repo` is a stale clone from 2026-08-11. Jest still runs them via the api roots config, so verify can be green while Khirby-labs/plugins has none of this work.
+          - First verify failed eslint `@typescript-eslint/no-require-imports` on `node:fs`/`os`/`path` `require()` inside the hotLoad describe. ESM imports at file top.
+
+Next:     Commit host branch (do not rebase onto main). Make `plugins/` a real git checkout and commit `@khirby/plugin-mcp` on a matching branch. Restart API, reconnect Cursor MCP `user-bearly-crm`, smoke: describe → scaffold → fill → validate → `install_instance_plugin` (no `./web`). Marketplace catalog/publish/npm is KBY-121, not this ticket.
+
+Verify:   `node .claude/scripts/verify.mjs` ✅ — typecheck clean (api, web, packages), eslint clean after the require() fix, design-guard OK, i18n-guard OK (17 namespaces, 47 migrated files); api 46 suites / 489 tests, web 35 files / 277 tests, forms-client 3/17, forms-ui 1/3. `[verify] GREEN — marker written (.claude/.verify-ok.json)`. Marker head is still 23e0585 (uncommitted host + MCP files).
