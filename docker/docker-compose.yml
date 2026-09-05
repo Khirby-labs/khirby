@@ -16,7 +16,12 @@ services:
       NODE_ENV: ${NODE_ENV:-production}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:5173}
       PORT: 3000
+      TRUSTED_PROXY_CIDRS: 172.30.0.3
+      PUBLIC_URL: ${PUBLIC_URL:-http://localhost}
       INSTANCE_PLUGINS_DIR: /app/plugins
+    networks:
+      default:
+        ipv4_address: 172.30.0.2
     command: sh -c "node dist/apps/api/src/migrate.js && node dist/apps/api/src/main.js"
     volumes:
       - ../plugins:/app/plugins
@@ -39,6 +44,9 @@ services:
 
   web:
     image: khirby-web:local
+    networks:
+      default:
+        ipv4_address: 172.30.0.3
     build:
       context: ..
       dockerfile: docker/Dockerfile.web
@@ -82,3 +90,11 @@ services:
 volumes:
   postgres_data:
   redis_data:
+
+# Stable web proxy address lets the API trust only nginx, even when port 3000 is exposed.
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+          ip_range: 172.30.0.128/25

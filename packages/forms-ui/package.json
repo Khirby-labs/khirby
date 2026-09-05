@@ -18,7 +18,7 @@
   },
   "scripts": {
     "build": "tsc && cp src/styles.css dist/styles.css",
-    "typecheck": "pnpm --filter @khirby/forms-client build && tsc --noEmit",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json",
     "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --no-coverage"
   },
   "engines": {
@@ -58,6 +58,7 @@
       ".tsx"
     ],
     "moduleNameMapper": {
+      "^@khirby/forms-client$": "<rootDir>/../../forms-client/src/index.ts",
       "^(\\.{1,2}/.*)\\.js$": "$1"
     },
     "transform": {

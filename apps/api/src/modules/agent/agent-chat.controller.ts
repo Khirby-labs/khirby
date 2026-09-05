@@ -41,7 +41,10 @@ export class AgentChatController {
     });
 
     const ac = new AbortController();
-    req.raw.on('close', () => ac.abort());
+    const onClose = () => {
+      if (!reply.raw.writableEnded) ac.abort();
+    };
+    reply.raw.on('close', onClose);
 
     const write = (event: AgentSseEvent) => {
       if (ac.signal.aborted) return;
@@ -60,6 +63,7 @@ export class AgentChatController {
         write({ type: 'error', code: 'internal' });
       }
     } finally {
+      reply.raw.off('close', onClose);
       if (!reply.raw.writableEnded) reply.raw.end();
     }
   }

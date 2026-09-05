@@ -120,4 +120,22 @@ describe('RbacService', () => {
     await service.isSuperAdmin('user-1');
     expect(db.select).toHaveBeenCalledTimes(2);
   });
+  it.each(['isSuperAdmin', 'getUserPermissions'] as const)(
+    'does not refill %s cache from a read that predates invalidation',
+    async (method) => {
+      let resolveOld!: (rows: any[]) => void;
+      const oldRead = new Promise<any[]>((resolve) => {
+        resolveOld = resolve;
+      });
+      const where = jest.fn().mockReturnValueOnce(oldRead).mockResolvedValue([]);
+      const db = { select: jest.fn(() => ({ from: () => ({ innerJoin: () => ({ where }) }) })) };
+      const service = new RbacService(db as any);
+      const pending = service[method]('user');
+      service.invalidate('user');
+      resolveOld([{ name: 'super-admin', resource: 'settings', action: 'manage' }]);
+      await pending;
+      expect(await service[method]('user')).toEqual(method === 'isSuperAdmin' ? false : []);
+      expect(db.select).toHaveBeenCalledTimes(2);
+    },
+  );
 });

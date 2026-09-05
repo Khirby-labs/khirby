@@ -38,6 +38,8 @@ describe('StatusesService', () => {
       update: jest.fn(() => makeChain()),
       delete: jest.fn(() => makeChain()),
     };
+    db.transaction = jest.fn(async (cb: any) => cb(db));
+    db.execute = jest.fn().mockResolvedValue([]);
     const service = new StatusesService(db);
     await expect(service.update('s1', { isBacklog: true, isDone: true })).rejects.toMatchObject({
       response: expect.objectContaining({ statusCode: 400 }),
@@ -64,6 +66,8 @@ describe('StatusesService', () => {
       update: jest.fn(() => makeChain()),
       delete: jest.fn(() => makeChain()),
     };
+    db.transaction = jest.fn(async (cb: any) => cb(db));
+    db.execute = jest.fn().mockResolvedValue([]);
     const service = new StatusesService(db);
     await expect(service.delete('s1')).rejects.toMatchObject({
       response: expect.objectContaining({ statusCode: 400 }),

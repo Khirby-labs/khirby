@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import { defineStore } from './session-state';
 import { ref } from 'vue';
 import { apiGet, apiPost, apiPut, apiDelete } from '../api/client';
 import { useToastStore } from './toast.store';
@@ -295,6 +295,7 @@ export const useMailStore = defineStore('mail', () => {
     threadsPageSize,
     threadsLoading,
     threadsError,
+    lastListOpts,
     threadDetails,
     threadLoading,
     fetchMailbox,

@@ -14,6 +14,7 @@ const CACHE_TTL_MS = 60_000;
 export class RbacService {
   // Per-user caches. RBAC joins run on every guarded request; invalidation is
   // explicit (see invalidate) from every mutation that changes effective access.
+  private cacheGeneration = 0;
   private permissionCache = new Map<string, { permissions: Permission[]; expires: number }>();
   private superAdminCache = new Map<string, { value: boolean; expires: number }>();
 
@@ -23,6 +24,7 @@ export class RbacService {
     const cached = this.permissionCache.get(userId);
     if (cached && cached.expires > Date.now()) return cached.permissions;
 
+    const generation = this.cacheGeneration;
     const rows = await this.db
       .select({ resource: rolePermissions.resource, action: rolePermissions.action })
       .from(userRoles)
@@ -39,7 +41,8 @@ export class RbacService {
       permissions.push({ resource: r.resource, action: r.action });
     }
 
-    this.permissionCache.set(userId, { permissions, expires: Date.now() + CACHE_TTL_MS });
+    if (generation === this.cacheGeneration)
+      this.permissionCache.set(userId, { permissions, expires: Date.now() + CACHE_TTL_MS });
     return permissions;
   }
 
@@ -53,6 +56,7 @@ export class RbacService {
     const cached = this.superAdminCache.get(userId);
     if (cached && cached.expires > Date.now()) return cached.value;
 
+    const generation = this.cacheGeneration;
     const rows = await this.db
       .select({ name: roles.name })
       .from(userRoles)
@@ -65,12 +69,14 @@ export class RbacService {
       );
 
     const value = rows.length > 0;
-    this.superAdminCache.set(userId, { value, expires: Date.now() + CACHE_TTL_MS });
+    if (generation === this.cacheGeneration)
+      this.superAdminCache.set(userId, { value, expires: Date.now() + CACHE_TTL_MS });
     return value;
   }
 
   /** Drop cached access. No arg clears everyone (role-wide change); a userId clears one user. */
   invalidate(userId?: string): void {
+    this.cacheGeneration++;
     if (userId === undefined) {
       this.permissionCache.clear();
       this.superAdminCache.clear();

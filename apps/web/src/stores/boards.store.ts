@@ -1,4 +1,5 @@
-import { defineStore } from 'pinia';
+import { getSessionGeneration } from '../api/client';
+import { defineStore } from './session-state';
 import { ref } from 'vue';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../api/client';
 
@@ -201,6 +202,7 @@ export const useBoardsStore = defineStore('boards', () => {
   }
 
   async function moveTask(taskId: string, statusId: string, position: number) {
+    const generation = getSessionGeneration();
     const snapshot = board.value ? (JSON.parse(JSON.stringify(board.value)) as BoardPayload) : null;
 
     if (board.value) {
@@ -215,6 +217,7 @@ export const useBoardsStore = defineStore('boards', () => {
     try {
       await apiPatch(`/api/boards/tasks/${taskId}/status`, { statusId, position });
     } catch (err) {
+      if (generation !== getSessionGeneration()) throw err;
       if (snapshot) board.value = snapshot;
       throw err;
     } finally {
