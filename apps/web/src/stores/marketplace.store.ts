@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import { defineStore } from './session-state';
 import { computed, ref } from 'vue';
 import type { MarketplaceCategory, MarketplacePlugin } from '@khirby/types';
 import { ApiError, apiGet, apiPost } from '../api/client';

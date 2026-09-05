@@ -61,8 +61,8 @@ export class UsersController {
   @Patch(':id')
   @ApiOperation({ summary: 'Update user' })
   @ApiResponse({ status: 200, description: 'User updated' })
-  update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
-    return this.users.update(id, dto);
+  update(@Param('id') id: string, @Body() dto: UpdateUserDto, @Req() req: FastifyRequest) {
+    return this.users.update(id, dto, (req.session as { userId?: string }).userId);
   }
 
   @Delete(':id')

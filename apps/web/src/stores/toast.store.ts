@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import { defineStore } from './session-state';
 import { ref } from 'vue';
 
 export type ToastVariant = 'success' | 'error';

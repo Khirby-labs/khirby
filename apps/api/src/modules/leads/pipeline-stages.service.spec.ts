@@ -24,6 +24,8 @@ function buildDb() {
   db.insert.mockImplementation(() => makeChain([]));
   db.update.mockImplementation(() => makeChain([]));
   db.delete.mockImplementation(() => makeChain([]));
+  db.transaction = jest.fn(async (cb: any) => cb(db));
+  db.execute = jest.fn().mockResolvedValue([]);
   return db;
 }
 

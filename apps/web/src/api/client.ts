@@ -1,8 +1,21 @@
+import { getActivePinia } from 'pinia';
 import type { ApiErrorBody, ErrorCode, ErrorParams, FieldError } from '@khirby/types';
 
 // BASE_URL pusty gdy frontend i API na tej samej domenie (nginx /api proxy)
 // Na dev VITE_API_URL=http://localhost:3000
 const BASE_URL = import.meta.env?.VITE_API_URL ?? '';
+
+let sessionController = new AbortController();
+let sessionGeneration = 0;
+export const getSessionGeneration = () => sessionGeneration;
+export function invalidateSessionRequests() {
+  sessionGeneration++;
+  sessionController.abort();
+  sessionController = new AbortController();
+}
+function sessionSignal(signal?: AbortSignal | null): AbortSignal {
+  return signal ? AbortSignal.any([sessionController.signal, signal]) : sessionController.signal;
+}
 
 /**
  * A failed API call, carrying the machine-readable reason (ADR-0011).
@@ -54,6 +67,7 @@ async function readErrorBody(res: Response): Promise<ApiErrorBody> {
 }
 
 export async function apiClient<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
+  const signal = sessionSignal(options.signal);
   const headers: Record<string, string> = {
     ...((options.headers as Record<string, string>) ?? {}),
   };
@@ -65,12 +79,15 @@ export async function apiClient<T = unknown>(path: string, options: RequestInit 
 
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
+    signal,
     headers,
     credentials: 'include', // cookie session automatycznie dołączane
   });
 
+  signal.throwIfAborted();
   if (!res.ok) {
     const body = await readErrorBody(res);
+    signal.throwIfAborted();
 
     /*
      * A 401 means "log in again" — EXCEPT when it is a failed authentication
@@ -83,6 +100,9 @@ export async function apiClient<T = unknown>(path: string, options: RequestInit 
      * Fastify itself is a session problem, and stranding the user is worse.
      */
     if (res.status === 401 && !AUTH_ATTEMPT_CODES.has(body.code)) {
+      const { useAuthStore } = await import('../stores/auth.store');
+      if (getActivePinia()) useAuthStore().clearSession();
+      else invalidateSessionRequests();
       // Named export 'router' from router/index.ts
       import('../router').then((mod) => {
         mod.router.push('/login');
@@ -97,6 +117,7 @@ export async function apiClient<T = unknown>(path: string, options: RequestInit 
   // Nest void handlers often reply 200 with an empty body; 204 has no body by spec.
   if (res.status === 204) return undefined as T;
   const text = await res.text();
+  signal.throwIfAborted();
   if (!text) return undefined as T;
   return JSON.parse(text) as T;
 }
@@ -137,6 +158,7 @@ export async function apiPostStream(
   onLine: (line: string) => void,
   signal?: AbortSignal,
 ): Promise<void> {
+  signal = sessionSignal(signal);
   const res = await fetch(`${BASE_URL}${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -145,9 +167,14 @@ export async function apiPostStream(
     signal,
   });
 
+  signal.throwIfAborted();
   if (!res.ok) {
     const errBody = await readErrorBody(res);
+    signal.throwIfAborted();
     if (res.status === 401 && !AUTH_ATTEMPT_CODES.has(errBody.code)) {
+      const { useAuthStore } = await import('../stores/auth.store');
+      if (getActivePinia()) useAuthStore().clearSession();
+      else invalidateSessionRequests();
       import('../router').then((mod) => mod.router.push('/login'));
       throw new ApiError({ ...errBody, code: 'SESSION_EXPIRED', message: 'Session expired' });
     }
@@ -160,6 +187,7 @@ export async function apiPostStream(
   let buffer = '';
   while (true) {
     const { done, value } = await reader.read();
+    signal.throwIfAborted();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     const lines = buffer.split('\n');

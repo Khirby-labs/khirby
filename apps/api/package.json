@@ -12,9 +12,9 @@
     "db:generate": "drizzle-kit generate",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "eslint src",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:cov": "jest --coverage"
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test:watch": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --watch",
+    "test:cov": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.1",
@@ -37,7 +37,7 @@
     "@nestjs/common": "^11.0.0",
     "@nestjs/config": "^3.0.0",
     "@nestjs/core": "^11.0.0",
-    "@nestjs/platform-fastify": "^11.1.28",
+    "@nestjs/platform-fastify": "^11.2.3",
     "@nestjs/swagger": "^11.4.5",
     "@nestjs/throttler": "^6.0.0",
     "bcryptjs": "^3.0.3",
@@ -45,14 +45,14 @@
     "class-validator": "^0.14.1",
     "connect-redis": "^9.0.0",
     "drizzle-orm": "^0.45.2",
-    "fastify": "^5.11.2",
+    "fastify": "5.12.3",
     "google-auth-library": "^11.0.0",
     "helmet": "^8.3.0",
     "hono": "4.13.1",
     "imapflow": "^1.6.3",
     "ioredis": "^5.11.1",
     "jiti": "^2.7.0",
-    "mailparser": "^3.9.14",
+    "mailparser": "^3.9.20",
     "nodemailer": "^9.0.3",
     "postgres": "^3.4.0",
     "reflect-metadata": "^0.2.0",
@@ -61,6 +61,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@nestjs/cli": "^11.0.0",
     "@nestjs/testing": "^11.0.0",
     "@types/bcryptjs": "^2.4.6",

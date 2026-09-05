@@ -1,3 +1,4 @@
+import { trustedProxies } from './core/http/trusted-proxies';
 import { NestFactory } from '@nestjs/core';
 import { NestFastifyApplication, FastifyAdapter } from '@nestjs/platform-fastify';
 import { Logger, ValidationPipe } from '@nestjs/common';
@@ -55,9 +56,11 @@ async function bootstrap() {
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
-    // trustProxy: 1 hop (nginx). Boolean `true` would trust any X-Forwarded-For
-    // and let clients spoof req.ip (throttlers / MCP). See docker/nginx.conf.
-    new FastifyAdapter({ logger: false, trustProxy: 1 }),
+    // Trust explicit proxy addresses only; numeric hop counts accept spoofed chains.
+    new FastifyAdapter({
+      logger: false,
+      trustProxy: trustedProxies(),
+    }),
     { logger: ['log', 'error', 'warn', 'debug', 'verbose'] },
   );
 

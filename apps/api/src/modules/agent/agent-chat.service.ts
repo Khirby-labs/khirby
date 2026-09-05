@@ -23,7 +23,6 @@ import {
 } from './plugin-agent-tracker';
 
 export const MAX_ITERATIONS = 8;
-const TOOL_TIMEOUT_MS = 10_000;
 
 export type AgentLoopOpts = {
   signal?: AbortSignal;
@@ -50,12 +49,6 @@ export class AgentChatService {
     let conversationId = dto.conversationId;
 
     if (conversationId) {
-      if (this.activeStreams.has(conversationId)) {
-        throw new ConflictException({
-          code: 'stream_in_progress',
-          message: 'A stream is already in progress for this conversation',
-        });
-      }
       await this.conversations.assertOwned(userId, conversationId);
     } else {
       const created = await this.conversations.createConversation(userId, dto.content);
@@ -63,6 +56,12 @@ export class AgentChatService {
       opts.write({ type: 'conversation', conversationId });
     }
 
+    if (this.activeStreams.has(conversationId)) {
+      throw new ConflictException({
+        code: 'stream_in_progress',
+        message: 'A stream is already in progress for this conversation',
+      });
+    }
     this.activeStreams.add(conversationId);
     try {
       await this.conversations.insertUserMessage(conversationId, dto.content);
@@ -109,7 +108,10 @@ export class AgentChatService {
       const installedPluginDirs = new Set<string>();
 
       for (let iteration = 0; iteration < MAX_ITERATIONS; iteration++) {
-        if (opts.signal?.aborted) return;
+        if (opts.signal?.aborted) {
+          await this.persistAssistant(conversationId, '', toolTrace);
+          return;
+        }
 
         opts.write({ type: 'status', code: iteration === 0 ? 'thinking' : 'writing' });
 
@@ -151,7 +153,10 @@ export class AgentChatService {
         });
 
         for (const tc of toolCalls) {
-          if (opts.signal?.aborted) return;
+          if (opts.signal?.aborted) {
+            await this.persistAssistant(conversationId, '', toolTrace);
+            return;
+          }
           let args: Record<string, unknown> = {};
           try {
             args = JSON.parse(tc.arguments || '{}');
@@ -162,7 +167,7 @@ export class AgentChatService {
           opts.write({ type: 'tool_call', id: tc.id, name: tc.name, args });
           opts.write({ type: 'status', code: `running_${tc.name}` });
 
-          const result = await this.runToolWithTimeout(userId, tc.name, args, opts.signal);
+          const result = await this.runToolToCompletion(userId, tc.name, args, opts.signal);
           opts.write({
             type: 'tool_result',
             id: tc.id,
@@ -212,15 +217,29 @@ export class AgentChatService {
     onTextDelta: (delta: string) => void,
   ) {
     const chunks: StreamChunk[] = [];
-    for await (const chunk of this.llm.streamCompletion({
-      ...config,
-      messages,
-      tools,
-      signal: opts.signal,
-    })) {
-      if (opts.signal?.aborted) break;
-      chunks.push(chunk);
-      if (chunk.kind === 'text') onTextDelta(chunk.delta);
+    try {
+      for await (const chunk of this.llm.streamCompletion({
+        ...config,
+        messages,
+        tools,
+        signal: opts.signal,
+      })) {
+        if (opts.signal?.aborted) break;
+        chunks.push(chunk);
+        if (chunk.kind === 'text') onTextDelta(chunk.delta);
+      }
+    } catch (error) {
+      if (
+        !opts.signal?.aborted ||
+        typeof error !== 'object' ||
+        error === null ||
+        !('name' in error) ||
+        error.name !== 'AbortError'
+      ) {
+        throw error;
+      }
+      // Let the loop persist completed tool outcomes through its normal save path.
+      return { text: '', toolCalls: [] };
     }
     return this.llm.collectFromChunks(chunks);
   }
@@ -285,7 +304,7 @@ export class AgentChatService {
     await this.conversations.touchConversation(conversationId);
   }
 
-  private async runToolWithTimeout(
+  private async runToolToCompletion(
     userId: string,
     name: string,
     args: Record<string, unknown>,
@@ -294,15 +313,11 @@ export class AgentChatService {
     if (signal?.aborted) return { ok: false as const, code: 'aborted', summary: 'Aborted' };
 
     const runner = this.resolveToolRunner(name);
-    return Promise.race([
-      runner(userId, name, args),
-      new Promise<{ ok: false; code: string; summary: string }>((resolve) =>
-        setTimeout(
-          () => resolve({ ok: false, code: 'timeout', summary: 'Tool timed out' }),
-          TOOL_TIMEOUT_MS,
-        ),
-      ),
-    ]);
+    // Adapters currently expose no cancellation contract. A Promise.race timeout
+    // would report failure while SMTP/DB/plugin writes continue, inviting retries.
+    // Keep the conversation reserved until the actual outcome is known. Transport
+    // clients own their network timeouts; disconnect only prevents subsequent tools.
+    return runner(userId, name, args);
   }
 
   private resolveToolRunner(name: string) {
@@ -349,7 +364,7 @@ export class AgentChatService {
       const args = { directory };
       opts.write({ type: 'tool_call', id, name: 'install_instance_plugin', args });
       opts.write({ type: 'status', code: 'running_install_instance_plugin' });
-      const result = await this.runToolWithTimeout(
+      const result = await this.runToolToCompletion(
         userId,
         'install_instance_plugin',
         args,

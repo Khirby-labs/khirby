@@ -152,6 +152,7 @@ export class MailSendService {
         .set({ status: 'failed', lastError: transportResult.error ?? 'Unknown error' } as any)
         .where(eq(emailMessages.id, msg.id));
       this.logger.error(`SMTP send failed: ${transportResult.error}`);
+      throw AppException.upstreamFailed('smtp');
     }
 
     return { threadId: thread.id, messageId: msg.id };
@@ -269,6 +270,7 @@ export class MailSendService {
         .set({ status: 'failed', lastError: transportResult.error ?? 'Unknown error' } as any)
         .where(eq(emailMessages.id, msg.id));
       this.logger.error(`SMTP reply failed: ${transportResult.error}`);
+      throw AppException.upstreamFailed('smtp');
     }
 
     return { messageId: msg.id };
@@ -327,9 +329,9 @@ export class MailSendService {
         subject: opts.subject,
         text: opts.text,
       };
-      if (opts.inReplyTo) mailOptions['In-Reply-To'] = `<${opts.inReplyTo}>`;
+      if (opts.inReplyTo) mailOptions.inReplyTo = `<${opts.inReplyTo.replace(/^<|>$/g, '')}>`;
       if (opts.references) {
-        mailOptions['References'] = opts.references
+        mailOptions.references = opts.references
           .split(/\s+/)
           .filter(Boolean)
           .map((id) => `<${id.replace(/^<|>$/g, '')}>`)

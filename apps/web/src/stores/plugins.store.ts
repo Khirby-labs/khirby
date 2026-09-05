@@ -1,4 +1,4 @@
-import { defineStore } from 'pinia';
+import { defineStore } from './session-state';
 import { ref } from 'vue';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../api/client';
 import { registerPluginRoutes } from '../router';

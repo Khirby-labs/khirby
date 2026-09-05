@@ -123,15 +123,15 @@ describe('MailSendService', () => {
 
       db.update.mockImplementationOnce(() => makeChain([]));
 
-      const result = await service.createThread({
-        toAddress: 'a@b.com',
-        subject: 'Hello',
-        bodyText: 'Hi',
-        sentByUserId: 'user-1',
-      });
+      await expect(
+        service.createThread({
+          toAddress: 'a@b.com',
+          subject: 'Hello',
+          bodyText: 'Hi',
+          sentByUserId: 'user-1',
+        }),
+      ).rejects.toMatchObject({ response: expect.objectContaining({ code: 'UPSTREAM_FAILED' }) });
 
-      expect(result.threadId).toBe('thread-1');
-      expect(result.messageId).toBe('msg-1');
       expect(db.update).toHaveBeenCalled();
     });
 
@@ -193,5 +193,63 @@ describe('MailSendService', () => {
         expect.objectContaining({ to: 'lead-contact@example.com' }),
       );
     });
+  });
+  it('records reply failure and rejects instead of reporting success', async () => {
+    db.select
+      .mockImplementationOnce(() => makeChain([{ id: 'thread', subject: 'Hello' }]))
+      .mockImplementationOnce(() =>
+        makeChain([
+          {
+            direction: 'inbound',
+            fromAddress: 'sender@example.invalid',
+            messageId: 'original@example.invalid',
+          },
+        ]),
+      );
+    db.insert.mockImplementationOnce(() => makeChain([{ id: 'failed-reply' }]));
+    const failedUpdate = makeChain([]);
+    db.update.mockReturnValueOnce(failedUpdate);
+    mockCreateTransport.mockReturnValueOnce({
+      sendMail: jest.fn().mockRejectedValue(new Error('SMTP unavailable')),
+      close: jest.fn(),
+    });
+    await expect(
+      service.reply({ threadId: 'thread', bodyText: 'Reply', sentByUserId: 'user' }),
+    ).rejects.toMatchObject({ response: { code: 'UPSTREAM_FAILED' } });
+    expect(failedUpdate.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }));
+    expect(events.emit).not.toHaveBeenCalled();
+  });
+
+  it('emits real MIME reply headers through Nodemailer', async () => {
+    const real = jest.requireActual('nodemailer');
+    const transport = real.createTransport({
+      streamTransport: true,
+      buffer: true,
+      newline: 'unix',
+    });
+    let mime = '';
+    mockCreateTransport.mockReturnValueOnce({
+      sendMail: async (options: any) => {
+        const result = await transport.sendMail(options);
+        mime = result.message.toString();
+        return result;
+      },
+      close: () => transport.close(),
+    });
+    const result = await (service as any).sendViaSmtp({
+      creds: mockCreds,
+      messageId: 'reply@example.invalid',
+      inReplyTo: '<original@example.invalid>',
+      references: '<first@example.invalid> <original@example.invalid>',
+      from: 'crm@example.invalid',
+      to: 'sender@example.invalid',
+      subject: 'Re: Hello',
+      text: 'Reply',
+    });
+    expect(result.ok).toBe(true);
+    expect(mime).toContain('In-Reply-To: <original@example.invalid>');
+    expect(mime.replace(/\n[ \t]+/g, ' ')).toContain(
+      'References: <first@example.invalid> <original@example.invalid>',
+    );
   });
 });

@@ -1,4 +1,5 @@
-import { defineStore } from 'pinia';
+import { getSessionGeneration } from '../api/client';
+import { defineStore } from './session-state';
 import { ref } from 'vue';
 import { apiGet, apiPost, apiPatch, apiDelete } from '../api/client';
 import { useToastStore } from './toast.store';
@@ -95,6 +96,7 @@ export const usePipelineStore = defineStore('pipeline', () => {
 
   async function moveLead(leadId: string, toStageId: string) {
     const toast = useToastStore();
+    const generation = getSessionGeneration();
     const snapshot = cloneBoard(board.value);
     applyMoveLocally(leadId, toStageId);
 
@@ -106,6 +108,7 @@ export const usePipelineStore = defineStore('pipeline', () => {
       await apiPatch(`/api/leads/${leadId}`, { stageId: toStageId });
       toast.success(t('pipeline.toast.leadMoved'));
     } catch (e: unknown) {
+      if (generation !== getSessionGeneration()) throw e;
       board.value = snapshot;
       const message = failMessage(e, t('pipeline.errors.moveLead'));
       toast.error(message);
@@ -124,6 +127,7 @@ export const usePipelineStore = defineStore('pipeline', () => {
     },
   ) {
     const toast = useToastStore();
+    const generation = getSessionGeneration();
     const snapshot = selectedLead.value
       ? (JSON.parse(JSON.stringify(selectedLead.value)) as LeadDetail)
       : null;
@@ -149,6 +153,7 @@ export const usePipelineStore = defineStore('pipeline', () => {
       toast.success(t('pipeline.toast.saved'));
       return updated;
     } catch (e: unknown) {
+      if (generation !== getSessionGeneration()) throw e;
       if (snapshot && selectedLead.value?.id === id) {
         selectedLead.value = snapshot;
       }

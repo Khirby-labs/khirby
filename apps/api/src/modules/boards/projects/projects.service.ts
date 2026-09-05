@@ -1,4 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { lockMutation, type Connection } from '../../../core/database/transaction';
 import { eq, asc, sql } from 'drizzle-orm';
 import { tbProjects, tbModules, tbStatuses } from '../../../core/database/schema';
 import { deriveProjectKey, normalizeProjectKey } from '../task-key';
@@ -72,16 +73,23 @@ export class ProjectsService {
     return this.db.select().from(tbProjects).orderBy(asc(tbProjects.createdAt));
   }
 
-  async findById(id: string) {
-    const [row] = await this.db.select().from(tbProjects).where(eq(tbProjects.id, id)).limit(1);
+  async findById(id: string, db: Connection = this.db) {
+    const [row] = await db.select().from(tbProjects).where(eq(tbProjects.id, id)).limit(1);
     if (!row) throw AppException.notFound('project', id);
     return row;
   }
 
   async create(dto: CreateProjectDto, userId: string) {
-    const key = await this.resolveUniqueKey(dto.key ?? deriveProjectKey(dto.name));
+    return this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'boards');
+      return this.createInTransaction(dto, userId, tx);
+    });
+  }
 
-    const [project] = await this.db
+  private async createInTransaction(dto: CreateProjectDto, userId: string, db: Connection) {
+    const key = await this.resolveUniqueKey(dto.key ?? deriveProjectKey(dto.name), db);
+
+    const [project] = await db
       .insert(tbProjects)
       .values({
         name: dto.name.trim(),
@@ -94,7 +102,7 @@ export class ProjectsService {
       .returning();
 
     // Default "Backlog" module
-    const [mod] = await this.db
+    const [mod] = await db
       .insert(tbModules)
       .values({
         projectId: project.id,
@@ -105,7 +113,7 @@ export class ProjectsService {
 
     // Default project-level statuses
     for (const s of DEFAULT_STATUSES) {
-      await this.db.insert(tbStatuses).values({
+      await db.insert(tbStatuses).values({
         projectId: project.id,
         moduleId: null,
         name: s.name,
@@ -121,7 +129,14 @@ export class ProjectsService {
   }
 
   async update(id: string, dto: UpdateProjectDto) {
-    const existing = await this.findById(id);
+    return this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'boards');
+      return this.updateInTransaction(id, dto, tx);
+    });
+  }
+
+  private async updateInTransaction(id: string, dto: UpdateProjectDto, db: Connection) {
+    const existing = await this.findById(id, db);
     let nextKey = existing.key;
 
     if (dto.key !== undefined) {
@@ -130,12 +145,12 @@ export class ProjectsService {
         throw AppException.badRequest('Project key must be at least 2 characters (A–Z, 0–9)');
       }
       if (normalized !== existing.key) {
-        await this.assertKeyAvailable(normalized, id);
+        await this.assertKeyAvailable(normalized, id, db);
         nextKey = normalized;
       }
     }
 
-    const [updated] = await this.db
+    const [updated] = await db
       .update(tbProjects)
       .set({
         ...(dto.name !== undefined ? { name: dto.name.trim() } : {}),
@@ -148,7 +163,7 @@ export class ProjectsService {
       .returning();
 
     if (nextKey !== existing.key) {
-      await this.rewriteTaskIdentifiers(id, nextKey);
+      await this.rewriteTaskIdentifiers(id, nextKey, db);
     }
 
     return updated;
@@ -159,23 +174,23 @@ export class ProjectsService {
     await this.db.delete(tbProjects).where(eq(tbProjects.id, id));
   }
 
-  private async rewriteTaskIdentifiers(projectId: string, key: string) {
-    await this.db.execute(sql`
+  private async rewriteTaskIdentifiers(projectId: string, key: string, db: Connection = this.db) {
+    await db.execute(sql`
       UPDATE tb_tasks AS t
-      SET identifier = ${key} || '-' || lpad(t.number::text, 2, '0')
+      SET identifier = ${key} || '-' || lpad(t.number::text, greatest(2, length(t.number::text)), '0')
       FROM tb_modules AS m
       WHERE m.id = t.module_id AND m.project_id = ${projectId} AND t.number IS NOT NULL
     `);
   }
 
-  private async resolveUniqueKey(raw: string): Promise<string> {
+  private async resolveUniqueKey(raw: string, db: Connection = this.db): Promise<string> {
     let base = normalizeProjectKey(raw);
     if (base.length < 2) base = 'PRJ';
     base = base.slice(0, 6);
 
     let candidate = base;
     let n = 2;
-    while (await this.keyTaken(candidate)) {
+    while (await this.keyTaken(candidate, db)) {
       const suffix = String(n);
       candidate = `${base.slice(0, Math.max(1, 6 - suffix.length))}${suffix}`;
       n += 1;
@@ -187,8 +202,12 @@ export class ProjectsService {
     return candidate;
   }
 
-  private async assertKeyAvailable(key: string, exceptProjectId?: string) {
-    const [row] = await this.db
+  private async assertKeyAvailable(
+    key: string,
+    exceptProjectId?: string,
+    db: Connection = this.db,
+  ) {
+    const [row] = await db
       .select({ id: tbProjects.id })
       .from(tbProjects)
       .where(eq(tbProjects.key, key))
@@ -198,8 +217,8 @@ export class ProjectsService {
     }
   }
 
-  private async keyTaken(key: string): Promise<boolean> {
-    const [row] = await this.db
+  private async keyTaken(key: string, db: Connection = this.db): Promise<boolean> {
+    const [row] = await db
       .select({ id: tbProjects.id })
       .from(tbProjects)
       .where(eq(tbProjects.key, key))
