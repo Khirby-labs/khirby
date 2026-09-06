@@ -50,3 +50,4 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0038](0038-instance-plugin-authoring-is-core.md) | Instance-plugin authoring lives in core (chat + MCP share `INSTANCE_PLUGINS`) | Accepted |
 | [0039](0039-instance-plugins-live-in-plugins-dir.md) | Instance-authored plugins live in `plugins/` (amends 0036 path) | Accepted |
 | [0040](0040-ask-khirby-in-app-agent-is-core.md) | Ask Khirby: in-app agent is core (LLM via AI Compose, Pokelo + instance tools via host tokens) | Accepted |
+| [0041](0041-contact-custom-fields.md) | Contact custom fields (`metadata.custom` + `jsonb_set`) and JSON CSV import | Accepted |

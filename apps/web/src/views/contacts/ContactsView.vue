@@ -2,6 +2,13 @@
   <div class="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
     <PageActions>
       <button
+        type="button"
+        class="btn-ghost inline-flex h-8 items-center !px-3 !py-0 text-sm"
+        @click="showImport = true"
+      >
+        {{ t('contacts.list.import.action') }}
+      </button>
+      <button
         v-if="listmonkEnabled"
         class="btn-ghost inline-flex h-8 items-center !px-3 !py-0 text-sm disabled:opacity-50"
         :disabled="syncing"
@@ -43,6 +50,37 @@
         :aria-label="t('contacts.list.filters.newsletter')"
         trigger-class="h-8 min-w-[10rem] !py-1.5"
         @update:model-value="setNewsletterFilter"
+      />
+      <AppSelect
+        :model-value="filterCustomSlug"
+        :options="customFieldOptions"
+        :aria-label="t('contacts.list.filters.customField')"
+        trigger-class="h-8 min-w-[8.5rem] !py-1.5"
+        @update:model-value="setCustomSlugFilter"
+      />
+      <AppDatePicker
+        v-if="activeCustomField?.type === 'date'"
+        :model-value="filterCustomValue || null"
+        :aria-label="t('contacts.list.filters.customFieldValue')"
+        clearable
+        trigger-class="h-8 min-w-[10rem] !py-1.5"
+        @update:model-value="(day) => setCustomValueFilter(day ?? '')"
+      />
+      <AppSelect
+        v-else-if="activeCustomField?.type === 'select'"
+        :model-value="filterCustomValue"
+        :options="customValueSelectOptions"
+        :aria-label="t('contacts.list.filters.customFieldValue')"
+        trigger-class="h-8 min-w-[8.5rem] !py-1.5"
+        @update:model-value="setCustomValueFilter"
+      />
+      <input
+        v-else-if="filterCustomSlug"
+        :value="filterCustomValue"
+        :type="activeCustomField?.type === 'number' ? 'number' : 'text'"
+        class="crm-input h-8 w-36 !py-1.5"
+        :aria-label="t('contacts.list.filters.customFieldValue')"
+        @change="setCustomValueFilter(($event.target as HTMLInputElement).value)"
       />
       <AppDateRangePicker
         :model-value="dateRange"
@@ -199,6 +237,8 @@
         </div>
       </form>
     </AppModal>
+
+    <ContactImportModal v-if="showImport" @close="showImport = false" @imported="onImported" />
   </div>
 </template>
 
@@ -214,8 +254,10 @@ import EmptyState from '../../components/ui/EmptyState.vue';
 import AppPagination from '../../components/AppPagination.vue';
 import AppModal from '../../components/AppModal.vue';
 import AppSelect from '../../components/ui/AppSelect.vue';
+import AppDatePicker from '../../components/ui/AppDatePicker.vue';
 import AppDateRangePicker from '../../components/ui/AppDateRangePicker.vue';
 import ListmonkStatusBadge from '../../components/ListmonkStatusBadge.vue';
+import ContactImportModal from './ContactImportModal.vue';
 import { useConfirm } from '../../composables/useConfirm';
 import { useToastStore } from '../../stores/toast.store';
 import type { DayRange } from '../../utils/date-range';
@@ -245,6 +287,14 @@ interface ContactsResponse {
 interface FormListItem {
   id: string;
   name: string;
+}
+
+interface CustomFieldDefinition {
+  id: string;
+  name: string;
+  slug: string;
+  type: 'text' | 'number' | 'date' | 'select';
+  options?: string[] | null;
 }
 
 type SortBy = 'email' | 'name' | 'phone' | 'createdAt';
@@ -279,6 +329,10 @@ const filterFormId = ref('');
 const filterNewsletter = ref<NewsletterFilter>('');
 const dateRange = ref<DayRange>({ from: null, to: null });
 const forms = ref<FormListItem[]>([]);
+const customFields = ref<CustomFieldDefinition[]>([]);
+const filterCustomSlug = ref('');
+const filterCustomValue = ref('');
+const showImport = ref(false);
 
 const loading = ref(false);
 const error = ref('');
@@ -313,12 +367,27 @@ const formOptions = computed(() => [
   ...forms.value.map((f) => ({ value: f.id, label: f.name })),
 ]);
 
+const customFieldOptions = computed(() => [
+  { value: '', label: t('contacts.list.filters.customFieldAny') },
+  ...customFields.value.map((f) => ({ value: f.slug, label: f.name })),
+]);
+
+const activeCustomField = computed(
+  () => customFields.value.find((f) => f.slug === filterCustomSlug.value) ?? null,
+);
+
+const customValueSelectOptions = computed(() => [
+  { value: '', label: t('contacts.list.filters.customFieldAny') },
+  ...(activeCustomField.value?.options ?? []).map((opt) => ({ value: opt, label: opt })),
+]);
+
 const hasActiveFilters = computed(
   () =>
     Boolean(filterPhone.value) ||
     Boolean(filterFormId.value) ||
     Boolean(filterNewsletter.value) ||
-    Boolean(dateRange.value.from && dateRange.value.to),
+    Boolean(dateRange.value.from && dateRange.value.to) ||
+    Boolean(filterCustomSlug.value && filterCustomValue.value),
 );
 
 const tableColumns = computed(() => {
@@ -357,7 +426,11 @@ function parseListState(q: LocationQuery) {
       : '';
   const from = typeof q.from === 'string' ? q.from : null;
   const to = typeof q.to === 'string' ? q.to : null;
-  return { sort, dir, p, phone, form, newsletter, from, to };
+  const cf = typeof q.cf === 'string' ? q.cf : '';
+  const idx = cf.indexOf(':');
+  const customSlug = idx > 0 ? cf.slice(0, idx) : '';
+  const customValue = idx > 0 ? cf.slice(idx + 1) : '';
+  return { sort, dir, p, phone, form, newsletter, from, to, customSlug, customValue };
 }
 
 function buildQuery(
@@ -370,6 +443,8 @@ function buildQuery(
     newsletter?: NewsletterFilter;
     from?: string | null;
     to?: string | null;
+    customSlug?: string;
+    customValue?: string;
   } = {},
 ): Record<string, string> {
   const sort = overrides.sort ?? sortBy.value;
@@ -380,6 +455,8 @@ function buildQuery(
   const newsletter = overrides.newsletter ?? filterNewsletter.value;
   const from = overrides.from !== undefined ? overrides.from : dateRange.value.from;
   const to = overrides.to !== undefined ? overrides.to : dateRange.value.to;
+  const customSlug = overrides.customSlug ?? filterCustomSlug.value;
+  const customValue = overrides.customValue ?? filterCustomValue.value;
 
   const query: Record<string, string> = {};
   if (sort !== 'createdAt') query.sort = sort;
@@ -392,6 +469,7 @@ function buildQuery(
     query.from = from;
     query.to = to;
   }
+  if (customSlug && customValue) query.cf = `${customSlug}:${customValue}`;
   return query;
 }
 
@@ -421,6 +499,8 @@ function applyRouteToState() {
   filterFormId.value = s.form;
   filterNewsletter.value = listmonkEnabled.value ? s.newsletter : '';
   dateRange.value = { from: s.from, to: s.to };
+  filterCustomSlug.value = s.customSlug;
+  filterCustomValue.value = s.customValue;
 }
 
 /**
@@ -491,6 +571,14 @@ function setDateRange(value: DayRange) {
   replaceListQuery({ from: value.from, to: value.to, page: 1 });
 }
 
+function setCustomSlugFilter(value: string) {
+  replaceListQuery({ customSlug: value, customValue: '', page: 1 });
+}
+
+function setCustomValueFilter(value: string) {
+  replaceListQuery({ customValue: value, page: 1 });
+}
+
 function clearFilters() {
   replaceListQuery({
     phone: '',
@@ -498,6 +586,8 @@ function clearFilters() {
     newsletter: '',
     from: null,
     to: null,
+    customSlug: '',
+    customValue: '',
     page: 1,
   });
 }
@@ -534,6 +624,11 @@ onMounted(async () => {
     forms.value = await apiGet<FormListItem[]>('/api/forms');
   } catch {
     forms.value = [];
+  }
+  try {
+    customFields.value = await apiGet<CustomFieldDefinition[]>('/api/custom-fields?entity=contact');
+  } catch {
+    customFields.value = [];
   }
 
   if (route.query.new) {
@@ -606,6 +701,9 @@ async function fetchContacts(opts: { skipRefit?: boolean } = {}) {
       params.set('createdFrom', dateRange.value.from);
       params.set('createdTo', dateRange.value.to);
     }
+    if (filterCustomSlug.value && filterCustomValue.value) {
+      params.set('customField', `${filterCustomSlug.value}:${filterCustomValue.value}`);
+    }
     const res = await apiGet<ContactsResponse>(`/api/contacts?${params}`);
     if (seq !== fetchSeq) return;
     contacts.value = res.data;
@@ -629,6 +727,10 @@ async function fetchContacts(opts: { skipRefit?: boolean } = {}) {
   } finally {
     if (seq === fetchSeq) loading.value = false;
   }
+}
+
+function onImported() {
+  void fetchContacts();
 }
 
 async function syncFromListmonk() {

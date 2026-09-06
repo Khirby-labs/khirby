@@ -60,6 +60,8 @@ async function bootstrap() {
     new FastifyAdapter({
       logger: false,
       trustProxy: trustedProxies(),
+      // Contact CSV import posts parsed rows as JSON; 1000 rows must fit (default 1 MB).
+      bodyLimit: 5 * 1024 * 1024,
     }),
     { logger: ['log', 'error', 'warn', 'debug', 'verbose'] },
   );

@@ -81,6 +81,13 @@ export const settingsNav: NavItem[] = [
     labelKey: 'nav.settings.mail',
     icon: 'mail',
   },
+  {
+    to: '/settings/custom-fields',
+    name: 'settings-custom-fields',
+    labelKey: 'nav.settings.customFields',
+    icon: 'forms',
+    requiredPermission: { resource: 'contacts', action: 'manage' },
+  },
 ];
 
 export interface QuickCreateAction {

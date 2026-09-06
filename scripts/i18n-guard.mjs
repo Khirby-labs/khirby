@@ -54,6 +54,8 @@ const I18N_ENFORCED = [
   // S5 — Contacts
   'apps/web/src/views/contacts/ContactsView.vue',
   'apps/web/src/views/contacts/ContactDetailView.vue',
+  'apps/web/src/views/contacts/ContactImportModal.vue',
+  'apps/web/src/views/settings/CustomFieldsView.vue',
   // S6 — Pipeline
   'apps/web/src/views/pipeline/PipelineView.vue',
   'apps/web/src/views/pipeline/PipelineStagesView.vue',

@@ -8,6 +8,7 @@
   "settings.roles": "Settings sub-nav item: permission roles. Noun, plural.",
   "settings.integrations": "Settings sub-nav item listing installed plugins. Glossary: plugin → wtyczka. Plural.",
   "settings.mail": "Settings sub-nav item for the company mailbox (IMAP+SMTP) configuration. 1 word.",
+  "settings.customFields": "Settings sub-nav item for operator-defined extra columns on contacts. Noun, ≤2 words. Narrow sub-nav — must fit.",
   "workspace.mail": "Sidebar item + page title for the shared company inbox (email threads). 1 word. Polish: 'Poczta'.",
   "workspace.ask": "Sidebar item + page title for Ask Khirby — the in-app agent chat. Product name stays English. Narrow sidebar — must fit.",
   "quickCreate.contact": "Entry in the '+ New' menu — creates a contact. Imperative-ish short phrase, ≤3 words.",

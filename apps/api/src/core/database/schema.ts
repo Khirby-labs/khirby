@@ -8,6 +8,7 @@ import {
   numeric,
   integer,
   primaryKey,
+  unique,
 } from 'drizzle-orm/pg-core';
 
 export const contacts = pgTable('contacts', {
@@ -421,3 +422,24 @@ export const plugins = pgTable('plugins', {
   installedAt: timestamp('installed_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
+
+export type CustomFieldEntity = 'contact';
+export type CustomFieldType = 'text' | 'number' | 'date' | 'select';
+
+/** Operator-defined extra fields. Values live on the row (`contacts.metadata.custom`). */
+export const customFieldDefinitions = pgTable(
+  'custom_field_definitions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    entity: text('entity').$type<CustomFieldEntity>().notNull(),
+    name: text('name').notNull(),
+    slug: text('slug').notNull(),
+    type: text('type').$type<CustomFieldType>().notNull(),
+    options: jsonb('options').$type<string[]>().default([]),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+    updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  },
+  (t) => ({
+    entitySlug: unique('custom_field_definitions_entity_slug').on(t.entity, t.slug),
+  }),
+);

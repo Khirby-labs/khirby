@@ -51,4 +51,9 @@ export class ListContactsQueryDto {
   @IsOptional()
   @IsString()
   createdTo?: string;
+
+  /** `slug:value` — unknown slug is rejected in the service (400). */
+  @IsOptional()
+  @IsString()
+  customField?: string;
 }

@@ -19,6 +19,7 @@ import { ContactsService } from './contacts.service';
 import { CreateContactDto } from './dto/create-contact.dto';
 import { UpdateContactDto } from './dto/update-contact.dto';
 import { ListContactsQueryDto } from './dto/list-contacts-query.dto';
+import { ImportContactsDto } from './dto/import-contacts.dto';
 
 @ApiTags('contacts')
 @ApiBearerAuth('session')
@@ -43,7 +44,16 @@ export class ContactsController {
       newsletter: query.newsletter,
       createdFrom: query.createdFrom,
       createdTo: query.createdTo,
+      customField: query.customField,
     });
+  }
+
+  @Post('import')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Import contacts from mapped CSV rows (JSON)' })
+  @ApiResponse({ status: 200, description: 'Import summary' })
+  importRows(@Body() dto: ImportContactsDto) {
+    return this.contacts.importRows(dto);
   }
 
   @Get(':id')

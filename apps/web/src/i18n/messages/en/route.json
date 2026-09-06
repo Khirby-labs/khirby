@@ -1,5 +1,6 @@
 {
   "contactDetail": "Contact",
+  "customFields": "Custom fields",
   "documentTitle": "{page} · {app}",
   "login": "Sign in",
   "notFound": "Page not found",

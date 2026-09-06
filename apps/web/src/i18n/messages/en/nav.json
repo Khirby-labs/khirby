@@ -8,6 +8,7 @@
     "ask": "Ask Khirby"
   },
   "settings": {
+    "customFields": "Custom fields",
     "general": "General",
     "members": "Members",
     "roles": "Roles",

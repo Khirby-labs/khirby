@@ -6,5 +6,6 @@
   "contactDetail": "Breadcrumb leaf for one contact's page (parent: Contacts). Noun, SINGULAR — it names one record. 1 word.",
   "pipelineStages": "Breadcrumb leaf for the pipeline stage editor (parent: Pipeline). Glossary: stage → etap. Plural.",
   "formsAnalytics": "Breadcrumb leaf for form submission statistics (parent: Forms). 1 word.",
-  "formBuilder": "Breadcrumb leaf for the form field editor (parent: Forms). ≤2 words. It is where you build a form's fields, not where you fill one in."
+  "formBuilder": "Breadcrumb leaf for the form field editor (parent: Forms). ≤2 words. It is where you build a form's fields, not where you fill one in.",
+  "customFields": "Breadcrumb leaf for Settings → Custom fields (parent: Settings). Noun, ≤2 words."
 }

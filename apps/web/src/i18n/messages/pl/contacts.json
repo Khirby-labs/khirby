@@ -1,4 +1,34 @@
 {
+  "customFields": {
+    "add": "Dodaj pole",
+    "cancel": "Anuluj",
+    "create": "Utwórz pole",
+    "creating": "Tworzenie…",
+    "delete": "Usuń",
+    "deleteConfirm": "Usuń pole",
+    "deleteMessage": "Usunąć „{name}”? Wartości na kontaktach pozostaną zapisane, ale przestaną być widoczne.",
+    "deleteTitle": "Usunąć pole?",
+    "emptyMessage": "Tutaj definiuje się dodatkowe kolumny widoczne na kartach kontaktów.",
+    "emptyTitle": "Brak pól dodatkowych",
+    "errors": {
+      "create": "Nie udało się utworzyć pola",
+      "delete": "Nie udało się usunąć pola",
+      "load": "Nie udało się wczytać pól dodatkowych",
+      "selectOptions": "Wymagana co najmniej jedna opcja",
+      "slugTaken": "Pole o tej nazwie już istnieje"
+    },
+    "name": "Nazwa",
+    "options": "Opcje",
+    "optionsHint": "Jedna opcja w wierszu.",
+    "title": "Pola dodatkowe",
+    "type": "Typ",
+    "types": {
+      "date": "Data",
+      "number": "Liczba",
+      "select": "Lista",
+      "text": "Tekst"
+    }
+  },
   "detail": {
     "back": "Kontakty",
     "editHint": "Zmień nazwę lub telefon poniżej. E-mail jest zablokowany, dopóki go nie odblokujesz.",
@@ -32,6 +62,7 @@
       "no": "Nie",
       "yes": "Tak"
     },
+    "customFields": "Pola dodatkowe",
     "metadata": "Pozostałe dane",
     "newsletter": "Newsletter",
     "namePlaceholder": "Nazwa kontaktu",
@@ -78,6 +109,9 @@
       "added": "Dodano",
       "addedPlaceholder": "Dowolne daty",
       "clear": "Wyczyść filtry",
+      "customField": "Pole dodatkowe",
+      "customFieldAny": "Dowolne pole",
+      "customFieldValue": "Wartość pola",
       "form": "Formularz",
       "formAny": "Dowolny formularz",
       "newsletter": "Newsletter",
@@ -88,6 +122,38 @@
       "phoneAny": "Wszystkie",
       "phoneNo": "Bez telefonu",
       "phoneYes": "Z telefonem"
+    },
+    "import": {
+      "action": "Importuj",
+      "close": "Zamknij",
+      "column": "Kolumna",
+      "dest": {
+        "email": "E-mail",
+        "name": "Nazwa",
+        "phone": "Telefon"
+      },
+      "errorRow": "Wiersz {row}: {reason}",
+      "errorsTitle": "Odrzucone wiersze",
+      "failed": "Nie udało się zaimportować kontaktów",
+      "imported": "{count} kontakt zaimportowany | {count} kontakty zaimportowane | {count} kontaktów zaimportowanych",
+      "mapTo": "Mapuj na",
+      "mappingHint": "Pierwszy wiersz to nagłówki. Wymagane mapowanie kolumny e-mail.",
+      "noEmail": "Wymagane mapowanie kolumny e-mail",
+      "noHeaders": "Plik nie ma wiersza nagłówków",
+      "pickFile": "Wybierz plik",
+      "reasons": {
+        "invalid_date": "Nieprawidłowa data",
+        "invalid_number": "Nieprawidłowa liczba",
+        "invalid_select": "Nieprawidłowa wartość listy",
+        "missing_email": "Brak e-maila"
+      },
+      "resultTitle": "Wyniki importu",
+      "skipColumn": "Pomiń",
+      "skipped": "{count} pominięty wiersz | {count} pominięte wiersze | {count} pominiętych wierszy",
+      "submit": "Importuj",
+      "submitting": "Importowanie…",
+      "title": "Import kontaktów",
+      "tooLarge": "Plik ma więcej niż 1000 wierszy"
     },
     "resultCount": "{count} kontakt | {count} kontakty | {count} kontaktów",
     "sync": {
