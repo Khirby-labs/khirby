@@ -1,6 +1,8 @@
 import { defineStore } from './session-state';
 import { ref, computed } from 'vue';
 import { apiGet, apiDelete, apiPostStream } from '../api/client';
+import { i18n } from '../i18n';
+import { isSupportedLocale } from '../i18n/locales';
 import { usePluginsStore } from './plugins.store';
 
 /** Agent tools that change installed/enabled plugin routes — sidebar must refetch. */
@@ -121,9 +123,14 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
     });
 
     try {
+      const localeRaw = String(i18n.global.locale.value);
       await apiPostStream(
         '/api/agent/chat',
-        { conversationId: conversationId ?? undefined, content },
+        {
+          conversationId: conversationId ?? undefined,
+          content,
+          locale: isSupportedLocale(localeRaw) ? localeRaw : 'en',
+        },
         (line) => {
           if (!line.startsWith('data:')) return;
           const payload = line.slice(5).trim();

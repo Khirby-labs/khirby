@@ -1,4 +1,8 @@
-import { buildAgentSystemPrompt } from './agent-system-prompt';
+import {
+  buildAgentSystemPrompt,
+  replyLanguageRule,
+  synthesisLanguageNudge,
+} from './agent-system-prompt';
 
 describe('buildAgentSystemPrompt', () => {
   it('includes CRM workflow hints', () => {
@@ -9,6 +13,33 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('list_mail_threads');
     expect(prompt).not.toContain('search_knowledge_base');
     expect(prompt).not.toContain('list_marketplace_plugins');
+  });
+
+  it('pins English replies to the UI locale, not tool output or prompt examples', () => {
+    const prompt = buildAgentSystemPrompt({
+      hasPokelo: false,
+      hasPluginTools: true,
+      locale: 'en',
+    });
+    expect(prompt).toContain('The CRM UI language is English');
+    expect(prompt).toContain('They must not choose your reply language');
+    expect(prompt).toContain('You have **2 leads** on the board');
+    expect(prompt).toContain('[here](/plugins/hello-stats)');
+    expect(prompt).not.toContain('Masz **2 leady**');
+    expect(prompt).not.toMatch(/kliknij \[tutaj\]/);
+  });
+
+  it('pins Polish replies by instruction, without a Polish few-shot sample', () => {
+    const prompt = buildAgentSystemPrompt({
+      hasPokelo: false,
+      hasPluginTools: true,
+      locale: 'pl',
+    });
+    expect(prompt).toContain('The CRM UI language is Polish');
+    expect(prompt).toContain('You have **2 leads** on the board');
+    expect(prompt).toContain('[here](/plugins/hello-stats)');
+    expect(prompt).not.toContain('Masz **2 leady**');
+    expect(prompt).not.toMatch(/kliknij \[tutaj\]/);
   });
 
   it('includes Markdown formatting guidance', () => {
@@ -57,7 +88,7 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('loadVolumeNestModule');
     expect(prompt).toContain('list_installed_plugins once');
     expect(prompt).toContain('SPA page');
-    expect(prompt).toContain('[tutaj]');
+    expect(prompt).toContain('[here]');
     expect(prompt).toContain('/plugins/');
     expect(prompt).toContain('never invent a URL');
     expect(prompt).toContain('without a full page reload');
@@ -67,5 +98,18 @@ describe('buildAgentSystemPrompt', () => {
     const prompt = buildAgentSystemPrompt({ hasPokelo: true, hasPluginTools: true });
     expect(prompt).toContain('Pokelo knowledge base');
     expect(prompt).toContain('Instance plugins');
+  });
+});
+
+describe('reply language helpers', () => {
+  it('tells synthesis to match the user message, not the conversation, when locale is unknown', () => {
+    expect(synthesisLanguageNudge()).toContain("user's latest message");
+    expect(synthesisLanguageNudge()).not.toContain('same language as the conversation');
+    expect(replyLanguageRule()).toContain("user's latest message");
+  });
+
+  it('names the UI language in the synthesis nudge', () => {
+    expect(synthesisLanguageNudge('en')).toContain('in English (the CRM UI language)');
+    expect(synthesisLanguageNudge('pl')).toContain('in Polish (the CRM UI language)');
   });
 });

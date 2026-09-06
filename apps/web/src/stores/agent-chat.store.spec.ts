@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { setActivePinia, createPinia } from 'pinia';
 import { useAgentChatStore } from './agent-chat.store';
 import { usePluginsStore } from './plugins.store';
+import { i18n } from '../i18n';
+import { FALLBACK_LOCALE } from '../i18n/locales';
 
 const apiPostStream = vi.fn();
 const apiGet = vi.fn();
@@ -19,6 +21,7 @@ describe('agent-chat store', () => {
     setActivePinia(createPinia());
     vi.clearAllMocks();
     apiGet.mockResolvedValue([]);
+    i18n.global.locale.value = FALLBACK_LOCALE;
   });
 
   it('refetches plugins when install_instance_plugin succeeds', async () => {
@@ -143,5 +146,23 @@ describe('agent-chat store', () => {
     await useAgentChatStore().sendMessage('list contacts');
 
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('sends the active UI locale with every chat request', async () => {
+    apiPostStream.mockResolvedValue(undefined);
+    await useAgentChatStore().sendMessage('Summarize my pipeline');
+    expect(apiPostStream).toHaveBeenCalledWith(
+      '/api/agent/chat',
+      expect.objectContaining({ content: 'Summarize my pipeline', locale: 'en' }),
+      expect.any(Function),
+    );
+
+    i18n.global.locale.value = 'pl';
+    await useAgentChatStore().sendMessage('podsumuj pipeline');
+    expect(apiPostStream).toHaveBeenLastCalledWith(
+      '/api/agent/chat',
+      expect.objectContaining({ content: 'podsumuj pipeline', locale: 'pl' }),
+      expect.any(Function),
+    );
   });
 });
