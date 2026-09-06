@@ -394,6 +394,112 @@ describe('AgentChatService', () => {
     );
   });
 
+  it('puts the UI locale into the system prompt so English UI does not get Polish replies', async () => {
+    let captured: { messages?: Array<{ role: string; content?: string }> } | undefined;
+    (AgentLlmClient as jest.Mock).mockImplementation(() => ({
+      streamCompletion: async function* (req: {
+        messages: Array<{ role: string; content?: string }>;
+      }) {
+        captured = req;
+        yield { kind: 'text', delta: 'You have 10 leads in the pipeline.' };
+        yield { kind: 'done' };
+      },
+      collectFromChunks: jest
+        .fn()
+        .mockReturnValue({ text: 'You have 10 leads in the pipeline.', toolCalls: [] }),
+    }));
+
+    const moduleRef: TestingModule = await Test.createTestingModule({
+      providers: [
+        AgentChatService,
+        { provide: AgentConversationsService, useValue: conversations },
+        { provide: CrmToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: PokeloToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: AI_COMPOSE_LLM, useValue: llmProvider },
+      ],
+    }).compile();
+    service = moduleRef.get(AgentChatService);
+
+    await service.runAgentLoop(
+      'user-1',
+      { content: 'Summarize my pipeline', locale: 'en' },
+      { write: (e) => events.push(e) },
+    );
+
+    const system = captured?.messages?.find((m) => m.role === 'system');
+    expect(system?.content).toContain('The CRM UI language is English');
+    expect(system?.content).toContain('They must not choose your reply language');
+  });
+
+  it('tells synthesis to reply in the UI language, not the conversation', async () => {
+    const capturedCalls: Array<{ messages: Array<{ role: string; content?: string }> }> = [];
+    (AgentLlmClient as jest.Mock).mockImplementation(() => ({
+      streamCompletion: async function* (req: {
+        messages: Array<{ role: string; content?: string }>;
+      }) {
+        capturedCalls.push(req);
+        if (capturedCalls.length <= MAX_ITERATIONS) {
+          yield {
+            kind: 'tool_call',
+            id: `tc-${capturedCalls.length}`,
+            name: 'search_leads',
+            arguments: '{}',
+          };
+          yield { kind: 'done' };
+          return;
+        }
+        yield { kind: 'text', delta: 'Here are the leads.' };
+        yield { kind: 'done' };
+      },
+      collectFromChunks: jest
+        .fn()
+        .mockImplementation((chunks: Array<{ kind: string; id?: string }>) => {
+          const toolChunk = chunks.find((c) => c.kind === 'tool_call');
+          if (toolChunk) {
+            return {
+              text: '',
+              toolCalls: [{ id: toolChunk.id ?? 'tc', name: 'search_leads', arguments: '{}' }],
+            };
+          }
+          return { text: 'Here are the leads.', toolCalls: [] };
+        }),
+    }));
+
+    const moduleRef: TestingModule = await Test.createTestingModule({
+      providers: [
+        AgentChatService,
+        { provide: AgentConversationsService, useValue: conversations },
+        {
+          provide: CrmToolsAdapter,
+          useValue: {
+            definitions: () => [{ type: 'function', function: { name: 'search_leads' } }],
+            run: jest.fn().mockResolvedValue({ ok: true, summary: 'Found 3 leads.' }),
+          },
+        },
+        { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: PokeloToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: AI_COMPOSE_LLM, useValue: llmProvider },
+      ],
+    }).compile();
+
+    service = moduleRef.get(AgentChatService);
+    await service.runAgentLoop(
+      'user-1',
+      { content: 'show me the leads', locale: 'en' },
+      { write: (e) => events.push(e) },
+    );
+
+    const synthesis = capturedCalls[MAX_ITERATIONS]?.messages.at(-1);
+    expect(synthesis?.role).toBe('user');
+    expect(synthesis?.content).toContain('in English (the CRM UI language)');
+    expect(synthesis?.content).not.toContain('same language as the conversation');
+  });
+
   it('respects MAX_ITERATIONS constant', () => {
     expect(MAX_ITERATIONS).toBe(8);
   });

@@ -15,7 +15,8 @@ import { CrmToolsAdapter } from './tools/crm-tools.adapter';
 import { MailToolsAdapter } from './tools/mail-tools.adapter';
 import { MarketplaceToolsAdapter } from './tools/marketplace-tools.adapter';
 import { PluginToolsAdapter, PokeloToolsAdapter } from './tools/plugin-tools.adapter';
-import { buildAgentSystemPrompt } from './agent-system-prompt';
+import { buildAgentSystemPrompt, synthesisLanguageNudge } from './agent-system-prompt';
+import { isLocaleCode, type LocaleCode } from '../../../../../packages/types/src';
 import {
   pendingPluginDirectories,
   pluginAwareFallbackSummary,
@@ -85,6 +86,7 @@ export class AgentChatService {
         ...pokeloToolDefs,
       ];
 
+      const locale = isLocaleCode(dto.locale) ? dto.locale : undefined;
       const messages: LlmMessage[] = [
         {
           role: 'system',
@@ -92,6 +94,7 @@ export class AgentChatService {
             hasPokelo: pokeloToolDefs.length > 0,
             hasPluginTools: pluginToolDefs.length > 0,
             hasMarketplaceTools: marketplaceToolDefs.length > 0,
+            locale,
           }),
         },
         ...history.map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
@@ -201,7 +204,7 @@ export class AgentChatService {
         toolTrace,
         opts,
       );
-      const finalText = await this.synthesizeFinalAnswer(config, messages, opts, toolTrace);
+      const finalText = await this.synthesizeFinalAnswer(config, messages, opts, toolTrace, locale);
       await this.persistAssistant(conversationId, finalText, toolTrace);
       opts.write({ type: 'done' });
     } finally {
@@ -250,14 +253,14 @@ export class AgentChatService {
     messages: LlmMessage[],
     opts: AgentLoopOpts,
     toolTrace: Array<{ name: string; args: Record<string, unknown>; ok: boolean; summary: string }>,
+    locale?: LocaleCode,
   ): Promise<string> {
     opts.write({ type: 'status', code: 'writing' });
     const synthesisMessages: LlmMessage[] = [
       ...messages,
       {
         role: 'user',
-        content:
-          'Write your final reply to the user now. Summarize what you found or did and any next steps. Use the same language as the conversation. Markdown — do not call tools.',
+        content: synthesisLanguageNudge(locale),
       },
     ];
     let text = '';
