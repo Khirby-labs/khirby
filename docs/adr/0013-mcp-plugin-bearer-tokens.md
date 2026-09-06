@@ -26,6 +26,13 @@ OAuth 2.1 / Protected Resource Metadata is deferred.
 Tools call existing Nest services (`ContactsService`, `LeadsService`,
 `PipelineStagesService`) — no duplicated SQL. Write/delete tools are out of scope for v1.
 
+## Later
+
+Write tools landed in [ADR-0019](0019-mcp-mail-tools.md) (mail send),
+[ADR-0027](0027-mcp-boards-tools.md) (boards), and
+[ADR-0028](0028-mcp-contacts-leads-write.md) (contacts/leads create/update).
+Hard delete stays in the CRM UI. Custom fields and JSON import: [ADR-0041](0041-contact-custom-fields.md).
+
 ## Consequences
 
 - Agents connect with a static bearer header (Claude Code `--header`, Cursor `.mcp.json`).

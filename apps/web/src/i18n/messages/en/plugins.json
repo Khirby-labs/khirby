@@ -224,7 +224,7 @@
   },
   "mcp": {
     "displayName": "MCP server",
-    "description": "Exposes read-only CRM tools to external AI agents over MCP.",
+    "description": "Connect an AI agent (Cursor, Claude) to create and update contacts with custom fields, leads, and boards; import contacts; and send mail attributed to a user—hard deletes stay in the CRM.",
     "nav": "MCP",
     "title": "MCP server",
     "subtitle": "Generate an access token and connect an AI agent. See the plugin list.",

@@ -82,7 +82,7 @@
   "listmonk.tooltip.lists": "title attribute naming the lists a contact belongs to. {lists} is an already-joined, comma-separated list of names.",
   "listmonk.tooltip.status": "title attribute used instead when the contact is on no list. {status} is a raw value from the newsletter tool and stays untranslated.",
   "mcp.displayName": "Plugin card title for the MCP server integration. ≤3 words. MCP stays MCP.",
-  "mcp.description": "One sentence under the card title: the plugin exposes read-only CRM tools to external AI agents over MCP.",
+  "mcp.description": "One sentence under the plugin card title and the Settings → Plugins → MCP header. Opt-in MCP for Cursor/Claude: create and update contacts (including custom fields), leads, and boards; import contacts; send mail attributed to a user. Not read-only. Hard delete stays in the CRM UI. Polish must be impersonal (no Twój/Ty/Ciebie/swojego). One sentence.",
   "mcp.nav": "Sidebar / plugin nav label. ≤2 words. MCP stays MCP.",
   "mcp.title": "Page heading of the MCP plugin settings screen. ≤3 words.",
   "mcp.subtitle": "One sentence under that heading: generate a token and connect an AI agent. Mentions the link to the plugins list.",
