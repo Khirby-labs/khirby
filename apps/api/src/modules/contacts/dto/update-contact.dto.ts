@@ -16,4 +16,9 @@ export class UpdateContactDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
+
+  /** Merged into `metadata.custom` via jsonb_set — never a full metadata rewrite. */
+  @IsOptional()
+  @IsObject()
+  custom?: Record<string, unknown>;
 }

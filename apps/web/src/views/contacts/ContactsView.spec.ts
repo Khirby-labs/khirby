@@ -78,6 +78,7 @@ describe('ContactsView', () => {
       listResponds(),
       http.get(api('/api/plugins'), () => HttpResponse.json([])),
       http.get(api('/api/forms'), () => HttpResponse.json([])),
+      http.get(api('/api/custom-fields'), () => HttpResponse.json([])),
     );
   });
 
@@ -161,5 +162,26 @@ describe('ContactsView', () => {
     expect(wrapper.text()).toContain('Kontakty');
     expect(wrapper.text()).toContain('Telefon');
     expect(wrapper.text()).not.toContain('Search…');
+  });
+
+  it('puts Import in the top-bar actions', async () => {
+    await mountContacts();
+    const topbar = document.getElementById('topbar-actions');
+    expect(topbar?.textContent).toContain('Import');
+  });
+
+  it('offers a custom-field filter when definitions exist', async () => {
+    server.use(
+      http.get(api('/api/custom-fields'), () =>
+        HttpResponse.json([
+          { id: 'f1', entity: 'contact', name: 'MRR', slug: 'mrr', type: 'number' },
+        ]),
+      ),
+    );
+    await mountContacts();
+    const trigger = [...document.querySelectorAll('button')].find(
+      (b) => b.getAttribute('aria-label') === 'Custom field',
+    );
+    expect(trigger).toBeTruthy();
   });
 });

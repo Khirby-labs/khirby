@@ -15,4 +15,9 @@ export class CreateContactDto {
   @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
+
+  /** Merged into `metadata.custom` after coerce — never a full metadata rewrite. */
+  @IsOptional()
+  @IsObject()
+  custom?: Record<string, unknown>;
 }

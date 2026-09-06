@@ -128,6 +128,48 @@
               />
             </div>
 
+            <div v-if="definitions.length" class="space-y-3 pt-2 border-t border-border">
+              <h3 class="text-xs font-medium text-text-ghost uppercase tracking-wider">
+                {{ t('contacts.detail.customFields') }}
+              </h3>
+              <div v-for="field in definitions" :key="field.id">
+                <label :for="`contact-custom-${field.slug}`" class="crm-label">{{
+                  field.name
+                }}</label>
+                <AppDatePicker
+                  v-if="field.type === 'date'"
+                  :id="`contact-custom-${field.slug}`"
+                  :model-value="(customValues[field.slug] as string) || null"
+                  :aria-label="field.name"
+                  clearable
+                  trigger-class="w-full py-2"
+                  @update:model-value="(day) => setCustom(field.slug, day ?? '')"
+                />
+                <AppSelect
+                  v-else-if="field.type === 'select'"
+                  :model-value="String(customValues[field.slug] ?? '')"
+                  :options="selectOptions(field)"
+                  :aria-label="field.name"
+                  trigger-class="w-full"
+                  @update:model-value="(value) => setCustom(field.slug, value)"
+                />
+                <input
+                  v-else
+                  :id="`contact-custom-${field.slug}`"
+                  :value="customValues[field.slug] ?? ''"
+                  :type="field.type === 'number' ? 'number' : 'text'"
+                  class="crm-input"
+                  @input="
+                    setCustom(
+                      field.slug,
+                      ($event.target as HTMLInputElement).value,
+                      field.type === 'number',
+                    )
+                  "
+                />
+              </div>
+            </div>
+
             <div v-if="saveError" class="crm-error">{{ saveError }}</div>
             <p v-if="saved" class="text-sm text-success">{{ t('common.actions.saved') }}</p>
 
@@ -244,6 +286,8 @@ import { apiGet, apiPatch, ApiError } from '../../api/client';
 import SkeletonRows from '../../components/ui/SkeletonRows.vue';
 import RecordFields from '../../components/ui/RecordFields.vue';
 import AppTooltip from '../../components/ui/AppTooltip.vue';
+import AppDatePicker from '../../components/ui/AppDatePicker.vue';
+import AppSelect from '../../components/ui/AppSelect.vue';
 import MailThreadPanel from '../../components/mail/MailThreadPanel.vue';
 import { useConfirm } from '../../composables/useConfirm';
 import { recordToFieldRows, type RecordFieldRow } from '../../utils/record-fields';
@@ -278,6 +322,16 @@ interface Contact {
   leads?: ContactLead[];
 }
 
+type CustomFieldType = 'text' | 'number' | 'date' | 'select';
+
+interface CustomFieldDefinition {
+  id: string;
+  name: string;
+  slug: string;
+  type: CustomFieldType;
+  options?: string[] | null;
+}
+
 const { t, d } = useI18n();
 const route = useRoute();
 const askConfirm = useConfirm();
@@ -293,6 +347,8 @@ const emailUnlocked = ref(false);
 const emailInputRef = ref<HTMLInputElement | null>(null);
 
 const form = ref({ email: '', name: '', phone: '' });
+const definitions = ref<CustomFieldDefinition[]>([]);
+const customValues = ref<Record<string, unknown>>({});
 
 const displayTitle = computed(
   () => contact.value?.name?.trim() || contact.value?.email || t('contacts.detail.noName'),
@@ -303,7 +359,8 @@ const isDirty = computed(() => {
   return (
     form.value.email !== contact.value.email ||
     form.value.name !== (contact.value.name ?? '') ||
-    form.value.phone !== (contact.value.phone ?? '')
+    form.value.phone !== (contact.value.phone ?? '') ||
+    JSON.stringify(customValues.value) !== JSON.stringify(storedCustom())
   );
 });
 
@@ -373,6 +430,7 @@ const otherMetadataRows = computed(() => {
   const meta = { ...(contact.value?.metadata ?? {}) };
   delete meta.interests;
   delete meta.listmonk;
+  delete meta.custom;
   return recordToFieldRows(meta, fieldFormatOpts.value);
 });
 
@@ -384,7 +442,44 @@ function submissionRows(data?: Record<string, unknown>): RecordFieldRow[] {
   return recordToFieldRows(data, fieldFormatOpts.value);
 }
 
-onMounted(() => fetchContact());
+onMounted(() => {
+  void fetchContact();
+  void fetchDefinitions();
+});
+
+function storedCustom(): Record<string, unknown> {
+  const raw = contact.value?.metadata?.custom;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {};
+  const out: Record<string, unknown> = {};
+  for (const field of definitions.value) {
+    const value = (raw as Record<string, unknown>)[field.slug];
+    out[field.slug] = value ?? '';
+  }
+  return out;
+}
+
+function setCustom(slug: string, value: string, asNumber = false) {
+  customValues.value = {
+    ...customValues.value,
+    [slug]: asNumber && value !== '' ? Number(value) : value,
+  };
+}
+
+function selectOptions(field: CustomFieldDefinition) {
+  return [
+    { value: '', label: t('common.form.selectPlaceholder') },
+    ...(field.options ?? []).map((opt) => ({ value: opt, label: opt })),
+  ];
+}
+
+async function fetchDefinitions() {
+  try {
+    definitions.value = await apiGet<CustomFieldDefinition[]>('/api/custom-fields?entity=contact');
+    customValues.value = storedCustom();
+  } catch {
+    definitions.value = [];
+  }
+}
 
 async function fetchContact() {
   loading.value = true;
@@ -409,6 +504,7 @@ function resetForm() {
     name: contact.value.name ?? '',
     phone: contact.value.phone ?? '',
   };
+  customValues.value = storedCustom();
   emailUnlocked.value = false;
   saveError.value = null;
   saved.value = false;
@@ -455,12 +551,14 @@ async function saveContact() {
       email: nextEmail,
       name: form.value.name.trim() || null,
       phone: form.value.phone.trim() || null,
+      custom: customValues.value,
     });
     contact.value = {
       ...contact.value,
       email: updated.email,
       name: updated.name,
       phone: updated.phone,
+      metadata: updated.metadata ?? contact.value.metadata,
     };
     resetForm();
     saved.value = true;

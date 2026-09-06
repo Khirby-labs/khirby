@@ -171,6 +171,15 @@ const staticRoutes: RouteRecordRaw[] = [
               parent: { labelKey: 'settings.title', to: '/settings' },
             },
           },
+          {
+            path: 'custom-fields',
+            name: 'settings-custom-fields',
+            component: () => import('../views/settings/CustomFieldsView.vue'),
+            meta: {
+              titleKey: 'route.customFields',
+              parent: { labelKey: 'settings.title', to: '/settings' },
+            },
+          },
         ],
       },
 

@@ -8,6 +8,7 @@ produces no entry.
 
 Format: `YYYY-MM-DD · <issue> · <slug> — <one-sentence hook>`
 
+- 2026-09-06 · KBY-130 · [kby-130-contact-custom-fields](devlog/2026-09-06-kby-130-contact-custom-fields.md) — contact custom fields + CSV import via jsonb_set and browser-parsed JSON; ADR-0041; PR #8
 - 2026-08-18 · KBY-120 · [kby-120-instance-hot-load](devlog/2026-08-18-kby-120-instance-hot-load.md) — MCP describe/scaffold/validate/install_instance_plugin plus append-only jiti hot-load from INSTANCE_PLUGINS_DIR; ADR-0036; plugins/ on disk had no .git so the MCP half is not in any repo yet
 - 2026-08-18 · KBY-103 · [marketplace-v1](devlog/2026-08-18-marketplace-v1.md) — a `plugins` row now means installed and boot seeds only an empty table; catalog page with one-click install that works without a restart; ADR-0032–0035; the fixture's bare plugin-host import would have killed the API at boot in the published image with every gate green
 - 2026-07-24 · — · [web-boundary-testing](devlog/2026-07-24-web-boundary-testing.md) — P0–P3: web tests rebuilt to measure boundaries (MSW/DOM) not our own code; MSW foundation, store/router/component specs, @crm/types contract, E2E smoke, coverage+lint gates; ADR-0010; found+fixed pipeline store swallowing server errors

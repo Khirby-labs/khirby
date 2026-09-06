@@ -1,4 +1,4 @@
-import { Injectable, Inject, Optional } from '@nestjs/common';
+import { Injectable, Inject, Optional, PayloadTooLargeException } from '@nestjs/common';
 import {
   eq,
   ilike,
@@ -12,13 +12,24 @@ import {
   isNotNull,
   isNull,
   ne,
+  inArray,
   type SQL,
 } from 'drizzle-orm';
 import { Db } from '../../core/database/db';
 import { DB_TOKEN } from '../../core/database/database.module';
-import { contacts, submissions, forms, leads, pipelineStages } from '../../core/database/schema';
+import {
+  contacts,
+  submissions,
+  forms,
+  leads,
+  pipelineStages,
+  customFieldDefinitions,
+} from '../../core/database/schema';
 import { AppException } from '../../core/errors/app-exception';
 import { PluginRegistryService } from '../plugins/plugin-registry.service';
+import { coerceCustomValue } from './custom-fields.service';
+
+const IMPORT_ROW_CAP = 1000;
 
 export interface FormSubmissionContext {
   formId: string;
@@ -45,6 +56,8 @@ export interface FindContactsQuery {
   createdFrom?: string;
   /** Inclusive ISO day YYYY-MM-DD */
   createdTo?: string;
+  /** `slug:value` */
+  customField?: string;
 }
 
 const SORT_COLUMNS = {
@@ -89,6 +102,21 @@ function parseIsoDayEnd(day: string): Date | null {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
   const d = new Date(`${day}T23:59:59.999Z`);
   return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function parseCustomFieldParam(raw: string): { slug: string; value: string } | null {
+  const idx = raw.indexOf(':');
+  if (idx <= 0) return null;
+  return { slug: raw.slice(0, idx), value: raw.slice(idx + 1) };
+}
+
+export type ImportRowError = { row: number; reason: string };
+
+function cell(row: Record<string, unknown>, column: string | undefined): string {
+  if (!column) return '';
+  const value = row[column];
+  if (value == null) return '';
+  return String(value).trim();
 }
 
 @Injectable()
@@ -137,6 +165,7 @@ export class ContactsService {
         ilike(contacts.email, pattern),
         ilike(contacts.name, pattern),
         ilike(contacts.phone, pattern),
+        sql`(${contacts.metadata}->'custom')::text ilike ${pattern}`,
       );
       if (searchCond) conditions.push(searchCond);
     }
@@ -167,6 +196,42 @@ export class ContactsService {
     if (query.createdTo) {
       const to = parseIsoDayEnd(query.createdTo);
       if (to) conditions.push(lte(contacts.createdAt, to));
+    }
+
+    const customFieldRaw = query.customField?.trim();
+    if (customFieldRaw) {
+      const parsed = parseCustomFieldParam(customFieldRaw);
+      if (!parsed) {
+        throw AppException.badRequest('customField must be slug:value', { field: 'customField' });
+      }
+      const [def] = await this.db
+        .select()
+        .from(customFieldDefinitions)
+        .where(
+          and(
+            eq(customFieldDefinitions.entity, 'contact'),
+            eq(customFieldDefinitions.slug, parsed.slug),
+          ),
+        )
+        .limit(1);
+      if (!def) {
+        throw AppException.badRequest('Unknown custom field', { slug: parsed.slug });
+      }
+      if (def.type === 'number') {
+        const n = Number(parsed.value.replace(',', '.'));
+        if (!Number.isFinite(n)) {
+          throw AppException.badRequest('customField value is not a number', {
+            field: 'customField',
+          });
+        }
+        conditions.push(
+          sql`(${contacts.metadata} #>> ARRAY['custom', ${parsed.slug}])::numeric = ${n}`,
+        );
+      } else {
+        conditions.push(
+          sql`${contacts.metadata} #>> ARRAY['custom', ${parsed.slug}] = ${parsed.value}`,
+        );
+      }
     }
 
     const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
@@ -278,6 +343,7 @@ export class ContactsService {
     name?: string;
     phone?: string;
     metadata?: Record<string, unknown>;
+    custom?: Record<string, unknown>;
   }) {
     const [existing] = await this.db
       .select()
@@ -286,17 +352,34 @@ export class ContactsService {
       .limit(1);
     if (existing) throw AppException.alreadyExists('contact', 'email', dto.email);
 
+    let metadata: Record<string, unknown> = { ...(dto.metadata ?? {}) };
+    if (dto.custom && Object.keys(dto.custom).length > 0) {
+      const custom = await this.coerceCustomObject(dto.custom);
+      const prev =
+        metadata.custom && typeof metadata.custom === 'object' && !Array.isArray(metadata.custom)
+          ? (metadata.custom as Record<string, unknown>)
+          : {};
+      metadata = { ...metadata, custom: { ...prev, ...custom } };
+    }
+
     const [created] = await this.db
       .insert(contacts)
       .values({
         email: dto.email,
         name: dto.name ?? null,
         phone: dto.phone?.trim() ? dto.phone.trim() : null,
-        metadata: dto.metadata ?? {},
+        metadata,
       } as any)
       .returning();
     this.emitContactCreated(created);
     return created;
+  }
+
+  async listCustomFields() {
+    return this.db
+      .select()
+      .from(customFieldDefinitions)
+      .where(eq(customFieldDefinitions.entity, 'contact'));
   }
 
   async update(
@@ -306,23 +389,30 @@ export class ContactsService {
       name?: string;
       phone?: string | null;
       metadata?: Record<string, unknown>;
+      custom?: Record<string, unknown>;
     },
   ) {
     const [existing] = await this.db.select().from(contacts).where(eq(contacts.id, id)).limit(1);
     if (!existing) throw AppException.notFound('contact', id);
 
-    if (dto.email !== undefined && dto.email !== existing.email) {
+    const { custom, ...rest } = dto;
+
+    if (rest.email !== undefined && rest.email !== existing.email) {
       const [conflict] = await this.db
         .select()
         .from(contacts)
-        .where(eq(contacts.email, dto.email))
+        .where(eq(contacts.email, rest.email))
         .limit(1);
-      if (conflict) throw AppException.alreadyExists('contact', 'email', dto.email);
+      if (conflict) throw AppException.alreadyExists('contact', 'email', rest.email);
     }
 
-    const patch: Record<string, unknown> = { ...dto };
-    if (dto.phone !== undefined) {
-      patch.phone = typeof dto.phone === 'string' && dto.phone.trim() ? dto.phone.trim() : null;
+    const patch: Record<string, unknown> = { ...rest };
+    if (rest.phone !== undefined) {
+      patch.phone = typeof rest.phone === 'string' && rest.phone.trim() ? rest.phone.trim() : null;
+    }
+
+    if (custom && Object.keys(custom).length > 0) {
+      patch.metadata = await this.buildCustomMetadataSet(custom);
     }
 
     const [updated] = await this.db
@@ -339,5 +429,122 @@ export class ContactsService {
 
     await this.db.delete(contacts).where(eq(contacts.id, id));
     return { deleted: true };
+  }
+
+  async importRows(dto: { mapping: Record<string, string>; rows: Record<string, unknown>[] }) {
+    if (!Array.isArray(dto.rows) || dto.rows.length > IMPORT_ROW_CAP) {
+      throw new PayloadTooLargeException({
+        statusCode: 413,
+        code: 'PAYLOAD_TOO_LARGE',
+        message: `Import cannot exceed ${IMPORT_ROW_CAP} rows`,
+      });
+    }
+
+    const emailColumn = dto.mapping?.email?.trim();
+    if (!emailColumn) {
+      throw AppException.badRequest('Email column mapping is required', { field: 'email' });
+    }
+
+    const defs = await this.db
+      .select()
+      .from(customFieldDefinitions)
+      .where(eq(customFieldDefinitions.entity, 'contact'));
+    const defBySlug = new Map(defs.map((d) => [d.slug, d]));
+
+    const emails = [
+      ...new Set(dto.rows.map((row) => cell(row, emailColumn)).filter((email) => email.length > 0)),
+    ];
+    const existingRows =
+      emails.length > 0
+        ? await this.db
+            .select({ email: contacts.email })
+            .from(contacts)
+            .where(inArray(contacts.email, emails))
+        : [];
+    const existing = new Set(existingRows.map((r) => r.email));
+    const seen = new Set<string>();
+
+    let imported = 0;
+    let skipped = 0;
+    const errors: ImportRowError[] = [];
+
+    for (let i = 0; i < dto.rows.length; i++) {
+      const row = dto.rows[i];
+      const rowNumber = i + 1;
+      const email = cell(row, emailColumn);
+      if (!email) {
+        errors.push({ row: rowNumber, reason: 'missing_email' });
+        continue;
+      }
+      if (existing.has(email) || seen.has(email)) {
+        skipped += 1;
+        continue;
+      }
+
+      const custom: Record<string, unknown> = {};
+      let invalid: string | null = null;
+      for (const [dest, column] of Object.entries(dto.mapping)) {
+        if (dest === 'email' || dest === 'name' || dest === 'phone') continue;
+        const def = defBySlug.get(dest);
+        if (!def) continue;
+        const raw = cell(row, column);
+        if (!raw) continue;
+        const parsed = coerceCustomValue(def.type, def.options ?? [], raw);
+        if (parsed.ok === false) {
+          invalid = parsed.reason;
+          break;
+        }
+        if (parsed.value !== null) custom[dest] = parsed.value;
+      }
+      if (invalid) {
+        errors.push({ row: rowNumber, reason: invalid });
+        continue;
+      }
+
+      const name = cell(row, dto.mapping.name) || null;
+      const phone = cell(row, dto.mapping.phone) || null;
+      const [created] = await this.db
+        .insert(contacts)
+        .values({
+          email,
+          name,
+          phone: phone || null,
+          metadata: Object.keys(custom).length > 0 ? { custom } : {},
+        } as any)
+        .returning();
+      this.emitContactCreated(created);
+      imported += 1;
+      seen.add(email);
+      existing.add(email);
+    }
+
+    return { imported, skipped, errors };
+  }
+
+  private async coerceCustomObject(custom: Record<string, unknown>) {
+    const defs = await this.db
+      .select()
+      .from(customFieldDefinitions)
+      .where(eq(customFieldDefinitions.entity, 'contact'));
+    const defBySlug = new Map(defs.map((d) => [d.slug, d]));
+    const out: Record<string, unknown> = {};
+    for (const [slug, raw] of Object.entries(custom)) {
+      const def = defBySlug.get(slug);
+      if (!def) throw AppException.badRequest('Unknown custom field', { slug });
+      const parsed = coerceCustomValue(def.type, def.options ?? [], raw);
+      if (parsed.ok === false)
+        throw AppException.badRequest('Invalid custom field value', { slug });
+      out[slug] = parsed.value;
+    }
+    return out;
+  }
+
+  private async buildCustomMetadataSet(custom: Record<string, unknown>) {
+    const coerced = await this.coerceCustomObject(custom);
+    let expr = sql`COALESCE(${contacts.metadata}, '{}'::jsonb)`;
+    for (const [slug, value] of Object.entries(coerced)) {
+      expr = sql`jsonb_set(${expr}, ARRAY['custom', ${slug}]::text[], ${JSON.stringify(value)}::jsonb, true)`;
+    }
+    return expr;
   }
 }

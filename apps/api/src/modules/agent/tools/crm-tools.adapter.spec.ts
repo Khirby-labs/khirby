@@ -11,7 +11,12 @@ import { RbacService } from '../../../core/rbac/rbac.service';
 describe('CrmToolsAdapter', () => {
   let adapter: CrmToolsAdapter;
   let rbac: jest.Mocked<Pick<RbacService, 'hasPermission'>>;
-  let contacts: jest.Mocked<Pick<ContactsService, 'findAll' | 'findById' | 'create'>>;
+  let contacts: jest.Mocked<
+    Pick<
+      ContactsService,
+      'findAll' | 'findById' | 'create' | 'update' | 'listCustomFields' | 'importRows'
+    >
+  >;
   let leads: jest.Mocked<Pick<LeadsService, 'getBoard' | 'findById' | 'createManual' | 'update'>>;
   let stages: jest.Mocked<Pick<PipelineStagesService, 'findAll' | 'findById'>>;
   let projects: jest.Mocked<Pick<ProjectsService, 'findAll'>>;
@@ -37,6 +42,17 @@ describe('CrmToolsAdapter', () => {
         submissions: [],
       }),
       create: jest.fn().mockResolvedValue({ id: 'c2' }),
+      update: jest.fn().mockResolvedValue({
+        id: 'c1',
+        email: 'ann@acme.com',
+        name: 'Ann',
+        phone: null,
+        metadata: { custom: { mrr: 1200 } },
+      }),
+      listCustomFields: jest
+        .fn()
+        .mockResolvedValue([{ name: 'MRR', slug: 'mrr', type: 'number', options: [] }]),
+      importRows: jest.fn().mockResolvedValue({ imported: 2, skipped: 1, errors: [] }),
     };
     leads = {
       getBoard: jest.fn().mockResolvedValue({ columns: [{ leads: [{ id: 'l1' }] }] }),
@@ -80,6 +96,9 @@ describe('CrmToolsAdapter', () => {
   it('exposes CRM tool definitions', () => {
     const names = adapter.definitions().map((d) => d.function.name);
     expect(names).toContain('search_contacts');
+    expect(names).toContain('update_contact');
+    expect(names).toContain('list_custom_fields');
+    expect(names).toContain('import_contacts');
     expect(names).toContain('create_task');
   });
 
@@ -103,6 +122,51 @@ describe('CrmToolsAdapter', () => {
       expect(result.summary).toContain('Ann');
     }
     expect(contacts.findAll).toHaveBeenCalledWith({ search: 'ann', page: 1, pageSize: 10 });
+  });
+
+  it('runs update_contact with custom values', async () => {
+    const result = await adapter.run('user-1', 'update_contact', {
+      id: 'c1',
+      custom: { mrr: 1200 },
+    });
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.summary).toContain('custom=mrr=1200');
+    expect(contacts.update).toHaveBeenCalledWith('c1', {
+      email: undefined,
+      name: undefined,
+      phone: undefined,
+      custom: { mrr: 1200 },
+    });
+  });
+
+  it('runs list_custom_fields', async () => {
+    const result = await adapter.run('user-1', 'list_custom_fields', {});
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.summary).toContain('slug=mrr');
+      expect(result.summary).toContain('type=number');
+    }
+  });
+
+  it('runs import_contacts with mapping and rows', async () => {
+    const result = await adapter.run('user-1', 'import_contacts', {
+      mapping: { email: 'Email', name: 'Name' },
+      rows: [{ Email: 'a@b.c', Name: 'Ada' }],
+    });
+    expect(result).toEqual({ ok: true, summary: 'Imported 2, skipped 1' });
+    expect(contacts.importRows).toHaveBeenCalledWith({
+      mapping: { email: 'Email', name: 'Name' },
+      rows: [{ Email: 'a@b.c', Name: 'Ada' }],
+    });
+  });
+
+  it('rejects import_contacts without email mapping', async () => {
+    const result = await adapter.run('user-1', 'import_contacts', {
+      mapping: { name: 'Name' },
+      rows: [],
+    });
+    expect(result.ok).toBe(false);
+    expect(contacts.importRows).not.toHaveBeenCalled();
   });
 
   it('runs get_contact with lead summary', async () => {

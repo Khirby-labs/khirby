@@ -109,6 +109,18 @@ describe('filterNavForUser', () => {
     const paths = filterNavForUser(workspaceNav, []).map((i) => i.to);
     expect(paths).toContain('/contacts');
   });
+
+  it('hides Settings → Custom fields without contacts:manage', () => {
+    const paths = filterNavForUser(settingsNav, []).map((i) => i.to);
+    expect(paths).not.toContain('/settings/custom-fields');
+  });
+
+  it('shows Settings → Custom fields when contacts:manage is granted', () => {
+    const paths = filterNavForUser(settingsNav, [{ resource: 'contacts', action: 'manage' }]).map(
+      (i) => i.to,
+    );
+    expect(paths).toContain('/settings/custom-fields');
+  });
 });
 
 describe('filterCommandGroups', () => {

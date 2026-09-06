@@ -8,6 +8,9 @@ describe('buildAgentSystemPrompt', () => {
   it('includes CRM workflow hints', () => {
     const prompt = buildAgentSystemPrompt({ hasPokelo: false, hasPluginTools: false });
     expect(prompt).toContain('search_leads');
+    expect(prompt).toContain('list_custom_fields');
+    expect(prompt).toContain('update_contact');
+    expect(prompt).toContain('import_contacts');
     expect(prompt).toContain('list_pipeline_stages');
     expect(prompt).toContain('list_board_modules');
     expect(prompt).toContain('list_mail_threads');

@@ -8,6 +8,7 @@
     "ask": "Ask Khirby"
   },
   "settings": {
+    "customFields": "Pola dodatkowe",
     "general": "Ogólne",
     "members": "Użytkownicy",
     "roles": "Role",

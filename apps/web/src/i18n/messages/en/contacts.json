@@ -1,4 +1,34 @@
 {
+  "customFields": {
+    "add": "Add field",
+    "cancel": "Cancel",
+    "create": "Create field",
+    "creating": "Creating…",
+    "delete": "Delete",
+    "deleteConfirm": "Delete field",
+    "deleteMessage": "Delete “{name}”? Values already on contacts stay stored but won't show anymore.",
+    "deleteTitle": "Delete field?",
+    "emptyMessage": "Define extra columns that appear on contact records.",
+    "emptyTitle": "No custom fields",
+    "errors": {
+      "create": "Couldn't create field",
+      "delete": "Couldn't delete field",
+      "load": "Couldn't load custom fields",
+      "selectOptions": "Add at least one option",
+      "slugTaken": "A field with this name already exists"
+    },
+    "name": "Name",
+    "options": "Options",
+    "optionsHint": "One option per line.",
+    "title": "Custom fields",
+    "type": "Type",
+    "types": {
+      "date": "Date",
+      "number": "Number",
+      "select": "Select",
+      "text": "Text"
+    }
+  },
   "detail": {
     "back": "Contacts",
     "editHint": "Update name or phone below. Email stays locked until you unlock it.",
@@ -32,6 +62,7 @@
       "no": "No",
       "yes": "Yes"
     },
+    "customFields": "Custom fields",
     "metadata": "Other details",
     "newsletter": "Newsletter",
     "namePlaceholder": "Contact name",
@@ -78,6 +109,9 @@
       "added": "Added",
       "addedPlaceholder": "Any dates",
       "clear": "Clear filters",
+      "customField": "Custom field",
+      "customFieldAny": "Any field",
+      "customFieldValue": "Field value",
       "form": "Form",
       "formAny": "Any form",
       "newsletter": "Newsletter",
@@ -88,6 +122,38 @@
       "phoneAny": "Any",
       "phoneNo": "No phone",
       "phoneYes": "Has phone"
+    },
+    "import": {
+      "action": "Import",
+      "close": "Close",
+      "column": "Column",
+      "dest": {
+        "email": "Email",
+        "name": "Name",
+        "phone": "Phone"
+      },
+      "errorRow": "Row {row}: {reason}",
+      "errorsTitle": "Rejected rows",
+      "failed": "Couldn't import contacts",
+      "imported": "{count} contact imported | {count} contacts imported",
+      "mapTo": "Map to",
+      "mappingHint": "The first row is the header row. Map at least the email column.",
+      "noEmail": "Map a column to email",
+      "noHeaders": "The file has no header row",
+      "pickFile": "Choose file",
+      "reasons": {
+        "invalid_date": "Invalid date",
+        "invalid_number": "Invalid number",
+        "invalid_select": "Invalid select value",
+        "missing_email": "Missing email"
+      },
+      "resultTitle": "Import results",
+      "skipColumn": "Skip",
+      "skipped": "{count} row skipped | {count} rows skipped",
+      "submit": "Import",
+      "submitting": "Importing…",
+      "title": "Import contacts",
+      "tooLarge": "The file has more than 1000 rows"
     },
     "resultCount": "{count} contact | {count} contacts",
     "sync": {

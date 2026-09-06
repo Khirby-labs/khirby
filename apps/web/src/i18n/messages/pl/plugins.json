@@ -224,7 +224,7 @@
   },
   "mcp": {
     "displayName": "Serwer MCP",
-    "description": "Udostępnia narzędzia CRM (tylko do odczytu) agentom AI poprzez MCP.",
+    "description": "Podłącz agenta AI (Cursor, Claude) — tworzenie i edytowanie kontaktów z polami niestandardowymi, leadów i tablic, import kontaktów, wysyłanie maili przypisanych użytkownikowi; trwałe usunięcia w CRM.",
     "nav": "MCP",
     "title": "Serwer MCP",
     "subtitle": "Wygeneruj token dostępu i połącz agenta. Przejdź do listy wtyczek.",

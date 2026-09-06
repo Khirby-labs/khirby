@@ -9,7 +9,7 @@
         :aria-label="t('settings.navLabel')"
       >
         <RouterLink
-          v-for="item in settingsNav"
+          v-for="item in visibleSettingsNav"
           :key="item.to"
           :to="item.to"
           class="flex items-center gap-2.5 whitespace-nowrap rounded-md px-2.5 py-2 text-sm font-medium text-text-muted transition-colors hover:bg-surface-raise hover:text-text-primary"
@@ -35,10 +35,16 @@
  * main sidebar (docs/DESIGN-SYSTEM.md §6: operational surfaces stay in the
  * main list; governance sinks into Settings).
  */
+import { computed } from 'vue';
 import { RouterLink, RouterView } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import NavIcon from '../../components/NavIcon.vue';
-import { settingsNav } from '../../lib/nav';
+import { filterNavForUser, settingsNav } from '../../lib/nav';
+import { useAuthStore } from '../../stores/auth.store';
 
 const { t } = useI18n();
+const auth = useAuthStore();
+const visibleSettingsNav = computed(() =>
+  filterNavForUser(settingsNav, auth.user?.permissions ?? []),
+);
 </script>

@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+  PayloadTooLargeException,
+} from '@nestjs/common';
 import { ContactsService } from './contacts.service';
 import { DB_TOKEN } from '../../core/database/database.module';
 
@@ -53,6 +58,18 @@ function buildDb() {
   db.update.mockImplementation(() => makeChain([]));
   db.delete.mockImplementation(() => makeChain([]));
   return db;
+}
+
+function sqlMentions(value: unknown, needle: string): boolean {
+  const seen = new Set<unknown>();
+  const walk = (v: unknown): boolean => {
+    if (typeof v === 'string') return v.includes(needle);
+    if (!v || typeof v !== 'object' || seen.has(v)) return false;
+    seen.add(v);
+    if (Array.isArray(v)) return v.some(walk);
+    return Object.values(v as Record<string, unknown>).some(walk);
+  };
+  return walk(value);
 }
 
 describe('ContactsService', () => {
@@ -189,6 +206,33 @@ describe('ContactsService', () => {
       db.select.mockImplementationOnce(() => makeChain([existing]));
 
       await expect(service.create({ email: 'dup@email.com' })).rejects.toThrow(ConflictException);
+    });
+
+    it('coerces custom values into metadata.custom on create', async () => {
+      const def = {
+        id: 'd1',
+        entity: 'contact',
+        name: 'MRR',
+        slug: 'mrr',
+        type: 'number',
+        options: [],
+      };
+      const insertChain = makeChain([{ id: 'uuid-2', email: 'new@email.com' }]);
+      db.select
+        .mockImplementationOnce(() => makeChain([]))
+        .mockImplementationOnce(() => makeChain([def]));
+      db.insert.mockImplementationOnce(() => insertChain);
+
+      await service.create({
+        email: 'new@email.com',
+        metadata: { interests: [] },
+        custom: { mrr: '1200' },
+      });
+      expect(insertChain.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: { interests: [], custom: { mrr: 1200 } },
+        }),
+      );
     });
   });
 
@@ -399,6 +443,122 @@ describe('ContactsService', () => {
       });
       expect(result).toEqual(created);
       expect(db.insert).toHaveBeenCalled();
+    });
+  });
+
+  describe('custom fields merge / search / filter', () => {
+    const def = {
+      id: 'd1',
+      entity: 'contact',
+      name: 'MRR',
+      slug: 'mrr',
+      type: 'number',
+      options: [],
+    };
+
+    it('writes custom values through jsonb_set without replacing metadata', async () => {
+      const existing = {
+        id: 'uuid-4',
+        email: 'upd@email.com',
+        metadata: { interests: [{ formId: 'f1' }], listmonk: { subscriberId: 9 } },
+      };
+      const setChain = makeChain([{ ...existing }]);
+      db.select
+        .mockImplementationOnce(() => makeChain([existing]))
+        .mockImplementationOnce(() => makeChain([def]));
+      db.update.mockImplementationOnce(() => setChain);
+
+      await service.update('uuid-4', { custom: { mrr: 1200 } });
+
+      const patch = setChain.set.mock.calls[0][0];
+      expect(sqlMentions(patch.metadata, 'jsonb_set')).toBe(true);
+      expect(patch.metadata).not.toEqual(expect.objectContaining({ interests: expect.anything() }));
+      expect(patch.metadata).not.toEqual(expect.objectContaining({ listmonk: expect.anything() }));
+    });
+
+    it('rejects an unknown customField slug with 400', async () => {
+      db.select.mockImplementationOnce(() => makeChain([]));
+      await expect(service.findAll({ customField: 'nieistnieje:x' })).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('applies a known customField filter', async () => {
+      const dataChain = makeChain([]);
+      db.select
+        .mockImplementationOnce(() => makeChain([def]))
+        .mockImplementationOnce(() => dataChain)
+        .mockImplementationOnce(() => makeChain([{ count: 0 }]));
+
+      await service.findAll({ customField: 'mrr:1200' });
+      expect(dataChain.where).toHaveBeenCalled();
+    });
+  });
+
+  describe('importRows', () => {
+    it('imports new emails and skips existing ones', async () => {
+      db.select
+        .mockImplementationOnce(() => makeChain([]))
+        .mockImplementationOnce(() => makeChain([{ email: 'old@x.com' }]));
+      db.insert.mockImplementationOnce(() =>
+        makeChain([
+          { id: 'n1', email: 'new@x.com', name: null, metadata: {}, createdAt: new Date() },
+        ]),
+      );
+
+      const result = await service.importRows({
+        mapping: { email: 'Email', name: 'Name' },
+        rows: [
+          { Email: 'old@x.com', Name: 'Old' },
+          { Email: 'new@x.com', Name: 'New' },
+        ],
+      });
+      expect(result).toEqual({ imported: 1, skipped: 1, errors: [] });
+      expect(db.insert).toHaveBeenCalledTimes(1);
+    });
+
+    it('puts an out-of-options select in errors and still imports the rest', async () => {
+      const selectDef = {
+        id: 'd2',
+        entity: 'contact',
+        name: 'Segment',
+        slug: 'segment',
+        type: 'select',
+        options: ['A'],
+      };
+      db.select
+        .mockImplementationOnce(() => makeChain([selectDef]))
+        .mockImplementationOnce(() => makeChain([]));
+      db.insert.mockImplementationOnce(() =>
+        makeChain([
+          { id: 'n1', email: 'ok@x.com', name: null, metadata: {}, createdAt: new Date() },
+        ]),
+      );
+
+      const result = await service.importRows({
+        mapping: { email: 'Email', segment: 'Segment' },
+        rows: [
+          { Email: 'bad@x.com', Segment: 'nope' },
+          { Email: 'ok@x.com', Segment: 'A' },
+        ],
+      });
+      expect(result.imported).toBe(1);
+      expect(result.errors).toEqual([{ row: 1, reason: 'invalid_select' }]);
+    });
+
+    it('rejects a request with no email mapping', async () => {
+      await expect(
+        service.importRows({ mapping: { name: 'Name' }, rows: [{ Name: 'Ada' }] }),
+      ).rejects.toThrow(BadRequestException);
+      expect(db.insert).not.toHaveBeenCalled();
+    });
+
+    it('rejects more than 1000 rows with 413 and inserts nothing', async () => {
+      const rows = Array.from({ length: 1001 }, (_, i) => ({ Email: `u${i}@x.com` }));
+      await expect(service.importRows({ mapping: { email: 'Email' }, rows })).rejects.toThrow(
+        PayloadTooLargeException,
+      );
+      expect(db.insert).not.toHaveBeenCalled();
     });
   });
 });

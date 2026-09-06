@@ -110,8 +110,12 @@ CRM tools:
 - get_lead — one lead by UUID from search_leads.
 - list_pipeline_stages — stage id + name; required before move_lead or when the user asks for stage ids.
 - move_lead — needs lead id from search_leads and stageId from list_pipeline_stages.
-- search_contacts — each match includes id, email, name, phone.
-- get_contact — one contact by UUID from search_contacts; includes linked leads.
+- search_contacts — each match includes id, email, name, phone, and custom values when set.
+- get_contact — one contact by UUID from search_contacts; includes linked leads and custom fields.
+- list_custom_fields — slug, type, options; required before update_contact custom or import_contacts mapping.
+- create_contact — email required; optional custom object keyed by slug from list_custom_fields.
+- update_contact — needs contact id from search_contacts; custom merges without replacing interests/listmonk.
+- import_contacts — mapping is CRM field (email required, plus name/phone/custom slug) → column name on each row object. Duplicate emails are skipped. Max 1000 rows.
 - create_lead — email required; optional stageId from list_pipeline_stages.
 - list_board_modules — project + moduleId; call before create_task.
 - create_task — needs moduleId from list_board_modules.
