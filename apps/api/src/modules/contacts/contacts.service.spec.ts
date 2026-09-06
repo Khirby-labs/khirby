@@ -207,6 +207,33 @@ describe('ContactsService', () => {
 
       await expect(service.create({ email: 'dup@email.com' })).rejects.toThrow(ConflictException);
     });
+
+    it('coerces custom values into metadata.custom on create', async () => {
+      const def = {
+        id: 'd1',
+        entity: 'contact',
+        name: 'MRR',
+        slug: 'mrr',
+        type: 'number',
+        options: [],
+      };
+      const insertChain = makeChain([{ id: 'uuid-2', email: 'new@email.com' }]);
+      db.select
+        .mockImplementationOnce(() => makeChain([]))
+        .mockImplementationOnce(() => makeChain([def]));
+      db.insert.mockImplementationOnce(() => insertChain);
+
+      await service.create({
+        email: 'new@email.com',
+        metadata: { interests: [] },
+        custom: { mrr: '1200' },
+      });
+      expect(insertChain.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          metadata: { interests: [], custom: { mrr: 1200 } },
+        }),
+      );
+    });
   });
 
   // ─── update ─────────────────────────────────────────────────────────────────

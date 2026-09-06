@@ -343,6 +343,7 @@ export class ContactsService {
     name?: string;
     phone?: string;
     metadata?: Record<string, unknown>;
+    custom?: Record<string, unknown>;
   }) {
     const [existing] = await this.db
       .select()
@@ -351,17 +352,34 @@ export class ContactsService {
       .limit(1);
     if (existing) throw AppException.alreadyExists('contact', 'email', dto.email);
 
+    let metadata: Record<string, unknown> = { ...(dto.metadata ?? {}) };
+    if (dto.custom && Object.keys(dto.custom).length > 0) {
+      const custom = await this.coerceCustomObject(dto.custom);
+      const prev =
+        metadata.custom && typeof metadata.custom === 'object' && !Array.isArray(metadata.custom)
+          ? (metadata.custom as Record<string, unknown>)
+          : {};
+      metadata = { ...metadata, custom: { ...prev, ...custom } };
+    }
+
     const [created] = await this.db
       .insert(contacts)
       .values({
         email: dto.email,
         name: dto.name ?? null,
         phone: dto.phone?.trim() ? dto.phone.trim() : null,
-        metadata: dto.metadata ?? {},
+        metadata,
       } as any)
       .returning();
     this.emitContactCreated(created);
     return created;
+  }
+
+  async listCustomFields() {
+    return this.db
+      .select()
+      .from(customFieldDefinitions)
+      .where(eq(customFieldDefinitions.entity, 'contact'));
   }
 
   async update(
@@ -503,21 +521,29 @@ export class ContactsService {
     return { imported, skipped, errors };
   }
 
-  private async buildCustomMetadataSet(custom: Record<string, unknown>) {
+  private async coerceCustomObject(custom: Record<string, unknown>) {
     const defs = await this.db
       .select()
       .from(customFieldDefinitions)
       .where(eq(customFieldDefinitions.entity, 'contact'));
     const defBySlug = new Map(defs.map((d) => [d.slug, d]));
-
-    let expr = sql`COALESCE(${contacts.metadata}, '{}'::jsonb)`;
+    const out: Record<string, unknown> = {};
     for (const [slug, raw] of Object.entries(custom)) {
       const def = defBySlug.get(slug);
       if (!def) throw AppException.badRequest('Unknown custom field', { slug });
       const parsed = coerceCustomValue(def.type, def.options ?? [], raw);
       if (parsed.ok === false)
         throw AppException.badRequest('Invalid custom field value', { slug });
-      expr = sql`jsonb_set(${expr}, ARRAY['custom', ${slug}]::text[], ${JSON.stringify(parsed.value)}::jsonb, true)`;
+      out[slug] = parsed.value;
+    }
+    return out;
+  }
+
+  private async buildCustomMetadataSet(custom: Record<string, unknown>) {
+    const coerced = await this.coerceCustomObject(custom);
+    let expr = sql`COALESCE(${contacts.metadata}, '{}'::jsonb)`;
+    for (const [slug, value] of Object.entries(coerced)) {
+      expr = sql`jsonb_set(${expr}, ARRAY['custom', ${slug}]::text[], ${JSON.stringify(value)}::jsonb, true)`;
     }
     return expr;
   }

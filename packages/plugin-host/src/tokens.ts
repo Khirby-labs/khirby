@@ -35,15 +35,22 @@ export const EVENTS_SERVICE = 'CRM_EVENTS_SERVICE';
 export const MAIL_THREAD_SERVICE = 'CRM_MAIL_THREAD_SERVICE';
 export const MAIL_SEND_SERVICE = 'CRM_MAIL_SEND_SERVICE';
 
-/** Narrow contacts surface for plugins / MCP (ADR-0016, ADR-0028). */
+/** Narrow contacts surface for plugins / MCP (ADR-0016, ADR-0028, ADR-0041). */
 export interface ContactsServiceLike {
-  findAll(query?: { page?: number; pageSize?: number; search?: string }): Promise<unknown>;
+  findAll(query?: {
+    page?: number;
+    pageSize?: number;
+    search?: string;
+    customField?: string;
+  }): Promise<unknown>;
   findById(id: string): Promise<unknown | null>;
   create(dto: {
     email: string;
     name?: string;
     phone?: string;
     metadata?: Record<string, unknown>;
+    /** Merged into `metadata.custom` after coerce — never a full metadata rewrite. */
+    custom?: Record<string, unknown>;
   }): Promise<unknown>;
   update(
     id: string,
@@ -52,8 +59,15 @@ export interface ContactsServiceLike {
       name?: string;
       phone?: string | null;
       metadata?: Record<string, unknown>;
+      custom?: Record<string, unknown>;
     },
   ): Promise<unknown>;
+  listCustomFields(): Promise<unknown>;
+  importRows(dto: { mapping: Record<string, string>; rows: Record<string, unknown>[] }): Promise<{
+    imported: number;
+    skipped: number;
+    errors: Array<{ row: number; reason: string }>;
+  }>;
 }
 
 export type LeadPriority = 'low' | 'medium' | 'high';

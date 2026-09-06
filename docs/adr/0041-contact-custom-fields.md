@@ -14,6 +14,7 @@ We store definitions in `custom_field_definitions` (entity, one operator name, s
 
 ## Consequences
 
+- Agents (MCP + Ask Khirby) write `custom` through the same jsonb_set update and JSON `importRows` surface; they list definitions via `listCustomFields` on `ContactsServiceLike`.
 - Sorting contacts by a custom field as a real column needs a later ADR (and likely a values table).
 - The 5 MB limit applies to every JSON body, not only import.
 - Deleting a definition leaves orphan keys in `metadata.custom`; the card and filters ignore keys without a definition, and they must not appear under “Other details”.
