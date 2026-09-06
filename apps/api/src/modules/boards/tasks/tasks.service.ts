@@ -1,4 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { lockMutation, type Connection } from '../../../core/database/transaction';
 import { eq, asc, and, inArray, sql, desc, isNotNull, lt } from 'drizzle-orm';
 import { users, leads } from '../../../core/database/schema';
 import {
@@ -186,8 +187,8 @@ export class TasksService {
     return { statuses, tasks };
   }
 
-  async findById(id: string) {
-    const [row] = await this.db
+  async findById(id: string, db: Connection = this.db) {
+    const [row] = await db
       .select({
         task: tbTasks,
         status: tbStatuses,
@@ -203,15 +204,15 @@ export class TasksService {
 
     if (!row) throw AppException.notFound('task', id);
 
-    const [detailed] = await this.attachDetails([this.serializeJoined(row)]);
+    const [detailed] = await this.attachDetails([this.serializeJoined(row)], db);
 
-    const subtasks = await this.db
+    const subtasks = await db
       .select()
       .from(tbTasks)
       .where(eq(tbTasks.parentTaskId, id))
       .orderBy(asc(tbTasks.position));
 
-    const comments = await this.db
+    const comments = await db
       .select({
         id: tbTaskComments.id,
         body: tbTaskComments.body,
@@ -242,10 +243,23 @@ export class TasksService {
   }
 
   async create(dto: CreateTaskDto, userId: string) {
-    const mod = await this.requireModule(dto.moduleId);
+    const result = await this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'boards');
+      return this.createInTransaction(dto, userId, tx);
+    });
+    this.events.emit('boards.task.created', {
+      taskId: result.id,
+      moduleId: result.moduleId,
+      projectId: result.project.id,
+    });
+    return result;
+  }
+
+  private async createInTransaction(dto: CreateTaskDto, userId: string, db: Connection) {
+    const mod = await this.requireModule(dto.moduleId, db);
 
     if (dto.parentTaskId) {
-      const parent = await this.requireTask(dto.parentTaskId);
+      const parent = await this.requireTask(dto.parentTaskId, db);
       if (parent.moduleId !== dto.moduleId) {
         throw AppException.badRequest('Subtask must stay in the same module as its parent');
       }
@@ -253,24 +267,24 @@ export class TasksService {
 
     let statusId = dto.statusId ?? null;
     if (!statusId) {
-      const statuses = await this.statuses.findByModule(dto.moduleId);
+      const statuses = await this.statuses.findByModule(dto.moduleId, db);
       const backlog = statuses.find((s) => s.isBacklog) ?? statuses[0];
       statusId = backlog?.id ?? null;
     } else {
-      await this.assertStatusForModule(dto.moduleId, statusId);
+      await this.assertStatusForModule(dto.moduleId, statusId, db);
     }
 
     if (dto.leadId) {
-      await this.assertLeadExists(dto.leadId);
+      await this.assertLeadExists(dto.leadId, db);
     }
     if (dto.assigneeIds?.length) {
-      await this.assertUsersExist(dto.assigneeIds);
+      await this.assertUsersExist(dto.assigneeIds, db);
     }
 
-    const allocated = await this.allocateTaskNumber(mod.projectId);
-    const canceledAt = statusId ? await this.resolveCanceledAt(null, statusId, null) : null;
+    const allocated = await this.allocateTaskNumber(mod.projectId, db);
+    const canceledAt = statusId ? await this.resolveCanceledAt(null, statusId, null, db) : null;
 
-    const [created] = await this.db
+    const [created] = await db
       .insert(tbTasks)
       .values({
         moduleId: dto.moduleId,
@@ -290,25 +304,31 @@ export class TasksService {
       .returning();
 
     if (dto.assigneeIds?.length) {
-      await this.setAssignees(created.id, dto.assigneeIds);
+      await this.setAssignees(created.id, dto.assigneeIds, db);
     }
     if (dto.tagIds?.length) {
-      await this.setTags(created.id, dto.tagIds);
+      await this.setTags(created.id, dto.tagIds, db);
     }
 
-    await this.logActivity(created.id, userId, 'task.created', null, created.title);
+    await this.logActivity(created.id, userId, 'task.created', null, created.title, db);
 
-    this.events.emit('boards.task.created', {
-      taskId: created.id,
-      moduleId: created.moduleId,
-      projectId: mod.projectId,
-    });
-
-    return this.findById(created.id);
+    return this.findById(created.id, db);
   }
 
   async update(id: string, dto: UpdateTaskDto, userId: string) {
-    const existing = await this.requireTask(id);
+    return this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'boards');
+      return this.updateInTransaction(id, dto, userId, tx);
+    });
+  }
+
+  private async updateInTransaction(
+    id: string,
+    dto: UpdateTaskDto,
+    userId: string,
+    db: Connection,
+  ) {
+    const existing = await this.requireTask(id, db);
 
     let moduleChangedProject = false;
     let newProjectId: string | null = null;
@@ -317,8 +337,8 @@ export class TasksService {
       if (existing.parentTaskId) {
         throw AppException.badRequest('Subtask cannot change module independently');
       }
-      const nextMod = await this.requireModule(dto.moduleId);
-      const prevMod = await this.requireModule(existing.moduleId);
+      const nextMod = await this.requireModule(dto.moduleId, db);
+      const prevMod = await this.requireModule(existing.moduleId, db);
       if (nextMod.projectId !== prevMod.projectId) {
         moduleChangedProject = true;
         newProjectId = nextMod.projectId;
@@ -327,28 +347,28 @@ export class TasksService {
 
     const effectiveModuleId = dto.moduleId ?? existing.moduleId;
     if (dto.statusId) {
-      await this.assertStatusForModule(effectiveModuleId, dto.statusId);
+      await this.assertStatusForModule(effectiveModuleId, dto.statusId, db);
     } else if (dto.moduleId && existing.statusId) {
       // Module change without new status — existing status must still be valid.
-      await this.assertStatusForModule(effectiveModuleId, existing.statusId);
+      await this.assertStatusForModule(effectiveModuleId, existing.statusId, db);
     }
 
     if (dto.leadId) {
-      await this.assertLeadExists(dto.leadId);
+      await this.assertLeadExists(dto.leadId, db);
     }
     if (dto.assigneeIds?.length) {
-      await this.assertUsersExist(dto.assigneeIds);
+      await this.assertUsersExist(dto.assigneeIds, db);
     }
 
     const rekeyed =
-      moduleChangedProject && newProjectId ? await this.allocateTaskNumber(newProjectId) : null;
+      moduleChangedProject && newProjectId ? await this.allocateTaskNumber(newProjectId, db) : null;
 
     const canceledAtPatch =
       dto.statusId !== undefined
-        ? await this.resolveCanceledAt(existing.statusId, dto.statusId, existing.canceledAt)
+        ? await this.resolveCanceledAt(existing.statusId, dto.statusId, existing.canceledAt, db)
         : undefined;
 
-    const [updated] = await this.db
+    const [updated] = await db
       .update(tbTasks)
       .set({
         ...(dto.title !== undefined ? { title: dto.title.trim() } : {}),
@@ -368,36 +388,57 @@ export class TasksService {
       .returning();
 
     if (dto.assigneeIds !== undefined) {
-      await this.setAssignees(id, dto.assigneeIds);
-      await this.logActivity(id, userId, 'assignees.updated', null, dto.assigneeIds.join(','));
+      await this.setAssignees(id, dto.assigneeIds, db);
+      await this.logActivity(id, userId, 'assignees.updated', null, dto.assigneeIds.join(','), db);
     }
     if (dto.tagIds !== undefined) {
-      await this.setTags(id, dto.tagIds);
+      await this.setTags(id, dto.tagIds, db);
     }
     if (dto.title !== undefined && dto.title !== existing.title) {
-      await this.logActivity(id, userId, 'title.updated', existing.title, dto.title);
+      await this.logActivity(id, userId, 'title.updated', existing.title, dto.title, db);
     }
     if (dto.priority !== undefined && dto.priority !== existing.priority) {
-      await this.logActivity(id, userId, 'priority.updated', existing.priority, dto.priority);
+      await this.logActivity(id, userId, 'priority.updated', existing.priority, dto.priority, db);
     }
     if (dto.statusId !== undefined && dto.statusId !== existing.statusId) {
-      await this.logActivity(id, userId, 'status.updated', existing.statusId, dto.statusId);
+      await this.logActivity(id, userId, 'status.updated', existing.statusId, dto.statusId, db);
     }
 
-    return this.findById(updated.id);
+    return this.findById(updated.id, db);
   }
 
   async updateStatus(id: string, statusId: string, position: number, userId: string) {
-    const existing = await this.requireTask(id);
-    await this.assertStatusForModule(existing.moduleId, statusId);
+    const result = await this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'boards');
+      return this.updateStatusInTransaction(id, statusId, position, userId, tx);
+    });
+    this.events.emit('boards.task.moved', {
+      taskId: result.id,
+      statusId,
+      moduleId: result.moduleId,
+      position,
+    });
+    return result;
+  }
+
+  private async updateStatusInTransaction(
+    id: string,
+    statusId: string,
+    position: number,
+    userId: string,
+    db: Connection,
+  ) {
+    const existing = await this.requireTask(id, db);
+    await this.assertStatusForModule(existing.moduleId, statusId, db);
 
     const canceledAt = await this.resolveCanceledAt(
       existing.statusId,
       statusId,
       existing.canceledAt,
+      db,
     );
 
-    const [updated] = await this.db
+    const [updated] = await db
       .update(tbTasks)
       .set({
         statusId,
@@ -408,14 +449,7 @@ export class TasksService {
       .where(eq(tbTasks.id, id))
       .returning();
 
-    await this.logActivity(id, userId, 'status.updated', existing.statusId, statusId);
-
-    this.events.emit('boards.task.moved', {
-      taskId: id,
-      statusId,
-      moduleId: updated.moduleId,
-      position,
-    });
+    await this.logActivity(id, userId, 'status.updated', existing.statusId, statusId, db);
 
     return this.serializeTask(updated);
   }
@@ -431,29 +465,35 @@ export class TasksService {
 
   /** Hard-delete tasks that have been in a canceled status for ≥ 7 days. */
   async purgeExpiredCanceled(now = new Date()): Promise<number> {
+    const result = await this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'boards');
+      return this.purgeExpiredCanceledInTransaction(now, tx);
+    });
+    for (const row of result)
+      this.events.emit('boards.task.deleted', { taskId: row.id, moduleId: row.moduleId });
+    return result.length;
+  }
+
+  private async purgeExpiredCanceledInTransaction(now: Date, db: Connection) {
     const cutoff = new Date(now.getTime() - CANCELED_TASK_RETENTION_MS);
-    const expired = await this.db
-      .select({ id: tbTasks.id, moduleId: tbTasks.moduleId })
-      .from(tbTasks)
-      .where(and(isNotNull(tbTasks.canceledAt), lt(tbTasks.canceledAt, cutoff)));
+    const expired = await db
+      .delete(tbTasks)
+      .where(
+        and(
+          isNotNull(tbTasks.canceledAt),
+          lt(tbTasks.canceledAt, cutoff),
+          inArray(
+            tbTasks.statusId,
+            db
+              .select({ id: tbStatuses.id })
+              .from(tbStatuses)
+              .where(eq(tbStatuses.isCanceled, true)),
+          ),
+        ),
+      )
+      .returning({ id: tbTasks.id, moduleId: tbTasks.moduleId });
 
-    if (expired.length === 0) return 0;
-
-    await this.db.delete(tbTasks).where(
-      inArray(
-        tbTasks.id,
-        expired.map((t) => t.id),
-      ),
-    );
-
-    for (const row of expired) {
-      this.events.emit('boards.task.deleted', {
-        taskId: row.id,
-        moduleId: row.moduleId,
-      });
-    }
-
-    return expired.length;
+    return expired;
   }
 
   async addComment(taskId: string, body: string, userId: string) {
@@ -496,8 +536,8 @@ export class TasksService {
 
   // ─── helpers ───────────────────────────────────────────────────────────────
 
-  private async allocateTaskNumber(projectId: string) {
-    const [row] = await this.db
+  private async allocateTaskNumber(projectId: string, db: Connection = this.db) {
+    const [row] = await db
       .update(tbProjects)
       .set({
         taskSeq: sql`${tbProjects.taskSeq} + 1`,
@@ -512,21 +552,25 @@ export class TasksService {
     };
   }
 
-  private async requireModule(id: string) {
-    const [mod] = await this.db.select().from(tbModules).where(eq(tbModules.id, id)).limit(1);
+  private async requireModule(id: string, db: Connection = this.db) {
+    const [mod] = await db.select().from(tbModules).where(eq(tbModules.id, id)).limit(1);
     if (!mod) throw AppException.notFound('module', id);
     return mod;
   }
 
-  private async requireTask(id: string) {
-    const [task] = await this.db.select().from(tbTasks).where(eq(tbTasks.id, id)).limit(1);
+  private async requireTask(id: string, db: Connection = this.db) {
+    const [task] = await db.select().from(tbTasks).where(eq(tbTasks.id, id)).limit(1);
     if (!task) throw AppException.notFound('task', id);
     return task;
   }
 
   /** Status must be in the module's board (module-owned or inherited project statuses). */
-  private async assertStatusForModule(moduleId: string, statusId: string) {
-    const allowed = await this.statuses.findByModule(moduleId);
+  private async assertStatusForModule(
+    moduleId: string,
+    statusId: string,
+    db: Connection = this.db,
+  ) {
+    const allowed = await this.statuses.findByModule(moduleId, db);
     if (!allowed.some((s) => s.id === statusId)) {
       throw AppException.badRequest('Status does not belong to this module board');
     }
@@ -540,14 +584,15 @@ export class TasksService {
     previousStatusId: string | null,
     nextStatusId: string | null,
     previousCanceledAt: Date | null,
+    db: Connection = this.db,
   ): Promise<Date | null> {
     if (!nextStatusId) return null;
-    const next = await this.statuses.findById(nextStatusId);
+    const next = await this.statuses.findById(nextStatusId, db);
     if (!next.isCanceled) return null;
 
     if (previousStatusId) {
       try {
-        const prev = await this.statuses.findById(previousStatusId);
+        const prev = await this.statuses.findById(previousStatusId, db);
         if (prev.isCanceled) return previousCanceledAt ?? new Date();
       } catch {
         // previous status missing — treat as fresh cancel
@@ -556,8 +601,8 @@ export class TasksService {
     return new Date();
   }
 
-  private async assertLeadExists(leadId: string) {
-    const [row] = await this.db
+  private async assertLeadExists(leadId: string, db: Connection = this.db) {
+    const [row] = await db
       .select({ id: leads.id })
       .from(leads)
       .where(eq(leads.id, leadId))
@@ -565,28 +610,23 @@ export class TasksService {
     if (!row) throw AppException.notFound('lead', leadId);
   }
 
-  private async assertUsersExist(userIds: string[]) {
-    const rows = await this.db
-      .select({ id: users.id })
-      .from(users)
-      .where(inArray(users.id, userIds));
+  private async assertUsersExist(userIds: string[], db: Connection = this.db) {
+    const rows = await db.select({ id: users.id }).from(users).where(inArray(users.id, userIds));
     if (rows.length !== userIds.length) {
       throw AppException.badRequest('One or more assignees do not exist');
     }
   }
 
-  private async setAssignees(taskId: string, userIds: string[]) {
-    await this.db.delete(tbTaskAssignees).where(eq(tbTaskAssignees.taskId, taskId));
+  private async setAssignees(taskId: string, userIds: string[], db: Connection = this.db) {
+    await db.delete(tbTaskAssignees).where(eq(tbTaskAssignees.taskId, taskId));
     if (userIds.length === 0) return;
-    await this.db
-      .insert(tbTaskAssignees)
-      .values(userIds.map((userId) => ({ taskId, userId })) as any);
+    await db.insert(tbTaskAssignees).values(userIds.map((userId) => ({ taskId, userId })) as any);
   }
 
-  private async setTags(taskId: string, tagIds: string[]) {
-    await this.db.delete(tbTaskTags).where(eq(tbTaskTags.taskId, taskId));
+  private async setTags(taskId: string, tagIds: string[], db: Connection = this.db) {
+    await db.delete(tbTaskTags).where(eq(tbTaskTags.taskId, taskId));
     if (tagIds.length === 0) return;
-    await this.db.insert(tbTaskTags).values(tagIds.map((tagId) => ({ taskId, tagId })) as any);
+    await db.insert(tbTaskTags).values(tagIds.map((tagId) => ({ taskId, tagId })) as any);
   }
 
   private async logActivity(
@@ -595,8 +635,9 @@ export class TasksService {
     action: string,
     oldValue: string | null,
     newValue: string | null,
+    db: Connection = this.db,
   ) {
-    await this.db.insert(tbTaskActivity).values({
+    await db.insert(tbTaskActivity).values({
       taskId,
       userId,
       action,
@@ -641,7 +682,7 @@ export class TasksService {
     };
   }
 
-  private async attachDetails<T extends { id: string }>(tasks: T[]) {
+  private async attachDetails<T extends { id: string }>(tasks: T[], db: Connection = this.db) {
     if (tasks.length === 0)
       return tasks as Array<
         T & {
@@ -654,7 +695,7 @@ export class TasksService {
 
     const ids = tasks.map((t) => t.id);
 
-    const assignees = await this.db
+    const assignees = await db
       .select({
         taskId: tbTaskAssignees.taskId,
         id: users.id,
@@ -664,7 +705,7 @@ export class TasksService {
       .innerJoin(users, eq(tbTaskAssignees.userId, users.id))
       .where(inArray(tbTaskAssignees.taskId, ids));
 
-    const tags = await this.db
+    const tags = await db
       .select({
         taskId: tbTaskTags.taskId,
         id: tbTags.id,
@@ -675,7 +716,7 @@ export class TasksService {
       .innerJoin(tbTags, eq(tbTaskTags.tagId, tbTags.id))
       .where(inArray(tbTaskTags.taskId, ids));
 
-    const commentCounts = await this.db
+    const commentCounts = await db
       .select({
         taskId: tbTaskComments.taskId,
         count: sql<number>`count(*)::int`,
@@ -684,7 +725,7 @@ export class TasksService {
       .where(inArray(tbTaskComments.taskId, ids))
       .groupBy(tbTaskComments.taskId);
 
-    const subtaskCounts = await this.db
+    const subtaskCounts = await db
       .select({
         parentId: tbTasks.parentTaskId,
         count: sql<number>`count(*)::int`,

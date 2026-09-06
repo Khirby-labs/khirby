@@ -31,6 +31,7 @@ function buildDb() {
   };
   // transaction runs the callback with the db itself acting as the tx handle
   db.transaction = jest.fn(async (cb: any) => cb(db));
+  db.execute = jest.fn().mockResolvedValue([]);
   return db;
 }
 

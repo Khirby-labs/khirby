@@ -96,8 +96,8 @@ describe('UsersController', () => {
       const dto = { email: 'c@d.com' } as any;
       const out = { id: 'u1' } as any;
       service.update.mockReturnValue(out);
-      expect(controller.update('u1', dto)).toBe(out);
-      expect(service.update).toHaveBeenCalledWith('u1', dto);
+      expect(controller.update('u1', dto, { session: { userId: 'me' } } as any)).toBe(out);
+      expect(service.update).toHaveBeenCalledWith('u1', dto, 'me');
     });
 
     it('delete forwards id and the session userId', () => {

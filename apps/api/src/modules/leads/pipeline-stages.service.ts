@@ -1,4 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { lockMutation, type Connection } from '../../core/database/transaction';
 import { eq, asc, inArray, sql } from 'drizzle-orm';
 import { Db } from '../../core/database/db';
 import { DB_TOKEN } from '../../core/database/database.module';
@@ -42,37 +43,14 @@ export class PipelineStagesService {
         await tx.insert(pipelineStages).values(DEFAULT_STAGES as any);
       }
     });
-
-    await this.dedupeDuplicateStages();
   }
 
-  /** Removes duplicate stages (same position) — e.g. from a concurrent seed race. */
-  async dedupeDuplicateStages() {
-    const all = await this.findAll();
-    const canonicalByPosition = new Map<number, string>();
-
-    for (const stage of all) {
-      const keptId = canonicalByPosition.get(stage.position);
-      if (!keptId) {
-        canonicalByPosition.set(stage.position, stage.id);
-        continue;
-      }
-
-      await this.db
-        .update(leads)
-        .set({ stageId: keptId, updatedAt: new Date() } as any)
-        .where(eq(leads.stageId, stage.id));
-
-      await this.db.delete(pipelineStages).where(eq(pipelineStages.id, stage.id));
-    }
+  async findAll(db: Connection = this.db) {
+    return db.select().from(pipelineStages).orderBy(asc(pipelineStages.position));
   }
 
-  async findAll() {
-    return this.db.select().from(pipelineStages).orderBy(asc(pipelineStages.position));
-  }
-
-  async findById(id: string) {
-    const [stage] = await this.db
+  async findById(id: string, db: Connection = this.db) {
+    const [stage] = await db
       .select()
       .from(pipelineStages)
       .where(eq(pipelineStages.id, id))
@@ -80,8 +58,8 @@ export class PipelineStagesService {
     return stage ?? null;
   }
 
-  async getFirstStage() {
-    const [stage] = await this.db
+  async getFirstStage(db: Connection = this.db) {
+    const [stage] = await db
       .select()
       .from(pipelineStages)
       .orderBy(asc(pipelineStages.position))
@@ -91,10 +69,17 @@ export class PipelineStagesService {
   }
 
   async create(dto: CreatePipelineStageDto) {
-    const all = await this.findAll();
-    const position = dto.position ?? all.length;
+    return this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'pipeline');
+      return this.createInTransaction(dto, tx);
+    });
+  }
 
-    const [created] = await this.db
+  private async createInTransaction(dto: CreatePipelineStageDto, db: Connection) {
+    const all = await this.findAll(db);
+    const position = dto.position ?? Math.max(-1, ...all.map((stage) => stage.position)) + 1;
+
+    const [created] = await db
       .insert(pipelineStages)
       .values({
         name: dto.name,
@@ -108,10 +93,17 @@ export class PipelineStagesService {
   }
 
   async update(id: string, dto: UpdatePipelineStageDto) {
-    const existing = await this.findById(id);
+    return this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'pipeline');
+      return this.updateInTransaction(id, dto, tx);
+    });
+  }
+
+  private async updateInTransaction(id: string, dto: UpdatePipelineStageDto, db: Connection) {
+    const existing = await this.findById(id, db);
     if (!existing) throw AppException.notFound('pipelineStage', id);
 
-    const [updated] = await this.db
+    const [updated] = await db
       .update(pipelineStages)
       .set(dto as any)
       .where(eq(pipelineStages.id, id))
@@ -120,7 +112,14 @@ export class PipelineStagesService {
   }
 
   async reorder(stageIds: string[]) {
-    const all = await this.findAll();
+    return this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'pipeline');
+      return this.reorderInTransaction(stageIds, tx);
+    });
+  }
+
+  private async reorderInTransaction(stageIds: string[], db: Connection) {
+    const all = await this.findAll(db);
     if (stageIds.length !== all.length) {
       throw AppException.badRequest('stageIds must include all stages');
     }
@@ -137,30 +136,37 @@ export class PipelineStagesService {
     }
 
     for (let i = 0; i < stageIds.length; i++) {
-      await this.db
+      await db
         .update(pipelineStages)
         .set({ position: i } as any)
         .where(eq(pipelineStages.id, stageIds[i]));
     }
 
-    return this.findAll();
+    return this.findAll(db);
   }
 
   async delete(id: string) {
-    const existing = await this.findById(id);
+    return this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'pipeline');
+      return this.deleteInTransaction(id, tx);
+    });
+  }
+
+  private async deleteInTransaction(id: string, db: Connection) {
+    const existing = await this.findById(id, db);
     if (!existing) throw AppException.notFound('pipelineStage', id);
 
-    const firstStage = await this.getFirstStage();
+    const firstStage = await this.getFirstStage(db);
     if (firstStage.id === id) {
       throw AppException.badRequest('Cannot delete the first pipeline stage');
     }
 
-    await this.db
+    await db
       .update(leads)
       .set({ stageId: firstStage.id, updatedAt: new Date() } as any)
       .where(eq(leads.stageId, id));
 
-    await this.db.delete(pipelineStages).where(eq(pipelineStages.id, id));
+    await db.delete(pipelineStages).where(eq(pipelineStages.id, id));
     return { deleted: true };
   }
 

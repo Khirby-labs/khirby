@@ -54,6 +54,7 @@ COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/drizzle ./drizzle
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 COPY docker/nginx.bundle.conf /etc/nginx/http.d/default.conf
+COPY docker/configure-proxy.sh /configure-proxy.sh
 COPY docker/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 

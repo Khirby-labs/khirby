@@ -1,0 +1,7 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "../..",
+    "paths": { "@khirby/forms-client": ["../forms-client/src/index.ts"] }
+  }
+}

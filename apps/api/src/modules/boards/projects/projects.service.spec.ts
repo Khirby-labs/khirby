@@ -47,6 +47,8 @@ describe('ProjectsService', () => {
       execute: jest.fn(),
     };
 
+    db.transaction = jest.fn(async (cb: any) => cb(db));
+    db.execute = jest.fn().mockResolvedValue([]);
     const service = new ProjectsService(db);
     const result = await service.create({ name: 'Alpha' }, 'u1');
 
@@ -61,6 +63,8 @@ describe('ProjectsService', () => {
     const db: any = {
       select: jest.fn(() => makeChain([])),
     };
+    db.transaction = jest.fn(async (cb: any) => cb(db));
+    db.execute = jest.fn().mockResolvedValue([]);
     const service = new ProjectsService(db);
     await expect(service.findById('missing')).rejects.toThrow();
   });

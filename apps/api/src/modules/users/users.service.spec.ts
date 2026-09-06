@@ -12,12 +12,15 @@ function makeChain(result: any[] = []) {
 }
 
 function buildDb() {
-  return {
+  const db: any = {
     select: jest.fn(() => makeChain([])),
     insert: jest.fn(() => makeChain([])),
     update: jest.fn(() => makeChain([])),
     delete: jest.fn(() => makeChain([])),
-  } as any;
+  };
+  db.transaction = jest.fn(async (cb: any) => cb(db));
+  db.execute = jest.fn().mockResolvedValue([]);
+  return db;
 }
 
 describe('UsersService', () => {

@@ -3,7 +3,7 @@ import {
   FORM_FIELD_TYPES,
   FormValidationError,
   validateSubmissionDataAgainstSchema as validateCore,
-} from '@khirby/forms-client';
+} from '../../../../../packages/forms-client/src';
 import type { FormFieldDefinition, FormFieldType } from '@khirby/forms-client';
 import { AppException } from '../../core/errors/app-exception';
 

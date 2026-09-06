@@ -1,4 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { lockMutation, type Connection } from '../../core/database/transaction';
 import { eq, and } from 'drizzle-orm';
 import { Db } from '../../core/database/db';
 import { DB_TOKEN } from '../../core/database/database.module';
@@ -112,34 +113,50 @@ export class RolesService {
   }
 
   async assignToUser(userId: string, roleId: string) {
-    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const result = await this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'identity');
+      return this.assignToUserInTransaction(userId, roleId, tx);
+    });
+    this.rbac.invalidate(userId);
+    return result;
+  }
+
+  private async assignToUserInTransaction(userId: string, roleId: string, db: Connection) {
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user) throw AppException.notFound('user', userId);
-    const [role] = await this.db.select().from(roles).where(eq(roles.id, roleId)).limit(1);
+    const [role] = await db.select().from(roles).where(eq(roles.id, roleId)).limit(1);
     if (!role) throw AppException.notFound('role', roleId);
 
-    await this.db
+    await db
       .insert(userRoles)
       .values({ userId, roleId } as any)
       .onConflictDoNothing();
-    this.rbac.invalidate(userId);
   }
 
   async removeFromUser(userId: string, roleId: string) {
-    const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const result = await this.db.transaction(async (tx) => {
+      await lockMutation(tx, 'identity');
+      return this.removeFromUserInTransaction(userId, roleId, tx);
+    });
+    this.rbac.invalidate(userId);
+    return result;
+  }
+
+  private async removeFromUserInTransaction(userId: string, roleId: string, db: Connection) {
+    const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user) throw AppException.notFound('user', userId);
-    const [role] = await this.db.select().from(roles).where(eq(roles.id, roleId)).limit(1);
+    const [role] = await db.select().from(roles).where(eq(roles.id, roleId)).limit(1);
     if (!role) throw AppException.notFound('role', roleId);
 
     if (isProtectedRoleName(role.name)) {
-      const holders = await this.db.select().from(userRoles).where(eq(userRoles.roleId, roleId));
-      if (holders.length <= 1) {
+      const holders = await db.select().from(userRoles).where(eq(userRoles.roleId, roleId));
+      if (holders.some((holder) => holder.userId === userId) && holders.length <= 1) {
         throw AppException.lastSuperAdmin();
       }
     }
 
-    await this.db
+    await db
       .delete(userRoles)
       .where(and(eq(userRoles.userId, userId), eq(userRoles.roleId, roleId)));
-    this.rbac.invalidate(userId);
   }
 }

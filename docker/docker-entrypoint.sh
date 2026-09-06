@@ -1,6 +1,8 @@
 #!/bin/sh
 set -e
 
+sh /configure-proxy.sh
+
 export PORT="${PORT:-3000}"
 
 cleanup() {

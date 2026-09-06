@@ -59,6 +59,8 @@ services:
     environment:
       NODE_ENV: production
       PORT: '3000'
+      PUBLIC_URL: https://${APP_URL:?APP_URL is required}
+      TRUSTED_PROXY_CIDRS: ${TRUSTED_PROXY_CIDRS:?Set the Traefik proxy IP or dedicated proxy network CIDR}
       DATABASE_URL: postgres://${POSTGRES_USER:-crm}:${POSTGRES_PASSWORD}@khirby-postgres:5432/${POSTGRES_DB:-crm}
       REDIS_URL: redis://khirby-redis:6379
       SESSION_SECRET: ${SESSION_SECRET}

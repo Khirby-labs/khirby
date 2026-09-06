@@ -46,6 +46,8 @@ describe('TasksService', () => {
       update: jest.fn(() => makeChain()),
       delete: jest.fn(() => makeChain()),
     };
+    db.transaction = jest.fn(async (cb: any) => cb(db));
+    db.execute = jest.fn().mockResolvedValue([]);
     service = new TasksService(
       db,
       { emit } as unknown as EventsService,
@@ -148,7 +150,7 @@ describe('TasksService', () => {
 
       await service.updateStatus('t1', 's-todo', 2, 'u1');
 
-      expect(statuses.findByModule).toHaveBeenCalledWith('m1');
+      expect(statuses.findByModule).toHaveBeenCalledWith('m1', db);
       expect(emit).toHaveBeenCalledWith('boards.task.moved', {
         taskId: 't1',
         statusId: 's-todo',
@@ -214,17 +216,16 @@ describe('TasksService', () => {
       db.select.mockImplementationOnce(() => makeChain([]));
       const n = await service.purgeExpiredCanceled();
       expect(n).toBe(0);
-      expect(db.delete).not.toHaveBeenCalled();
+      expect(emit).not.toHaveBeenCalled();
     });
 
     it('deletes expired canceled tasks and emits events', async () => {
-      db.select.mockImplementationOnce(() =>
+      db.delete.mockImplementationOnce(() =>
         makeChain([
           { id: 't-old', moduleId: 'm1' },
           { id: 't-old-2', moduleId: 'm2' },
         ]),
       );
-      db.delete.mockImplementationOnce(() => makeChain());
 
       const n = await service.purgeExpiredCanceled(new Date('2026-08-07T12:00:00Z'));
       expect(n).toBe(2);

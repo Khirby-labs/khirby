@@ -1,4 +1,5 @@
-import { defineStore } from 'pinia';
+import { defineStore, getActivePinia } from 'pinia';
+import { resetSessionState } from './session-state';
 import { ref, computed } from 'vue';
 import { apiPut, apiPost, apiGet, ApiError } from '../api/client';
 import type { SessionUser, LoginResponse } from '@khirby/types';
@@ -6,6 +7,7 @@ import { applyAccountLocale } from '../composables/useLocale';
 import type { Locale } from '../i18n/locales';
 
 export const useAuthStore = defineStore('auth', () => {
+  const pinia = getActivePinia()!;
   const user = ref<SessionUser | null>(null);
   const loading = ref(false);
   const checked = ref(false); // czy zrobiliśmy /auth/me check przy starcie
@@ -25,6 +27,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (checked.value && sessionHasPermissions(user.value)) return;
     try {
       const data = await apiGet<SessionUser>('/api/auth/me');
+      if (user.value?.id !== data.id) resetSessionState(pinia);
       user.value = data;
       // The account's language wins over the device resolution done at boot; a
       // null saved value leaves the browser's choice alone (ADR-0011).
@@ -46,10 +49,18 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function clearSession() {
+    resetSessionState(pinia);
+    user.value = null;
+    checked.value = false;
+    networkError.value = false;
+  }
+
   async function login(email: string, password: string): Promise<void> {
     loading.value = true;
     try {
       const data = await apiPost<LoginResponse>('/api/auth/login', { email, password });
+      resetSessionState(pinia);
       user.value = data.user;
       checked.value = true;
       await applyAccountLocale(data.user.locale);
@@ -75,8 +86,7 @@ export const useAuthStore = defineStore('auth', () => {
     } catch {
       // Always clear local auth state even if the server is unreachable
     } finally {
-      user.value = null;
-      checked.value = false;
+      clearSession();
     }
   }
 
@@ -93,6 +103,7 @@ export const useAuthStore = defineStore('auth', () => {
     networkError,
     isAuthenticated,
     checkSession,
+    clearSession,
     login,
     logout,
     saveLocale,
