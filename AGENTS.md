@@ -124,6 +124,7 @@ function makeChain(returnValue?: unknown) {
 | Instance-plugin writes | Go through `INSTANCE_PLUGINS` (`scaffold` / `writeFile` / …) into `plugins/<dir>/`, not a sibling `instance-plugins/` tree and not a second fs helper in the MCP plugin (ADR-0038, ADR-0039) |
 | Root db mock | Do **not** add `.then` to the root db mock object in tests |
 | Drizzle `.values()` / `.set()` | Add `as any` to avoid strict type inference errors in Drizzle 0.40 |
+| `jsonb_set` nested path | PostgreSQL does **not** create intermediate keys. `jsonb_set(metadata, ARRAY['custom', slug], …)` on `{}` returns `{}` with no error. Seed `metadata.custom` as `{}` first (ADR-0041) |
 | pnpm workspace | Always run `pnpm install` from repo root, never from a sub-package directly |
 | Session in tests | Mock `req.session = { userId: 'test-id' }` — no JWT mocking needed |
 | `/api/` prefix | All backend routes have `api/` global prefix — frontend calls `/api/contacts` not `/contacts` |

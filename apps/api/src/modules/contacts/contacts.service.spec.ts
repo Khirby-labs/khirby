@@ -472,6 +472,9 @@ describe('ContactsService', () => {
 
       const patch = setChain.set.mock.calls[0][0];
       expect(sqlMentions(patch.metadata, 'jsonb_set')).toBe(true);
+      // Seed `custom` before nested keys — otherwise jsonb_set is a no-op on `{}`.
+      expect(sqlMentions(patch.metadata, '{custom}')).toBe(true);
+      expect(sqlMentions(patch.metadata, "->'custom'")).toBe(true);
       expect(patch.metadata).not.toEqual(expect.objectContaining({ interests: expect.anything() }));
       expect(patch.metadata).not.toEqual(expect.objectContaining({ listmonk: expect.anything() }));
     });

@@ -541,7 +541,14 @@ export class ContactsService {
 
   private async buildCustomMetadataSet(custom: Record<string, unknown>) {
     const coerced = await this.coerceCustomObject(custom);
-    let expr = sql`COALESCE(${contacts.metadata}, '{}'::jsonb)`;
+    // jsonb_set does not create intermediate keys. ARRAY['custom', slug] on a
+    // row whose metadata has no `custom` object (typical: `{}`) is a silent no-op.
+    let expr = sql`jsonb_set(
+      COALESCE(${contacts.metadata}, '{}'::jsonb),
+      '{custom}',
+      COALESCE(${contacts.metadata}->'custom', '{}'::jsonb),
+      true
+    )`;
     for (const [slug, value] of Object.entries(coerced)) {
       expr = sql`jsonb_set(${expr}, ARRAY['custom', ${slug}]::text[], ${JSON.stringify(value)}::jsonb, true)`;
     }
