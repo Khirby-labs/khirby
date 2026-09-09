@@ -26,8 +26,9 @@ We add **`KHIRBY_PLUGINS_LOCAL`** (`1` / `true` / `yes`). When set, boot loads
 `plugins/crm-plugin-*` checkouts and **skips** a Marketplace unpack of the same
 `CrmPlugin.name`. Default is off (production / empty image unchanged).
 
-Uninstall, `findInstanceLocalDirForPlugin`, and scaffold still treat first-party
+Uninstall, scaffold, and `findMarketplaceLocalDirForPlugin` still treat first-party
 directory names as reserved: Marketplace remove must not delete a git checkout.
+Reload / HTTP / web resolution follow the checkout when the flag is on.
 
 ## Consequences
 

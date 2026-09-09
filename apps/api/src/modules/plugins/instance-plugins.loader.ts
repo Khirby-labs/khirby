@@ -78,7 +78,8 @@ export function preferLocalCheckoutPlugins(env: NodeJS.ProcessEnv = process.env)
 /**
  * `loadPlugins()` runs during `AppModule` evaluation, before `ConfigModule.forRoot`.
  * Fill missing keys from repo-root `.env` so a local flag in `.env` is visible.
- * Never overwrites keys already in `process.env`.
+ * Empty or whitespace values in `process.env` (e.g. docker-compose `${VAR:-}`)
+ * are treated as unset so `.env` can still win.
  */
 export function applyRootEnvFile(
   start = process.cwd(),
@@ -94,7 +95,9 @@ export function applyRootEnvFile(
     const eq = line.indexOf('=');
     if (eq <= 0) continue;
     const key = line.slice(0, eq).trim();
-    if (!key || env[key] !== undefined) continue;
+    if (!key) continue;
+    const existing = env[key];
+    if (existing !== undefined && String(existing).trim() !== '') continue;
     let value = line.slice(eq + 1).trim();
     if (
       (value.startsWith('"') && value.endsWith('"')) ||
@@ -170,8 +173,29 @@ export function removeInstanceManifest(dir: string, localDir: string): void {
   );
 }
 
-/** Volume segment for an installed plugin name, or null when not on the instance volume. */
-export function findInstanceLocalDirForPlugin(
+function pluginNameFromDir(pkgDir: string): string | null {
+  if (!existsSync(join(pkgDir, 'package.json'))) return null;
+  try {
+    return loadPluginFromDir(pkgDir).name;
+  } catch {
+    return null;
+  }
+}
+
+function findCheckoutDirForPlugin(volumeDir: string, pluginName: string): string | null {
+  for (const local of FIRST_PARTY_PLUGIN_DIRS) {
+    const pkgDir = join(volumeDir, local);
+    if (!existsSync(pkgDir) || !statSync(pkgDir).isDirectory()) continue;
+    if (pluginNameFromDir(pkgDir) === pluginName) return local;
+  }
+  return null;
+}
+
+/**
+ * Marketplace unpack / self-build dir for `pluginName`. Never returns a
+ * first-party checkout — uninstall must not `rmSync` a git working tree.
+ */
+export function findMarketplaceLocalDirForPlugin(
   volumeDir: string,
   pluginName: string,
 ): string | null {
@@ -179,30 +203,28 @@ export function findInstanceLocalDirForPlugin(
   for (const entry of manifest.plugins) {
     if (entry.package === pluginName) return entry.local;
     const pkgDir = join(volumeDir, entry.local);
-    if (!existsSync(join(pkgDir, 'package.json'))) continue;
-    try {
-      if (loadPluginFromDir(pkgDir).name === pluginName) return entry.local;
-    } catch {
-      // Broken tree — keep scanning.
-    }
+    if (pluginNameFromDir(pkgDir) === pluginName) return entry.local;
   }
   if (!existsSync(volumeDir)) return null;
   for (const local of readdirSync(volumeDir)) {
-    // TODO(control-plane): once marketplace unpacks into former first-party dir
-    // names, stop skipping FIRST_PARTY_PLUGIN_DIRS (empty image — those dirs are
-    // volume installs). Keep skip for now so monorepo checkouts are not scanned
-    // as instance plugins; hotLoad of non-first-party dirs is unaffected.
     if (!isSafeLocalSegment(local) || FIRST_PARTY_PLUGIN_DIRS.includes(local)) continue;
     const pkgDir = join(volumeDir, local);
     if (!statSync(pkgDir).isDirectory()) continue;
-    if (!existsSync(join(pkgDir, 'package.json'))) continue;
-    try {
-      if (loadPluginFromDir(pkgDir).name === pluginName) return local;
-    } catch {
-      // Orphan or invalid package — skip.
-    }
+    if (pluginNameFromDir(pkgDir) === pluginName) return local;
   }
   return null;
+}
+
+/** Volume segment for an installed plugin name, or null when not on the instance volume. */
+export function findInstanceLocalDirForPlugin(
+  volumeDir: string,
+  pluginName: string,
+): string | null {
+  if (preferLocalCheckoutPlugins()) {
+    const checkout = findCheckoutDirForPlugin(volumeDir, pluginName);
+    if (checkout) return checkout;
+  }
+  return findMarketplaceLocalDirForPlugin(volumeDir, pluginName);
 }
 
 /** Strip `/plugins/` so an SPA path can be used as a volume ref. */
@@ -423,6 +445,9 @@ export function loadInstancePlugins(
       }
       loadedFrom.set(plugin.name, local);
       out.push(plugin);
+      if (preferCheckout && FIRST_PARTY_PLUGIN_DIRS.includes(local)) {
+        log(`Instance plugin ${plugin.name} loaded from local checkout (${local})`);
+      }
     } catch (err) {
       log(`Instance plugin ${local} failed to load: ${(err as Error).message}`);
     }
@@ -499,8 +524,11 @@ export function pluginVolumeRoot(
   }
   // Scaffold must not overwrite former first-party package dirs; marketplace npm
   // unpack passes allowReservedScaffoldDirs from PluginPackageInstaller.
+  // KHIRBY_PLUGINS_LOCAL (ADR-0045) must be able to read/reload those checkouts.
   if (!opts?.allowReservedScaffoldDirs && isReservedScaffoldDir(directory)) {
-    throw new Error('reserved_dir');
+    if (!(preferLocalCheckoutPlugins() && FIRST_PARTY_PLUGIN_DIRS.includes(directory))) {
+      throw new Error('reserved_dir');
+    }
   }
   return join(volumeDir, directory);
 }

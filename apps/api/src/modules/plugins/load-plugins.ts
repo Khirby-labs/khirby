@@ -1,10 +1,14 @@
+import { Logger } from '@nestjs/common';
 import { loadPlugins as loadImagePlugins } from './load-plugins.generated';
 import {
   applyRootEnvFile,
   defaultInstancePluginsDir,
   loadInstancePlugins,
+  preferLocalCheckoutPlugins,
 } from './instance-plugins.loader';
 import type { CrmPlugin } from '@khirby/plugin-sdk';
+
+const bootLog = new Logger('Plugins');
 
 /**
  * Image plugins (generated from plugins.manifest.json) plus packages in
@@ -18,10 +22,14 @@ import type { CrmPlugin } from '@khirby/plugin-sdk';
  */
 export function loadPlugins(): CrmPlugin[] {
   applyRootEnvFile();
+  if (preferLocalCheckoutPlugins()) {
+    bootLog.log('KHIRBY_PLUGINS_LOCAL=on — crm-plugin-* checkouts over Marketplace unpacks');
+  }
   const image = loadImagePlugins();
   const instance = loadInstancePlugins(
     defaultInstancePluginsDir(),
     new Set(image.map((plugin) => plugin.name)),
+    (msg) => bootLog.log(msg),
   );
   return [...image, ...instance];
 }

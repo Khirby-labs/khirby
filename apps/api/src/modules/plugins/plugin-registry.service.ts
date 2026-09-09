@@ -19,6 +19,9 @@ import {
   defaultInstancePluginsDir,
   ensureInstanceDir,
   findInstanceLocalDirForPlugin,
+  findMarketplaceLocalDirForPlugin,
+  FIRST_PARTY_PLUGIN_DIRS,
+  preferLocalCheckoutPlugins,
   hasWebEntryBundle,
   isSafeLocalSegment,
   isSafeRelPath,
@@ -118,6 +121,9 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
    * "loaded" while Marketplace still shows available.
    */
   async onModuleInit() {
+    if (preferLocalCheckoutPlugins()) {
+      this.logger.log('KHIRBY_PLUGINS_LOCAL=on — volume plugins resolve to crm-plugin-* checkouts');
+    }
     const rows = await this.db.select().from(plugins);
     const installedNames = new Set(rows.map((row) => row.name));
 
@@ -168,7 +174,10 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       pluginName: plugin.name,
     });
     if (paths?.length) {
-      this.logger.log(`Instance plugin ${plugin.name} HTTP routes: ${paths.join(', ')}`);
+      const local = this.instanceDirectory(plugin.name);
+      this.logger.log(
+        `Instance plugin ${plugin.name} HTTP routes (${local ?? 'unknown'}): ${paths.join(', ')}`,
+      );
     } else {
       this.logger.warn(
         `Instance plugin ${plugin.name}: Nest module loaded but no HTTP routes were registered`,
@@ -676,8 +685,8 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     }
 
     const volumeDir = this.instanceDir();
-    const localDir = findInstanceLocalDirForPlugin(volumeDir, name);
-    if (localDir) {
+    const localDir = findMarketplaceLocalDirForPlugin(volumeDir, name);
+    if (localDir && !FIRST_PARTY_PLUGIN_DIRS.includes(localDir)) {
       const absDir = join(volumeDir, localDir);
       if (existsSync(absDir)) {
         rmSync(absDir, { recursive: true, force: true });
