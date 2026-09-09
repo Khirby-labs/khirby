@@ -18,6 +18,7 @@ import { HealthModule } from './core/health/health.module';
 import { EventsModule } from './core/events/events.module';
 import { MailModule } from './modules/mail/mail.module';
 import { AgentModule } from './modules/agent/agent.module';
+import { SystemModule } from './modules/system/system.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { AgentModule } from './modules/agent/agent.module';
     // After PluginsModule: the Marketplace reads the registry that module provides.
     MarketplaceModule,
     HealthModule,
+    SystemModule,
     MailModule,
     AgentModule,
   ],

@@ -28,5 +28,15 @@
   "password.errors.mismatch": "Field error: the two new-password fields differ.",
   "password.errors.failed": "Banner error when the API rejects the change for an unknown reason. No trailing period (it sits alone in an error box).",
 
-  "account.title": "Panel heading above the user's own email address, read-only. Noun, 1 word."
+  "account.title": "Panel heading above the user's own email address, read-only. Noun, 1 word.",
+
+  "version.title": "Panel heading of the About / version card on Settings → General (right column on large screens). Noun, 1 word.",
+  "version.checking": "Transient status while the version endpoint is loading. One short phrase, may end with an ellipsis character …",
+  "version.running": "Label for the version string this instance is running. Noun phrase, ≤2 words.",
+  "version.latest": "Label for the newest GitHub Release version. Noun phrase, ≤2 words.",
+  "version.upToDate": "Hint when running version equals or is newer than the latest release. One short sentence. Do not interpolate version numbers.",
+  "version.updateAvailable": "Banner when a newer GitHub Release exists. One short sentence. Do not interpolate version numbers — they are shown separately.",
+  "version.checkFailed": "Hint when GitHub could not be reached. Still shows the running version. One short sentence.",
+  "version.devHint": "Hint when APP_VERSION is the local-dev sentinel `dev`. Explains this is a development build, not a release image. One short sentence.",
+  "version.releaseLink": "External link to the GitHub Release page when an update is available. Imperative or noun phrase, ≤3 words."
 }

@@ -32,6 +32,9 @@ RUN node scripts/vendor-plugins-for-build.mjs \
 
 FROM node:22-alpine AS runner
 
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
+
 WORKDIR /app
 
 RUN apk add --no-cache nginx tini wget

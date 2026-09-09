@@ -16,7 +16,15 @@ import { LOCALE_STORAGE_KEY } from '../../i18n/locales';
  * exactly the bug this spec exists to catch.
  */
 function mountSettings(): VueWrapper {
-  return mountWithI18n(SettingsView, { global: { plugins: [createPinia()] } });
+  return mountWithI18n(SettingsView, {
+    global: {
+      plugins: [createPinia()],
+      stubs: {
+        // Version card hits /api/system/version — covered in VersionCard.spec.ts.
+        VersionCard: { template: '<aside class="version-stub" />' },
+      },
+    },
+  });
 }
 
 const buttonByText = (wrapper: VueWrapper, text: string) =>
