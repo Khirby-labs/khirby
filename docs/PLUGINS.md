@@ -258,7 +258,9 @@ pnpm --filter api test   # full API + plugin suite
 `@khirby/plugin-sdk` and `@khirby/plugin-host` are published to **npm** from this
 monorepo. First-party plugins live in
 [Khirby-labs/plugins](https://github.com/Khirby-labs/plugins) (local clone under
-`./plugins`). Community plugins are not published from this monorepo.
+`./plugins`). Bump that plugin's `package.json` and merge to `main` — CI
+publishes the new version ([`/publish-plugin`](../.claude/skills/publish-plugin/SKILL.md)).
+Community plugins are not published from this monorepo.
 Release host packages:
 
 ```bash

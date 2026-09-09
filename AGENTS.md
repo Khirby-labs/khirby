@@ -37,7 +37,7 @@ docker/               — docker-compose.yml, Dockerfiles, nginx.conf
 Work boards (projects/tasks kanban) are **core** (`apps/api/src/modules/boards/`,
 `apps/web/src/views/boards/`) — not a plugin (ADR-0026). Sales pipeline stays separate.
 
-Landing sites consume `@khirby/forms-*` from **npm** (`packages/forms-client/.npmrc.example`, `scripts/publish-forms-packages.sh`). Public product docs for those packages live on the **landing site** (ADR-0029), not under this CRM image. External plugin authors consume `@khirby/plugin-sdk` + `@khirby/plugin-host` from npm (`packages/plugin-sdk/.npmrc.example`, `scripts/publish-plugin-packages.sh`). First-party plugins live in **[Khirby-labs/plugins](https://github.com/Khirby-labs/plugins)** (clone into `./plugins`); this monorepo publishes host packages and forms packages only.
+Landing sites consume `@khirby/forms-*` from **npm** (`packages/forms-client/.npmrc.example`, `scripts/publish-forms-packages.sh`). Public product docs for those packages live on the **landing site** (ADR-0029), not under this CRM image. External plugin authors consume `@khirby/plugin-sdk` + `@khirby/plugin-host` from npm (`packages/plugin-sdk/.npmrc.example`, `scripts/publish-plugin-packages.sh`). First-party plugins live in **[Khirby-labs/plugins](https://github.com/Khirby-labs/plugins)** (clone into `./plugins`); this monorepo publishes host packages and forms packages only. Ship a first-party plugin with `/publish-plugin` (bump `package.json` in that checkout, CI on `main` publishes).
 
 ---
 
@@ -122,6 +122,7 @@ function makeChain(returnValue?: unknown) {
 | Plugin imports in `app.module.ts` | Use path `../../../plugins/...` relative to `src/` |
 | Vendor of `plugins/` | `predev` must **not** `rmSync` existing `plugins/<dir>` (ADR-0037). Keep local sources; npm-fill only missing dirs. `KHIRBY_PLUGINS_WORKSPACE=1` or `plugins/.git` = local-only vendor. Delete a dir to refresh from npm |
 | Checkout vs Marketplace at boot | `KHIRBY_PLUGINS_LOCAL=1` loads `plugins/crm-plugin-*` instead of `khirby__plugin-*` (ADR-0045). Default off. Not the same flag as `KHIRBY_PLUGINS_WORKSPACE`. |
+| First-party plugin npm | Bump `plugins/crm-plugin-*/package.json` then push plugins `main` — CI publishes that version only. Do not auto-patch every commit. Skill: `/publish-plugin`. |
 | Instance-plugin writes | Go through `INSTANCE_PLUGINS` (`scaffold` / `writeFile` / …) into `plugins/<dir>/`, not a sibling `instance-plugins/` tree and not a second fs helper in the MCP plugin (ADR-0038, ADR-0039) |
 | Root db mock | Do **not** add `.then` to the root db mock object in tests |
 | Drizzle `.values()` / `.set()` | Add `as any` to avoid strict type inference errors in Drizzle 0.40 |
