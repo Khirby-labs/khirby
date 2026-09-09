@@ -36,5 +36,16 @@
       "mismatch": "Passwords do not match.",
       "failed": "Failed to change password"
     }
+  },
+  "version": {
+    "title": "Version",
+    "checking": "Checking for updates…",
+    "running": "Running",
+    "latest": "Latest",
+    "upToDate": "This instance is on the latest release.",
+    "updateAvailable": "A newer release is available.",
+    "checkFailed": "Could not check for updates right now.",
+    "devHint": "Development build — update checks compare against GitHub releases.",
+    "releaseLink": "View release"
   }
 }

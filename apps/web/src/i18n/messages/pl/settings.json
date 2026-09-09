@@ -36,5 +36,16 @@
       "mismatch": "Hasła się nie zgadzają.",
       "failed": "Nie udało się zmienić hasła"
     }
+  },
+  "version": {
+    "title": "Wersja",
+    "checking": "Sprawdzanie aktualizacji…",
+    "running": "Uruchomiona",
+    "latest": "Najnowsza",
+    "upToDate": "Ta instancja ma najnowsze wydanie.",
+    "updateAvailable": "Dostępne jest nowsze wydanie.",
+    "checkFailed": "Nie udało się teraz sprawdzić aktualizacji.",
+    "devHint": "Build deweloperski — porównanie idzie względem wydań na GitHubie.",
+    "releaseLink": "Zobacz wydanie"
   }
 }

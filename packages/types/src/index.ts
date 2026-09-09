@@ -619,3 +619,21 @@ export interface ApiErrorBody {
   /** Present only for VALIDATION_FAILED. */
   fields?: FieldError[];
 }
+
+// --- System / version (GET /api/system/version, ADR-0042) ---
+
+/**
+ * Running build vs the latest GitHub Release. `current` is baked as `APP_VERSION`
+ * (semver without a required `v` prefix; local `pnpm dev` falls back to `dev`).
+ * `latest` is null when the check was skipped or GitHub was unreachable.
+ */
+export interface AppVersionInfo {
+  current: string;
+  latest: string | null;
+  updateAvailable: boolean;
+  releaseUrl: string | null;
+  /** ISO timestamp of the successful GitHub response this payload is based on. */
+  checkedAt: string | null;
+  /** True when a check was attempted and the remote could not be trusted. */
+  checkFailed: boolean;
+}
