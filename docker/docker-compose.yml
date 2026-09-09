@@ -1,5 +1,6 @@
 # Local full stack (split api + web). Not for Swarm — use docker-stack.yml there.
 #   pnpm docker:up
+name: khirby
 
 services:
   api:
@@ -89,7 +90,9 @@ services:
 
 volumes:
   postgres_data:
+    name: khirby_postgres_data
   redis_data:
+    name: khirby_redis_data
 
 # Stable web proxy address lets the API trust only nginx, even when port 3000 is exposed.
 networks:

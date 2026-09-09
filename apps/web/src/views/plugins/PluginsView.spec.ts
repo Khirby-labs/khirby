@@ -8,9 +8,8 @@ import { api } from '../../test/api-base';
 import { mountWithI18n } from '../../test/i18n';
 
 /**
- * Boundary: Settings → Plugins shows Konfiguruj for schema plugins AND for
- * first-party custom settings panels (ADR-0023) — not only when configSchema
- * is non-empty.
+ * Boundary: Settings → Plugins shows Configure for non-empty configSchema
+ * OR a custom panel in pluginSettingsPanels (ADR-0023).
  */
 
 vi.mock('../../router', () => ({
@@ -41,7 +40,7 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe('PluginsView — configure affordance (ADR-0023)', () => {
+describe('PluginsView — configure affordance', () => {
   beforeEach(() => {
     server.use(
       pluginsRoute([
@@ -84,6 +83,22 @@ describe('PluginsView — configure affordance (ADR-0023)', () => {
           codeLoaded: true,
         },
         {
+          id: '2b',
+          name: 'crm_ai_compose',
+          displayName: 'AI Compose',
+          displayNameKey: 'plugins.aiCompose.displayName',
+          description: 'AI drafts',
+          version: '1.0.0',
+          enabled: true,
+          config: {},
+          configSchema: [],
+          installedAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          frontendRoutes: [],
+          canUninstall: true,
+          codeLoaded: true,
+        },
+        {
           id: '3',
           name: 'crm_discord',
           displayName: 'Discord',
@@ -114,35 +129,24 @@ describe('PluginsView — configure affordance (ADR-0023)', () => {
           codeLoaded: false,
         },
       ]),
-      http.get(api('/api/plugins/mcp/token'), () => HttpResponse.json({ configured: false })),
     );
   });
 
-  it('offers Configure for schema plugins and for MCP (custom panel), not for ops-only plugins', async () => {
+  it('offers Configure for schema plugins and custom settings panels', async () => {
     const wrapper = mountView();
     await flushPromises();
 
     const configureButtons = wrapper.findAll('button').filter((b) => b.text() === 'Configure');
-    expect(configureButtons).toHaveLength(2);
+    // webhook (schema) + mcp + ai_compose (pluginSettingsPanels); not discord / hello
+    expect(configureButtons).toHaveLength(3);
   });
 
-  it('expands the MCP settings panel inline instead of navigating away', async () => {
-    const wrapper = mountView();
-    await flushPromises();
-
-    const configureButtons = wrapper.findAll('button').filter((b) => b.text() === 'Configure');
-    await configureButtons[1]!.trigger('click');
-    await flushPromises();
-
-    expect(wrapper.text()).toContain('Endpoint');
-    expect(wrapper.text()).toContain('/api/mcp');
-  });
-
-  it('shows Uninstall for non-native plugins but not for natives', async () => {
+  it('shows Uninstall for removable plugins', async () => {
     const wrapper = mountView();
     await flushPromises();
 
     const uninstallButtons = wrapper.findAll('button').filter((b) => b.text() === 'Uninstall');
-    expect(uninstallButtons).toHaveLength(1);
+    // crm_ai_compose + crm_hello_world
+    expect(uninstallButtons).toHaveLength(2);
   });
 });

@@ -109,93 +109,81 @@ describe('PluginRegistryService', () => {
    * losing it would leave the whole unconditional-install regression uncovered.
    */
   describe('onModuleInit — first boot (empty plugins table)', () => {
-    const nativePlugins = () =>
-      NATIVE_PLUGIN_NAMES.map((name) => makePlugin({ name, displayName: name, version: '1.0.0' }));
+    it('seeds zero plugins — empty table is a no-op', async () => {
+      const { db, insertValues } = makeBootDb({ table: [] });
 
-    it('seeds one row per native plugin, enabled', async () => {
-      const { db, insertValues } = makeBootDb({
-        table: [],
-        inserted: [makeRow({ name: 'seeded' })],
-      });
-
-      const svc = makeService(nativePlugins(), db);
+      const svc = makeService(
+        NATIVE_PLUGIN_NAMES.map((name) =>
+          makePlugin({ name, displayName: name, version: '1.0.0' }),
+        ),
+        db,
+      );
       await svc.onModuleInit();
 
-      expect(insertValues).toHaveBeenCalledTimes(NATIVE_PLUGIN_NAMES.length);
-      const seededNames = insertValues.mock.calls.map((call: any[]) => call[0].name);
-      expect(seededNames.sort()).toEqual([...NATIVE_PLUGIN_NAMES].sort());
-      for (const call of insertValues.mock.calls) {
-        expect((call as any[])[0].enabled).toBe(true);
-      }
+      expect(db.insert).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
     });
 
-    it('does not seed a plugin the image does not ship', async () => {
-      const { db, insertValues } = makeBootDb({
-        table: [],
-        inserted: [makeRow({ name: 'crm_webhook' })],
-      });
-
-      // Only one of the six native names is present in this process.
-      const svc = makeService([makePlugin({ name: 'crm_webhook' })], db);
-      await svc.onModuleInit();
-
-      expect(insertValues).toHaveBeenCalledTimes(1);
-      expect((insertValues.mock.calls[0] as any[])[0].name).toBe('crm_webhook');
-    });
-
-    /*
-     * The concurrency trap this exists to prevent: docker-stack.yml deploys with
-     * order: start-first, so two processes overlap and both see an empty table.
-     * `plugins.name` is unique, so the loser's insert is a no-op returning no
-     * row. Adopting the winner's row is not cosmetic — without it this process
-     * has no context, and emit() skips context-less plugins, so every event in
-     * the replica would be dropped in silence.
-     */
-    it('adopts the winner row and still builds a context when the seed insert conflicts', async () => {
-      const adopted = makeRow({ name: 'crm_webhook', enabled: true, config: { A: '1' } });
-      const onInit = jest.fn().mockResolvedValue(undefined);
-      const { db } = makeBootDb({ table: [], inserted: [], lookup: [adopted] });
+    it('does not seed even when the process has registered plugins', async () => {
+      const onInit = jest.fn();
+      const { db, insertValues } = makeBootDb({ table: [] });
 
       const svc = makeService([makePlugin({ name: 'crm_webhook', onInit })], db);
       await svc.onModuleInit();
 
-      expect(onInit).toHaveBeenCalledWith(expect.objectContaining({ config: { A: '1' } }));
-      expect(svc.isEnabled('crm_webhook')).toBe(true);
+      expect(insertValues).not.toHaveBeenCalled();
+      expect(onInit).not.toHaveBeenCalled();
+      expect(svc.isEnabled('crm_webhook')).toBe(false);
     });
 
-    it('runs onMigrate before onInit while seeding', async () => {
-      const order: string[] = [];
-      const { db } = makeBootDb({
-        table: [],
-        inserted: [makeRow({ name: 'crm_webhook' })],
+    it('does not lazy-load volume Nest when there is no plugins row', async () => {
+      const nest = class OrphanVolumeModule {};
+      const load = jest.fn().mockResolvedValue({});
+      const registerModuleRoutes = jest.fn().mockResolvedValue(['/api/plugins/orphan']);
+      const { db } = makeBootDb({ table: [] });
+
+      const svc = makeService(
+        [makePlugin({ name: 'crm_ai_compose', getNestModule: () => nest })],
+        db,
+      );
+      (svc as any).lazyModuleLoader = { load };
+      Object.defineProperty(svc, 'pluginHttpRegistrar', {
+        get: () => ({ registerModuleRoutes }),
       });
 
-      const plugin = makePlugin({
-        name: 'crm_webhook',
-        onMigrate: jest.fn().mockImplementation(async () => void order.push('migrate')),
-        onInit: jest.fn().mockImplementation(async () => void order.push('init')),
-      });
-      const svc = makeService([plugin], db);
       await svc.onModuleInit();
 
-      expect(order).toEqual(['migrate', 'init']);
-      expect(plugin.onMigrate).toHaveBeenCalledWith(db.$client);
+      expect(load).not.toHaveBeenCalled();
+      expect(registerModuleRoutes).not.toHaveBeenCalled();
     });
+  });
 
-    it('a plugin whose onInit throws does not stop the rest of the boot', async () => {
-      const healthy = jest.fn().mockResolvedValue(undefined);
-      const { db } = makeBootDb({ table: [], inserted: [makeRow()] });
+  describe('onModuleInit — volume Nest bind gated by row', () => {
+    it('lazy-loads Nest only for volume plugins that have a row', async () => {
+      const nestInstalled = class InstalledVolumeModule {};
+      const nestOrphan = class OrphanVolumeModule {};
+      const load = jest.fn().mockResolvedValue({});
+      const registerModuleRoutes = jest.fn().mockResolvedValue(['/api/plugins/ai']);
+      const { db } = makeBootDb({ table: [makeRow({ name: 'crm_ai_compose' })] });
 
       const svc = makeService(
         [
-          makePlugin({ name: 'crm_webhook', onInit: jest.fn().mockRejectedValue(new Error('x')) }),
-          makePlugin({ name: 'crm_discord', onInit: healthy }),
+          makePlugin({ name: 'crm_ai_compose', getNestModule: () => nestInstalled }),
+          makePlugin({ name: 'crm_orphan', getNestModule: () => nestOrphan }),
         ],
         db,
       );
+      (svc as any).lazyModuleLoader = { load };
+      Object.defineProperty(svc, 'pluginHttpRegistrar', {
+        get: () => ({ registerModuleRoutes }),
+      });
 
-      await expect(svc.onModuleInit()).resolves.toBeUndefined();
-      expect(healthy).toHaveBeenCalled();
+      await svc.onModuleInit();
+
+      expect(load).toHaveBeenCalledTimes(1);
+      expect(registerModuleRoutes).toHaveBeenCalledWith(nestInstalled, {
+        pluginName: 'crm_ai_compose',
+      });
     });
   });
 
@@ -1108,10 +1096,17 @@ export function createPlugin() {
       return { db, deleteWhere };
     }
 
-    it('rejects native plugins', async () => {
-      const { db } = makeUninstallDb(makeRow({ name: 'crm_webhook' }));
+    it('allows uninstall of former native names (empty image — all rows removable)', async () => {
+      const row = makeRow({ name: 'crm_webhook', enabled: true });
+      const { db, deleteWhere } = makeUninstallDb(row);
       const svc = makeService([makePlugin({ name: 'crm_webhook' })], db);
-      await expect(svc.uninstall('crm_webhook')).rejects.toThrow(BadRequestException);
+      svc['contexts'].set('crm_webhook', { log: jest.fn(), config: {} });
+
+      const result = await svc.uninstall('crm_webhook');
+
+      expect(result).toEqual({ name: 'crm_webhook' });
+      expect(deleteWhere).toHaveBeenCalled();
+      expect(svc.isEnabled('crm_webhook')).toBe(false);
     });
 
     it('runs onUninstall then deletes the row for marketplace plugins', async () => {
@@ -1156,7 +1151,7 @@ export function createPlugin() {
       expect(list.find((p) => p.name === 'crm_hello')).toBeUndefined();
       expect(list.find((p) => p.name === 'crm_webhook')).toMatchObject({
         codeLoaded: true,
-        canUninstall: false,
+        canUninstall: true,
       });
     });
 

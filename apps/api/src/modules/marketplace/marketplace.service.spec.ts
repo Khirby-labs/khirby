@@ -1,29 +1,39 @@
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
 import { MarketplaceService } from './marketplace.service';
-import { CATALOG_FORMAT_VERSION, CatalogDocument } from './catalog';
-
-/**
- * Resolution is pure orchestration over the catalog document and the registry, so
- * both are supplied as plain stubs. What is being measured is the merge: which
- * cards exist, what status each carries, and where the metadata comes from.
- */
+import { CATALOG_FORMAT_VERSION, CatalogDocument, CatalogEntry } from './catalog';
 
 function makeCatalog(document: CatalogDocument) {
   return { load: jest.fn().mockResolvedValue(document) } as any;
 }
 
-function catalogWith(names: string[]): CatalogDocument {
+function entry(
+  overrides: Partial<CatalogEntry> & Pick<CatalogEntry, 'name' | 'slug'>,
+): CatalogEntry {
+  return {
+    package: `@khirby/plugin-${overrides.name.replace(/^crm_/, '')}`,
+    packageName: `@khirby/plugin-${overrides.name.replace(/^crm_/, '')}`,
+    version: '1.0.0',
+    latestVersion: '1.0.0',
+    category: 'automation',
+    vendor: 'Khirby',
+    publisherName: 'Khirby',
+    icon: 'plugins',
+    docsUrl: `https://khirby.com/docs/plugins/${overrides.slug}`,
+    displayName: overrides.name,
+    description: null,
+    verified: true,
+    compatible: true,
+    permissions: null,
+    ...overrides,
+  };
+}
+
+function catalogWith(
+  entries: Array<Partial<CatalogEntry> & Pick<CatalogEntry, 'name' | 'slug'>>,
+): CatalogDocument {
   return {
     version: CATALOG_FORMAT_VERSION,
-    entries: names.map((name) => ({
-      package: `@khirby/plugin-${name}`,
-      name,
-      version: '1.0.0',
-      category: 'automation' as const,
-      vendor: 'Khirby',
-      icon: 'plugins' as const,
-      docsUrl: `https://khirby.com/docs/plugins/${name}`,
-    })),
+    entries: entries.map((e) => entry(e)),
   };
 }
 
@@ -32,15 +42,52 @@ function makeRegistry(options: {
   installed?: Array<Record<string, unknown>>;
   available?: Array<Record<string, unknown>>;
   install?: jest.Mock;
+  installFromDirectory?: jest.Mock;
+  findAll?: jest.Mock;
+  findByName?: jest.Mock;
 }) {
   return {
     loadedNames: () => options.loaded,
-    // One snapshot call, mirroring the single table read the service depends on.
     snapshot: jest.fn().mockResolvedValue({
       installed: options.installed ?? [],
       available: options.available ?? [],
     }),
-    install: options.install ?? jest.fn().mockResolvedValue({ name: 'x' }),
+    install: options.install ?? jest.fn().mockResolvedValue({ name: 'x', enabled: true }),
+    installFromDirectory:
+      options.installFromDirectory ??
+      jest.fn().mockResolvedValue({ name: 'crm_a', status: 'installed' }),
+    findAll: options.findAll ?? jest.fn().mockResolvedValue([]),
+    findByName: options.findByName ?? jest.fn().mockResolvedValue(null),
+  } as any;
+}
+
+function makeCp(overrides: Record<string, unknown> = {}) {
+  return {
+    isConfigured: () => true,
+    getPlugin: jest.fn().mockResolvedValue(null),
+    getPluginVersion: jest.fn().mockResolvedValue(null),
+    getPluginVersions: jest.fn().mockResolvedValue([]),
+    submitPlugin: jest.fn().mockResolvedValue(null),
+    ...overrides,
+  } as any;
+}
+
+function makeInstaller(overrides: Record<string, unknown> = {}) {
+  return {
+    extract: jest.fn().mockResolvedValue({
+      directory: 'plugin-a',
+      absDir: '/tmp/plugins/plugin-a',
+      packageName: '@khirby/plugin-a',
+    }),
+    ...overrides,
+  } as any;
+}
+
+function makeIdentity() {
+  return {
+    getOrCreate: jest
+      .fn()
+      .mockResolvedValue({ installationId: '11111111-1111-1111-1111-111111111111' }),
   } as any;
 }
 
@@ -56,27 +103,33 @@ function installedRow(name: string, overrides: Record<string, unknown> = {}) {
   };
 }
 
-function availablePlugin(name: string, overrides: Record<string, unknown> = {}) {
-  return {
-    name,
-    displayName: name,
-    description: null,
-    version: '1.0.0',
-    configSchema: [],
-    ...overrides,
-  };
+function makeService(parts: {
+  catalog?: CatalogDocument;
+  registry?: ReturnType<typeof makeRegistry>;
+  cp?: ReturnType<typeof makeCp>;
+  installer?: ReturnType<typeof makeInstaller>;
+}) {
+  return new MarketplaceService(
+    makeCatalog(parts.catalog ?? catalogWith([])),
+    parts.registry ?? makeRegistry({ loaded: [] }),
+    parts.cp ?? makeCp(),
+    parts.installer ?? makeInstaller(),
+    makeIdentity(),
+  );
 }
 
 describe('MarketplaceService.list', () => {
-  it('marks a plugin with a row installed and one without available', async () => {
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a', 'crm_b'])),
-      makeRegistry({
-        loaded: ['crm_a', 'crm_b'],
+  it('marks a catalog plugin with a row installed and one without available', async () => {
+    const svc = makeService({
+      catalog: catalogWith([
+        { name: 'crm_a', slug: 'a' },
+        { name: 'crm_b', slug: 'b' },
+      ]),
+      registry: makeRegistry({
+        loaded: ['crm_a'],
         installed: [installedRow('crm_a')],
-        available: [availablePlugin('crm_b')],
       }),
-    );
+    });
 
     const cards = await svc.list();
     expect(cards.map((c) => [c.name, c.status, c.enabled])).toEqual([
@@ -85,77 +138,90 @@ describe('MarketplaceService.list', () => {
     ]);
   });
 
-  it('reports an installed but disabled plugin as installed with enabled false', async () => {
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a'])),
-      makeRegistry({
-        loaded: ['crm_a'],
-        installed: [installedRow('crm_a', { enabled: false })],
+  it('shows a CP plugin even when it is absent from this image', async () => {
+    const svc = makeService({
+      catalog: catalogWith([{ name: 'crm_ghost', slug: 'ghost' }]),
+      registry: makeRegistry({ loaded: [] }),
+    });
+
+    const cards = await svc.list();
+    expect(cards).toHaveLength(1);
+    expect(cards[0]).toEqual(
+      expect.objectContaining({
+        name: 'crm_ghost',
+        slug: 'ghost',
+        status: 'available',
+        verified: true,
+        packageName: '@khirby/plugin-ghost',
       }),
     );
-
-    const [card] = await svc.list();
-    expect(card.status).toBe('installed');
-    expect(card.enabled).toBe(false);
   });
 
-  it('carries the catalog metadata onto the card', async () => {
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a'])),
-      makeRegistry({ loaded: ['crm_a'], available: [availablePlugin('crm_a')] }),
-    );
+  it('carries CP metadata onto the card', async () => {
+    const svc = makeService({
+      catalog: catalogWith([
+        {
+          name: 'crm_a',
+          slug: 'a',
+          permissions: ['contacts:read'],
+          publisherName: 'Acme',
+          vendor: 'Acme',
+          verified: true,
+          compatible: false,
+          latestVersion: '2.0.0',
+        },
+      ]),
+      registry: makeRegistry({ loaded: [] }),
+    });
 
     const [card] = await svc.list();
     expect(card).toEqual(
       expect.objectContaining({
-        category: 'automation',
-        vendor: 'Khirby',
-        icon: 'plugins',
-        docsUrl: 'https://khirby.com/docs/plugins/crm_a',
+        publisherName: 'Acme',
+        vendor: 'Acme',
+        verified: true,
+        compatible: false,
+        permissions: ['contacts:read'],
+        latestVersion: '2.0.0',
+        packageName: '@khirby/plugin-a',
+        slug: 'a',
+        updateAvailable: false,
       }),
     );
   });
 
-  it('passes the plugin message keys through so the SPA can localize the card', async () => {
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a'])),
-      makeRegistry({
+  it('flags updateAvailable when the installed row is behind latestVersion', async () => {
+    const svc = makeService({
+      catalog: catalogWith([
+        {
+          name: 'crm_a',
+          slug: 'a',
+          latestVersion: '2.0.0',
+          version: '2.0.0',
+        },
+      ]),
+      registry: makeRegistry({
         loaded: ['crm_a'],
-        available: [
-          availablePlugin('crm_a', {
-            displayNameKey: 'plugins.a.displayName',
-            descriptionKey: 'plugins.a.description',
-            description: 'English literal',
-          }),
-        ],
+        installed: [installedRow('crm_a', { version: '1.0.0' })],
       }),
-    );
+    });
 
     const [card] = await svc.list();
-    expect(card.displayNameKey).toBe('plugins.a.displayName');
-    expect(card.descriptionKey).toBe('plugins.a.description');
-    expect(card.description).toBe('English literal');
-  });
-
-  it('hides a catalog entry naming a plugin this image does not ship', async () => {
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a', 'crm_ghost'])),
-      makeRegistry({ loaded: ['crm_a'], available: [availablePlugin('crm_a')] }),
+    expect(card).toEqual(
+      expect.objectContaining({
+        status: 'installed',
+        version: '1.0.0',
+        latestVersion: '2.0.0',
+        updateAvailable: true,
+      }),
     );
-
-    expect((await svc.list()).map((c) => c.name)).toEqual(['crm_a']);
   });
 
-  /*
-   * The union half. Plain (catalog ∩ process) would make six installed cards
-   * disappear the moment a remote catalog omitted them — which reads as data loss,
-   * not as a filter.
-   */
   it('keeps an installed plugin whose catalog entry is missing, under the other category', async () => {
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith([])),
-      makeRegistry({ loaded: ['crm_a'], installed: [installedRow('crm_a')] }),
-    );
+    const svc = makeService({
+      catalog: catalogWith([]),
+      registry: makeRegistry({ loaded: ['crm_a'], installed: [installedRow('crm_a')] }),
+    });
 
     const [card] = await svc.list();
     expect(card).toEqual(
@@ -170,86 +236,45 @@ describe('MarketplaceService.list', () => {
     );
   });
 
-  it('does not offer an uninstalled plugin the catalog says nothing about', async () => {
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith([])),
-      makeRegistry({ loaded: ['crm_a'], available: [availablePlugin('crm_a')] }),
-    );
-
-    expect(await svc.list()).toEqual([]);
-  });
-
-  it('skips an orphan row whose plugin left the image', async () => {
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a'])),
-      makeRegistry({
+  it('skips an orphan row whose plugin left the process', async () => {
+    const svc = makeService({
+      catalog: catalogWith([{ name: 'crm_a', slug: 'a' }]),
+      registry: makeRegistry({
         loaded: ['crm_a'],
         installed: [installedRow('crm_a'), installedRow('crm_removed')],
       }),
-    );
+    });
 
     expect((await svc.list()).map((c) => c.name)).toEqual(['crm_a']);
   });
 
-  it('returns an empty list rather than an error when nothing survives the filter', async () => {
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_ghost'])),
-      makeRegistry({ loaded: [] }),
-    );
-
-    await expect(svc.list()).resolves.toEqual([]);
-  });
-
-  /*
-   * The regression that would only ever show up in production: if the fifteen-minute
-   * cache held the enriched RESPONSE instead of the catalog document, a plugin
-   * installed at T would keep reading `available` for the rest of the window. Every
-   * spec would stay green, because a spec never waits fifteen minutes.
-   *
-   * Here the catalog stub is called twice and returns the same document; only the
-   * registry's answer changes, exactly as it would after a real install.
-   */
-  /*
-   * Installed and available are derived from ONE read of the table. Asking for
-   * them separately let an install() commit between the two queries, after which
-   * the same plugin was installed according to one answer and available according
-   * to the other — the Marketplace then rendered two cards for one name, one of
-   * them still offering Install.
-   */
-  it('takes both lists from a single registry snapshot', async () => {
+  it('takes installed state from a single registry snapshot', async () => {
     const registry = makeRegistry({
       loaded: ['crm_a'],
       installed: [installedRow('crm_a')],
     });
-    const svc = new MarketplaceService(makeCatalog(catalogWith(['crm_a'])), registry);
+    const svc = makeService({
+      catalog: catalogWith([{ name: 'crm_a', slug: 'a' }]),
+      registry,
+    });
 
     await svc.list();
-
     expect(registry.snapshot).toHaveBeenCalledTimes(1);
   });
 
-  it('never lists the same plugin twice', async () => {
+  it('reflects an install immediately even though the catalog document is cached', async () => {
+    const catalog = makeCatalog(catalogWith([{ name: 'crm_a', slug: 'a' }]));
+    const registry = makeRegistry({ loaded: [], installed: [] });
     const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a', 'crm_b'])),
-      makeRegistry({
-        loaded: ['crm_a', 'crm_b'],
-        installed: [installedRow('crm_a')],
-        available: [availablePlugin('crm_b')],
-      }),
+      catalog,
+      registry,
+      makeCp(),
+      makeInstaller(),
+      makeIdentity(),
     );
-
-    const names = (await svc.list()).map((c) => c.name);
-    expect(new Set(names).size).toBe(names.length);
-  });
-
-  it('reflects an install immediately, even though the catalog document is cached', async () => {
-    const catalog = makeCatalog(catalogWith(['crm_a']));
-    const registry = makeRegistry({ loaded: ['crm_a'], available: [availablePlugin('crm_a')] });
-    const svc = new MarketplaceService(catalog, registry);
 
     expect((await svc.list())[0].status).toBe('available');
 
-    // The install happened; the catalog document did not change.
     registry.snapshot.mockResolvedValue({
       installed: [installedRow('crm_a')],
       available: [],
@@ -261,56 +286,236 @@ describe('MarketplaceService.list', () => {
 });
 
 describe('MarketplaceService.findOne', () => {
-  it('returns the card for a name in the catalog', async () => {
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a'])),
-      makeRegistry({ loaded: ['crm_a'], available: [availablePlugin('crm_a')] }),
-    );
+  it('finds by crm name or slug', async () => {
+    const svc = makeService({
+      catalog: catalogWith([{ name: 'crm_a', slug: 'alpha' }]),
+      registry: makeRegistry({ loaded: [] }),
+    });
 
-    expect((await svc.findOne('crm_a')).name).toBe('crm_a');
+    expect((await svc.findOne('crm_a')).slug).toBe('alpha');
+    expect((await svc.findOne('alpha')).name).toBe('crm_a');
   });
 
-  it('rejects a name outside the catalog', async () => {
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a'])),
-      makeRegistry({ loaded: ['crm_a'], available: [availablePlugin('crm_a')] }),
-    );
-
+  it('rejects an unknown name', async () => {
+    const svc = makeService({
+      catalog: catalogWith([{ name: 'crm_a', slug: 'a' }]),
+      registry: makeRegistry({ loaded: [] }),
+    });
     await expect(svc.findOne('crm_nope')).rejects.toThrow(NotFoundException);
   });
 });
 
 describe('MarketplaceService.install', () => {
-  it('delegates to the registry for a plugin the catalog offers', async () => {
-    const install = jest.fn().mockResolvedValue({ name: 'crm_a', enabled: true });
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a'])),
-      makeRegistry({ loaded: ['crm_a'], install }),
-    );
+  const versionMeta = {
+    version: '1.0.0',
+    packageName: '@khirby/plugin-a',
+    checksum: 'sha512-abc',
+    minimumProductVersion: null,
+    manifest: { id: 'crm_a' },
+    permissions: null,
+    publishedAt: '2026-01-01T00:00:00.000Z',
+    approvedAt: '2026-01-02T00:00:00.000Z',
+  };
 
-    await svc.install('crm_a');
-    // By the plugin's crm_* name, never the catalog's `package` field.
+  it('delegates to registry.install when the plugin is already loaded', async () => {
+    const install = jest.fn().mockResolvedValue({ name: 'crm_a', enabled: true });
+    const getPlugin = jest.fn().mockResolvedValue({
+      slug: 'a',
+      name: 'A',
+      description: null,
+      packageName: '@khirby/plugin-a',
+      publisherName: 'Khirby',
+      verified: true,
+      repositoryUrl: null,
+      latestVersion: '1.0.0',
+      permissions: null,
+    });
+    const getPluginVersion = jest.fn().mockResolvedValue(versionMeta);
+    const extract = jest.fn();
+
+    const svc = makeService({
+      registry: makeRegistry({ loaded: ['crm_a'], install }),
+      cp: makeCp({ getPlugin, getPluginVersion }),
+      installer: makeInstaller({ extract }),
+    });
+
+    await svc.install('a');
     expect(install).toHaveBeenCalledWith('crm_a');
+    expect(extract).not.toHaveBeenCalled();
   });
 
-  it('refuses a name the catalog does not list, without asking the registry', async () => {
-    const install = jest.fn();
-    const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a'])),
-      makeRegistry({ loaded: ['crm_a'], install }),
-    );
+  it('downloads and installFromDirectory when the plugin is not loaded', async () => {
+    const installFromDirectory = jest
+      .fn()
+      .mockResolvedValue({ name: 'crm_a', status: 'installed' });
+    const findAll = jest
+      .fn()
+      .mockResolvedValue([{ name: 'crm_a', enabled: true, version: '1.0.0' }]);
+    const extract = jest.fn().mockResolvedValue({
+      directory: 'plugin-a',
+      absDir: '/tmp/khirby-no-such-plugin-dir',
+      packageName: '@khirby/plugin-a',
+    });
+    const getPlugin = jest.fn().mockResolvedValue({
+      slug: 'a',
+      name: 'A',
+      description: null,
+      packageName: '@khirby/plugin-a',
+      publisherName: 'Khirby',
+      verified: true,
+      repositoryUrl: null,
+      latestVersion: '1.0.0',
+      permissions: null,
+    });
 
-    await expect(svc.install('crm_nope')).rejects.toThrow(NotFoundException);
-    expect(install).not.toHaveBeenCalled();
+    const svc = makeService({
+      registry: makeRegistry({ loaded: [], installFromDirectory, findAll }),
+      cp: makeCp({
+        getPlugin,
+        getPluginVersion: jest.fn().mockResolvedValue(versionMeta),
+      }),
+      installer: makeInstaller({ extract }),
+    });
+
+    const result = await svc.install('a');
+    expect(extract).toHaveBeenCalledWith({
+      packageName: '@khirby/plugin-a',
+      version: '1.0.0',
+      checksum: 'sha512-abc',
+    });
+    expect(installFromDirectory).toHaveBeenCalledWith('plugin-a', '@khirby/plugin-a', {
+      allowReservedScaffoldDirs: true,
+    });
+    expect(result).toEqual(expect.objectContaining({ name: 'crm_a' }));
+  });
+
+  it('refuses an unknown slug without asking the installer', async () => {
+    const extract = jest.fn();
+    const svc = makeService({
+      catalog: catalogWith([]),
+      registry: makeRegistry({ loaded: [] }),
+      cp: makeCp({ getPlugin: jest.fn().mockResolvedValue(null) }),
+      installer: makeInstaller({ extract }),
+    });
+
+    await expect(svc.install('nope')).rejects.toThrow(NotFoundException);
+    expect(extract).not.toHaveBeenCalled();
   });
 
   it('lets the registry conflict surface for an already-installed plugin', async () => {
     const install = jest.fn().mockRejectedValue(new ConflictException('already'));
+    const svc = makeService({
+      registry: makeRegistry({ loaded: ['crm_a'], install }),
+      cp: makeCp({
+        getPlugin: jest.fn().mockResolvedValue({
+          slug: 'a',
+          name: 'A',
+          description: null,
+          packageName: '@khirby/plugin-a',
+          publisherName: 'Khirby',
+          verified: true,
+          repositoryUrl: null,
+          latestVersion: '1.0.0',
+          permissions: null,
+        }),
+        getPluginVersion: jest.fn().mockResolvedValue(versionMeta),
+      }),
+    });
+
+    await expect(svc.install('a')).rejects.toThrow(ConflictException);
+  });
+
+  it('installs a loaded plugin by crm name when CP has no match', async () => {
+    const install = jest.fn().mockResolvedValue({ name: 'crm_local', enabled: true });
+    const svc = makeService({
+      catalog: catalogWith([]),
+      registry: makeRegistry({ loaded: ['crm_local'], install }),
+      cp: makeCp({ getPlugin: jest.fn().mockResolvedValue(null) }),
+    });
+
+    await svc.install('crm_local');
+    expect(install).toHaveBeenCalledWith('crm_local');
+  });
+
+  it('rejects install when no version has approvedAt', async () => {
+    const extract = jest.fn();
+    const getPlugin = jest.fn().mockResolvedValue({
+      slug: 'a',
+      name: 'A',
+      description: null,
+      packageName: '@khirby/plugin-a',
+      publisherName: 'Khirby',
+      verified: true,
+      repositoryUrl: null,
+      latestVersion: null,
+      permissions: null,
+    });
+    const getPluginVersions = jest.fn().mockResolvedValue([
+      {
+        ...versionMeta,
+        approvedAt: null,
+      },
+    ]);
+
+    const svc = makeService({
+      registry: makeRegistry({ loaded: [] }),
+      cp: makeCp({
+        getPlugin,
+        getPluginVersions,
+        getPluginVersion: jest.fn().mockResolvedValue(null),
+      }),
+      installer: makeInstaller({ extract }),
+    });
+
+    await expect(svc.install('a')).rejects.toThrow(NotFoundException);
+    expect(extract).not.toHaveBeenCalled();
+  });
+});
+
+describe('MarketplaceService.submit', () => {
+  it('attaches installationId and proxies to the Control Plane', async () => {
+    const submitPlugin = jest.fn().mockResolvedValue({
+      slug: 'my-plugin',
+      name: 'My Plugin',
+      status: 'submitted',
+      packageName: '@acme/plugin',
+      submittedAt: '2026-01-01T00:00:00.000Z',
+    });
+    const identity = makeIdentity();
     const svc = new MarketplaceService(
-      makeCatalog(catalogWith(['crm_a'])),
-      makeRegistry({ loaded: ['crm_a'], install }),
+      makeCatalog(catalogWith([])),
+      makeRegistry({ loaded: [] }),
+      makeCp({ submitPlugin }),
+      makeInstaller(),
+      identity,
     );
 
-    await expect(svc.install('crm_a')).rejects.toThrow(ConflictException);
+    const result = await svc.submit({
+      slug: 'my-plugin',
+      name: 'My Plugin',
+      packageName: '@acme/plugin',
+    });
+
+    expect(submitPlugin).toHaveBeenCalledWith({
+      slug: 'my-plugin',
+      name: 'My Plugin',
+      packageName: '@acme/plugin',
+      installationId: '11111111-1111-1111-1111-111111111111',
+    });
+    expect(result.slug).toBe('my-plugin');
+  });
+
+  it('rejects when Control Plane is not configured', async () => {
+    const svc = new MarketplaceService(
+      makeCatalog(catalogWith([])),
+      makeRegistry({ loaded: [] }),
+      makeCp({ isConfigured: () => false }),
+      makeInstaller(),
+      makeIdentity(),
+    );
+
+    await expect(svc.submit({ slug: 'x', name: 'X', packageName: '@x/y' })).rejects.toThrow(
+      BadRequestException,
+    );
   });
 });

@@ -254,6 +254,8 @@ export function registerPluginRoutes(
   plugins: Array<{
     name: string;
     enabled: boolean;
+    webBundleUrl?: string;
+    webBundleVersion?: string;
     frontendRoutes?: Array<{
       path: string;
       name: string;
@@ -268,12 +270,13 @@ export function registerPluginRoutes(
   for (const plugin of plugins) {
     if (!plugin.enabled || !plugin.frontendRoutes?.length) continue;
     for (const route of plugin.frontendRoutes) {
-      // Image plugins ship Vue via exports["./web"] (generated map). Instance
-      // plugins declare the tab with getFrontendRoutes() and reuse one host
-      // page — ./web is not hot-loadable (ADR-0036).
+      // Image plugins: generated ./web map. Volume plugins with dist/web/entry.js:
+      // dynamic import from the API (ADR-0043). Otherwise InstancePluginView.
       const component =
         pluginComponentMap[plugin.name] ??
-        (() => import('../views/plugins/InstancePluginView.vue'));
+        (plugin.webBundleUrl
+          ? () => loadVolumeWebComponent(plugin.webBundleUrl!, plugin.webBundleVersion)
+          : () => import('../views/plugins/InstancePluginView.vue'));
 
       enabledRouteNames.add(route.name);
 
@@ -301,6 +304,25 @@ export function registerPluginRoutes(
   for (const name of enabledRouteNames) {
     registeredPluginRouteNames.add(name);
   }
+}
+
+/** Dynamic-import a volume plugin's prebuilt `webEntry` / default export. */
+export async function loadVolumeWebComponent(
+  webBundleUrl: string,
+  webBundleVersion?: string,
+): Promise<unknown> {
+  const bust = webBundleVersion ? `?v=${encodeURIComponent(webBundleVersion)}` : '';
+  const url = `${webBundleUrl}${bust}`;
+  const mod = (await import(/* @vite-ignore */ url)) as {
+    webEntry?: { component?: unknown };
+    default?: { component?: unknown } | unknown;
+  };
+  const entry = mod.webEntry ?? mod.default;
+  if (entry && typeof entry === 'object' && 'component' in entry) {
+    const c = (entry as { component: unknown }).component;
+    return typeof c === 'function' ? (c as () => unknown)() : c;
+  }
+  return entry;
 }
 
 router.beforeEach(async (to) => {

@@ -20,8 +20,9 @@ function mountSettings(): VueWrapper {
     global: {
       plugins: [createPinia()],
       stubs: {
-        // Version card hits /api/system/version — covered in VersionCard.spec.ts.
+        // Version / Control Plane cards hit /api/system/* — covered in their own specs.
         VersionCard: { template: '<aside class="version-stub" />' },
+        ControlPlaneCard: { template: '<aside class="control-plane-stub" />' },
       },
     },
   });

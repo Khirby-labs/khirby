@@ -178,6 +178,8 @@ const PL_PROPER_NOUNS = new Set([
   'Newsletter',
   'Pipeline',
   'MCP',
+  'Control',
+  'Plane',
   'Claude',
   'Code', // product name "Claude Code"
   'Cursor',

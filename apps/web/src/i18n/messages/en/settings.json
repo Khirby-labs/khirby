@@ -47,5 +47,30 @@
     "checkFailed": "Could not check for updates right now.",
     "devHint": "Development build — update checks compare against GitHub releases.",
     "releaseLink": "View release"
+  },
+  "controlPlane": {
+    "title": "Control Plane",
+    "loading": "Loading connection…",
+    "telemetry": "Telemetry",
+    "telemetryOn": "On",
+    "telemetryOff": "Off",
+    "installationId": "Installation ID",
+    "registeredEmail": "Registered email",
+    "notRegistered": "Not registered",
+    "lastHeartbeat": "Last heartbeat",
+    "never": "Never",
+    "notConfigured": "CONTROL_PLANE_URL is not set on this instance.",
+    "emailLabel": "Admin email",
+    "register": "Register",
+    "registering": "Registering…",
+    "registered": "Instance registered",
+    "copyId": "Copy installation ID",
+    "copied": "Copied",
+    "copyFailed": "Couldn't copy. Select the ID manually.",
+    "loadFailed": "Couldn't load Control Plane status.",
+    "errors": {
+      "emailRequired": "Enter an email address.",
+      "registerFailed": "Registration failed. Check the Control Plane URL and try again."
+    }
   }
 }

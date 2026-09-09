@@ -1,8 +1,12 @@
 # 0030 — First-party plugins install from npm (out of monorepo)
 
-- **Status:** Accepted
+- **Status:** Accepted — partly superseded by [0044](0044-control-plane-telemetry-and-marketplace-client.md)
 - **Date:** 2026-08-11
 - **Deciders:** Patryk
+
+> Note: the public image no longer bakes a first-party plugin set as the install
+> path; marketplace installs come from Control Plane + npm (ADR-0044). npm
+> packaging and out-of-monorepo authoring from this ADR still stand.
 
 ## Context
 

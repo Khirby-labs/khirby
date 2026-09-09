@@ -47,5 +47,30 @@
     "checkFailed": "Nie udało się teraz sprawdzić aktualizacji.",
     "devHint": "Build deweloperski — porównanie idzie względem wydań na GitHubie.",
     "releaseLink": "Zobacz wydanie"
+  },
+  "controlPlane": {
+    "title": "Control Plane",
+    "loading": "Ładowanie połączenia…",
+    "telemetry": "Telemetria",
+    "telemetryOn": "Włączona",
+    "telemetryOff": "Wyłączona",
+    "installationId": "ID instalacji",
+    "registeredEmail": "Zarejestrowany e-mail",
+    "notRegistered": "Niezarejestrowana",
+    "lastHeartbeat": "Ostatni heartbeat",
+    "never": "Brak",
+    "notConfigured": "Na tej instancji nie ustawiono CONTROL_PLANE_URL.",
+    "emailLabel": "E-mail administratora",
+    "register": "Zarejestruj",
+    "registering": "Rejestracja…",
+    "registered": "Instancja zarejestrowana",
+    "copyId": "Skopiuj ID instalacji",
+    "copied": "Skopiowano",
+    "copyFailed": "Nie udało się skopiować. Zaznacz ID ręcznie.",
+    "loadFailed": "Nie udało się wczytać statusu Control Plane.",
+    "errors": {
+      "emailRequired": "Podaj adres e-mail.",
+      "registerFailed": "Rejestracja się nie powiodła. Sprawdź CONTROL_PLANE_URL i spróbuj ponownie."
+    }
   }
 }

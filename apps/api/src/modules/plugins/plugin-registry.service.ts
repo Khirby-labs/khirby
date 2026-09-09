@@ -1,6 +1,6 @@
 import { Injectable, Inject, OnModuleInit, Logger, Optional, HttpException } from '@nestjs/common';
-import { existsSync, rmSync } from 'node:fs';
-import { join } from 'node:path';
+import { createReadStream, existsSync, rmSync, statSync } from 'node:fs';
+import { join, relative, sep } from 'node:path';
 import 'reflect-metadata';
 import { LazyModuleLoader, ModuleRef } from '@nestjs/core';
 import { eq } from 'drizzle-orm';
@@ -15,10 +15,13 @@ import type { InstancePluginsLike } from '../../../../../packages/plugin-host/sr
 import type { AvailablePlugin } from '../../../../../packages/types/src';
 import {
   appendInstanceManifest,
+  assertPathInside,
   defaultInstancePluginsDir,
   ensureInstanceDir,
   findInstanceLocalDirForPlugin,
+  hasWebEntryBundle,
   isSafeLocalSegment,
+  isSafeRelPath,
   listInstancePluginFiles,
   loadPluginFromDir,
   normalizeInstancePluginRef,
@@ -26,8 +29,10 @@ import {
   readInstancePluginFile,
   readPackageName,
   removeInstanceManifest,
+  resolveInPlugin,
   resolveInstancePluginDirectory,
   scaffoldInstancePlugin,
+  WEB_ENTRY_REL,
   writeInstancePluginFile,
 } from './instance-plugins.loader';
 import { INSTANCE_PLUGIN_CONTRACT } from './instance-plugin-contract';
@@ -38,14 +43,10 @@ import { InstancePluginHttpBridge } from './instance-plugin-http.bridge';
 type PluginRow = typeof plugins.$inferSelect;
 
 /**
- * The plugins a FIRST boot installs, so a fresh instance looks exactly like it
- * did before the Marketplace existed (ADR-0032).
- *
- * An explicit constant on purpose. "Everything the loader returns" would make
- * every future plugin self-install, which is the opposite of what a marketplace
- * is for; a flag in the catalog would tie the first boot to a document fetched
- * over the network, so an instance without internet would come up with no
- * plugins at all.
+ * Former first-party plugin names — reserved for instance *scaffold* collision
+ * only. The empty marketplace image does not auto-install any of these
+ * (ADR-0032 seed path removed); Marketplace may install packages that reuse
+ * these `crm_*` names.
  */
 export const NATIVE_PLUGIN_NAMES = [
   'crm_webhook',
@@ -56,14 +57,15 @@ export const NATIVE_PLUGIN_NAMES = [
   'crm_pokelo',
 ] as const;
 
-/** Image natives plus the in-repo example — instance scaffold must not reuse them. */
+/** Scaffold-reserved names: former natives plus the in-repo example. */
 export const RESERVED_INSTANCE_PLUGIN_NAMES: readonly string[] = [
   ...NATIVE_PLUGIN_NAMES,
   'crm_hello',
 ];
 
-export function isNativePlugin(name: string): boolean {
-  return (NATIVE_PLUGIN_NAMES as readonly string[]).includes(name);
+/** Empty image: nothing is image-native; former names are scaffold-reserved only. */
+export function isNativePlugin(_name: string): boolean {
+  return false;
 }
 
 /**
@@ -110,17 +112,14 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
    * (ADR-0032), so a plugin present in the image without a row stays "available"
    * until the operator installs it from the Marketplace.
    *
-   * The one exception is a genuinely first boot — an entirely empty table — which
-   * seeds the native set. The condition is "the table is empty", never "this
-   * plugin has no row": the latter would resurrect anything an operator removed.
+   * An empty table is a no-op (control-plane / empty marketplace image — no
+   * native seed). Rows that exist keep the current sync path; volume Nest/HTTP
+   * is bound only for installed rows so a leftover unpack on disk does not look
+   * "loaded" while Marketplace still shows available.
    */
   async onModuleInit() {
     const rows = await this.db.select().from(plugins);
-
-    if (rows.length === 0) {
-      await this.seedNativePlugins();
-      return;
-    }
+    const installedNames = new Set(rows.map((row) => row.name));
 
     const byName = new Map(rows.map((row) => [row.name, row]));
     for (const plugin of this.registeredPlugins) {
@@ -132,65 +131,61 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       await this.syncInstalledPlugin(plugin, row);
     }
 
-    await this.bindVolumePluginHttp();
+    await this.bindVolumePluginHttp(installedNames);
   }
 
   /**
    * GET /api/plugins/:segment is owned by InstancePluginHttpBridgeController.
    * Volume Nest modules are not imported in forRoot (those become irreplaceable
-   * Fastify routes), so they must be lazy-loaded and bound on the bridge at boot.
+   * Fastify routes), so they must be lazy-loaded and bound on the bridge at boot
+   * — but only when a `plugins` row says they are installed (ADR-0032).
    */
-  private async bindVolumePluginHttp(): Promise<void> {
+  private async bindVolumePluginHttp(installedNames: Set<string>): Promise<void> {
     const imageNames = new Set(loadImagePlugins().map((plugin) => plugin.name));
     for (const plugin of this.registeredPlugins) {
       if (imageNames.has(plugin.name)) continue;
-      const nestModule = plugin.getNestModule?.();
-      if (!nestModule) continue;
-      if (this.lazyModuleLoader) {
-        await this.lazyModuleLoader.load(() => Promise.resolve(nestModule));
-      }
-      const paths = await this.pluginHttpRegistrar?.registerModuleRoutes(nestModule, {
-        pluginName: plugin.name,
-      });
-      if (paths?.length) {
-        this.logger.log(`Instance plugin ${plugin.name} HTTP routes: ${paths.join(', ')}`);
-      }
+      if (!installedNames.has(plugin.name)) continue;
+      await this.ensureVolumeNestBound(plugin);
     }
   }
 
-  /** Seed the native set on a first boot, then bring each one up. */
-  private async seedNativePlugins(): Promise<void> {
-    const registry = new Map(this.registeredPlugins.map((p) => [p.name, p]));
-    let seeded = 0;
-
-    for (const name of NATIVE_PLUGIN_NAMES) {
-      const plugin = registry.get(name);
-      if (!plugin) {
-        // Intersect with the registry rather than seeding names blindly: this
-        // row's displayName and version can only come from the instance.
-        this.logger.warn(`Native plugin ${name} is absent from this image — not seeded`);
-        continue;
-      }
-      const row = await this.insertRow(plugin);
-      if (!row) continue;
-      await this.activate(plugin, row);
-      seeded++;
+  /**
+   * Lazy-load a volume plugin's Nest module onto the HTTP bridge.
+   * Safe to call when the module is already loaded (append-only / LazyModuleLoader).
+   */
+  private async ensureVolumeNestBound(plugin: CrmPlugin): Promise<void> {
+    const nestModule = plugin.getNestModule?.();
+    if (!nestModule) return;
+    if (this.lazyModuleLoader) {
+      await this.lazyModuleLoader.load(() => Promise.resolve(nestModule));
+    } else {
+      this.logger.warn(
+        `Instance plugin ${plugin.name}: LazyModuleLoader unavailable — HTTP not wired`,
+      );
+      return;
     }
-
-    this.logger.log(`First boot: seeded ${seeded} native plugin(s)`);
-    await this.bindVolumePluginHttp();
+    const paths = await this.pluginHttpRegistrar?.registerModuleRoutes(nestModule, {
+      pluginName: plugin.name,
+    });
+    if (paths?.length) {
+      this.logger.log(`Instance plugin ${plugin.name} HTTP routes: ${paths.join(', ')}`);
+    } else {
+      this.logger.warn(
+        `Instance plugin ${plugin.name}: Nest module loaded but no HTTP routes were registered`,
+      );
+    }
   }
 
   /**
    * Insert the row for `plugin`, tolerating a concurrent writer.
    *
-   * Two app containers overlap during a rolling deploy (`docker-stack.yml` uses
-   * `order: start-first`), so both can see an empty table and both seed. `name`
-   * is unique, so the loser's insert is a no-op that returns no row — and it
-   * must then read the winner's row and carry on. Bailing out there would leave
-   * this process with rows in the database and no in-memory context, and emit()
-   * skips context-less plugins: every event in that replica would be dropped
-   * silently, which is worse than the crash this guards against.
+   * Two app containers may race on install (`docker-stack.yml` uses
+   * `order: start-first`). `name` is unique, so the loser's insert is a no-op
+   * that returns no row — and it must then read the winner's row and carry on.
+   * Bailing out there would leave this process with rows in the database and no
+   * in-memory context, and emit() skips context-less plugins: every event in
+   * that replica would be dropped silently, which is worse than the crash this
+   * guards against.
    */
   private async insertRow(plugin: CrmPlugin): Promise<PluginRow | null> {
     const [inserted] = await this.db
@@ -316,6 +311,7 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
      * the SPA can localize the card while the stored identity stays stable, and a
      * plugin that declares no key simply renders its literal.
      */
+    const web = this.webBundleFields(row.name);
     return {
       ...row,
       displayNameKey: plugin?.displayNameKey,
@@ -324,7 +320,57 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       configSchema,
       codeLoaded: !!plugin,
       canUninstall: !isNativePlugin(row.name),
+      ...web,
     };
+  }
+
+  /** Optional SPA hot-load fields when volume package ships dist/web/entry.js. */
+  private webBundleFields(
+    name: string,
+  ): { webBundleUrl: string; webBundleVersion: string } | Record<string, never> {
+    const local = findInstanceLocalDirForPlugin(this.instanceDir(), name);
+    if (!local) return {};
+    const absDir = join(this.instanceDir(), local);
+    if (!hasWebEntryBundle(absDir)) return {};
+    const entry = join(absDir, WEB_ENTRY_REL);
+    return {
+      webBundleUrl: `/api/plugins/${encodeURIComponent(name)}/web/entry.js`,
+      webBundleVersion: String(statSync(entry).mtimeMs),
+    };
+  }
+
+  /**
+   * Resolve a file under an installed volume plugin's `dist/web/` (path-traversal safe).
+   * Plugin must be installed; enabled is not required so a mid-load disable does not 404.
+   */
+  async resolveWebBundleFile(name: string, relUnderWeb: string): Promise<string> {
+    const row = await this.findByName(name);
+    if (!row) throw AppException.notFound('plugin', name);
+    const local = findInstanceLocalDirForPlugin(this.instanceDir(), name);
+    if (!local) throw AppException.notFound('web-bundle', name);
+    const webRoot = join(this.instanceDir(), local, 'dist', 'web');
+    if (!existsSync(join(webRoot, 'entry.js'))) {
+      throw AppException.notFound('web-bundle', name);
+    }
+    const rel = relUnderWeb.replace(/^\/+/, '');
+    if (!rel || !isSafeRelPath(rel)) {
+      throw AppException.badRequest('path must be relative without ..', { reason: 'bad_path' });
+    }
+    const abs = resolveInPlugin(webRoot, rel);
+    assertPathInside(webRoot, abs);
+    if (!existsSync(abs) || !statSync(abs).isFile()) {
+      throw AppException.notFound('file', rel);
+    }
+    // Extra guard: never escape dist/web even if resolveInPlugin changes.
+    const normalizedRel = relative(webRoot, abs).split(sep).join('/');
+    if (normalizedRel.startsWith('..') || normalizedRel.includes('\0')) {
+      throw AppException.badRequest('path must be relative without ..', { reason: 'bad_path' });
+    }
+    return abs;
+  }
+
+  openWebBundleStream(absPath: string) {
+    return createReadStream(absPath);
   }
 
   async findAll() {
@@ -432,10 +478,10 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
   /**
    * Install a plugin that is present in this process but has no row.
    *
-   * No code is loaded: the Nest module is already mounted, so all that moves is
-   * the row plus the in-memory context. That is what lets a Marketplace install
-   * take effect without restarting the process while ADR-0016's ban on reloading
-   * a DynamicModule at runtime still holds.
+   * Image Nest modules are already mounted via PluginsModule.forRoot. Volume
+   * Nest is bound only for installed rows at boot — so Marketplace install of a
+   * package already scanned from disk must wire LazyModuleLoader here before
+   * the row + context go live (ADR-0016 still bans unload).
    */
   async install(name: string) {
     const plugin = this.registeredPlugins.find((p) => p.name === name);
@@ -444,6 +490,11 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
 
     const existing = await this.findByName(name);
     if (existing) throw AppException.alreadyExists('plugin', 'name', name);
+
+    const imageNames = new Set(loadImagePlugins().map((p) => p.name));
+    if (!imageNames.has(plugin.name)) {
+      await this.ensureVolumeNestBound(plugin);
+    }
 
     const [inserted] = await this.insertForInstall(plugin);
 
@@ -478,21 +529,26 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
 
   validate(absPackageDir: string): { name: string } {
     try {
+      // Reserved names apply to scaffold only — Marketplace may install packages
+      // that reuse former native `crm_*` identifiers on an empty image.
       const plugin = loadPluginFromDir(absPackageDir);
-      if (RESERVED_INSTANCE_PLUGIN_NAMES.includes(plugin.name)) {
-        throw AppException.badRequest(`Reserved plugin name: ${plugin.name}`, {
-          reason: 'reserved_name',
-        });
-      }
       return { name: plugin.name };
     } catch (err) {
       const message =
         err instanceof Error ? err.message || err.name || 'Plugin validation failed' : String(err);
       const errName = (err as Error).name;
+      if (errName === 'web_bundle_required' || message === 'web_bundle_required') {
+        throw AppException.badRequest(
+          'exports["./web"] requires dist/web/entry.js on the volume package',
+          { reason: 'web_bundle_required' },
+        );
+      }
       if (errName === 'web_not_hot_loadable' || message === 'web_not_hot_loadable') {
-        throw AppException.badRequest('Vue ./web is not hot-loadable on an instance volume', {
-          reason: 'web_not_hot_loadable',
-        });
+        // Legacy alias — same gate as web_bundle_required (ADR-0043).
+        throw AppException.badRequest(
+          'exports["./web"] requires dist/web/entry.js on the volume package',
+          { reason: 'web_bundle_required' },
+        );
       }
       if (err instanceof HttpException) throw err;
       throw AppException.badRequest(message);
@@ -512,13 +568,21 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
   /**
    * validate → manifest → hotLoad (first time) or enable/install row (retry).
    * Safe to call when the plugin is already loaded in this process.
+   *
+   * Marketplace npm unpack may pass `allowReservedScaffoldDirs` so packages can
+   * land on former first-party directory names on an empty image.
    */
   async installFromDirectory(
     localDir: string,
     packageName?: string,
+    opts?: { allowReservedScaffoldDirs?: boolean },
   ): Promise<{ name: string; status: 'installed' | 're-enabled' | 'already_active' }> {
-    const resolved = this.resolveExistingDir(localDir);
-    const absDir = pluginVolumeRoot(this.instanceDir(), resolved);
+    const resolved = opts?.allowReservedScaffoldDirs
+      ? this.resolveDirAllowingReserved(localDir)
+      : this.resolveExistingDir(localDir);
+    const absDir = pluginVolumeRoot(this.instanceDir(), resolved, {
+      allowReservedScaffoldDirs: opts?.allowReservedScaffoldDirs,
+    });
     const { name } = this.validate(absDir);
     const pkgName = packageName?.trim() || readPackageName(absDir);
     this.appendManifest(pkgName, resolved);
@@ -542,16 +606,59 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
   }
 
   /**
-   * Uninstall a non-native plugin: optional onUninstall, volume cleanup, row delete.
+   * Marketplace upgrade: replace volume files (caller already unpacked), reload
+   * in-process code, and bump the `plugins.version` row to the package version.
+   */
+  async upgradeFromDirectory(
+    localDir: string,
+    packageName?: string,
+    opts?: { allowReservedScaffoldDirs?: boolean },
+  ): Promise<ReturnType<PluginRegistryService['enrichRow']>> {
+    const resolved = opts?.allowReservedScaffoldDirs
+      ? this.resolveDirAllowingReserved(localDir)
+      : this.resolveExistingDir(localDir);
+    const absDir = pluginVolumeRoot(this.instanceDir(), resolved, {
+      allowReservedScaffoldDirs: opts?.allowReservedScaffoldDirs,
+    });
+    const { name } = this.validate(absDir);
+    const row = await this.findByName(name);
+    if (!row) throw AppException.notFound('plugin', name);
+
+    const pkgName = packageName?.trim() || readPackageName(absDir);
+    this.appendManifest(pkgName, resolved);
+
+    if (!this.loadedNames().includes(name)) {
+      await this.hotLoad(absDir);
+    } else {
+      await this.reloadFromDirectory(resolved);
+    }
+
+    const plugin = this.registeredPlugins.find((p) => p.name === name);
+    if (!plugin) throw AppException.notFound('plugin', name);
+
+    const [updated] = await this.db
+      .update(plugins)
+      .set({
+        version: plugin.version,
+        displayName: plugin.displayName,
+        description: plugin.description ?? null,
+        updatedAt: new Date(),
+      } as any)
+      .where(eq(plugins.name, name))
+      .returning();
+
+    const current = updated ?? { ...row, version: plugin.version };
+    await this.activate(plugin, current);
+    this.logger.log(`Plugin upgraded from marketplace: ${name} → v${plugin.version}`);
+    return this.enrichRow(current);
+  }
+
+  /**
+   * Uninstall a plugin: optional onUninstall, volume cleanup, row delete.
+   * Empty image has no protected natives — every installed row is removable.
    * In-memory code stays loaded until API restart (ADR-0036 append-only hotLoad).
    */
   async uninstall(name: string): Promise<{ name: string }> {
-    if (isNativePlugin(name)) {
-      throw AppException.badRequest(`Native plugin ${name} cannot be uninstalled`, {
-        reason: 'native_plugin',
-      });
-    }
-
     const row = await this.findByName(name);
     if (!row) throw AppException.notFound('plugin', name);
 
@@ -723,6 +830,19 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     }
   }
 
+  /** Like resolveExistingDir but allows former first-party dir names (marketplace unpack). */
+  private resolveDirAllowingReserved(ref: string): string {
+    const raw = normalizeInstancePluginRef(ref);
+    if (!isSafeLocalSegment(raw)) {
+      return this.resolveExistingDir(ref);
+    }
+    const absDir = pluginVolumeRoot(this.instanceDir(), raw, { allowReservedScaffoldDirs: true });
+    if (!existsSync(join(absDir, 'package.json'))) {
+      throw AppException.notFound('plugin', raw);
+    }
+    return raw;
+  }
+
   private resolveDirOrSegment(ref: string): string {
     try {
       return resolveInstancePluginDirectory(this.instanceDir(), ref);
@@ -784,25 +904,10 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     this.logger.log(`Instance plugin loaded in-process: ${name} v${plugin.version}`);
 
     try {
-      const nestModule = plugin.getNestModule?.();
-      if (nestModule && this.lazyModuleLoader) {
-        await this.lazyModuleLoader.load(() => Promise.resolve(nestModule));
-        const paths = await this.pluginHttpRegistrar?.registerModuleRoutes(nestModule, {
-          pluginName: name,
-        });
-        if (paths?.length) {
-          this.logger.log(`Instance plugin ${name} HTTP routes: ${paths.join(', ')}`);
-        } else {
-          this.logger.warn(
-            `Instance plugin ${name}: Nest module loaded but no HTTP routes were registered`,
-          );
-        }
-      } else if (nestModule && !this.lazyModuleLoader) {
-        this.logger.warn(`Instance plugin ${name}: LazyModuleLoader unavailable — HTTP not wired`);
-      } else {
+      if (!plugin.getNestModule) {
         this.logger.log(`Instance plugin ${name}: no Nest module (UI page needs getNestModule)`);
       }
-
+      // install() binds volume Nest when needed, then writes the row + activates.
       await this.install(name);
       this.logger.log(`Instance plugin installed and enabled: ${name}`);
       return { name };

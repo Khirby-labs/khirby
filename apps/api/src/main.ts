@@ -134,6 +134,8 @@ async function bootstrap() {
   await app.register(fastifySession, {
     store: new IoRedisSessionStore(redisClient),
     secret: sessionSecret,
+    // Unique on localhost — must not collide with Control Plane's cp.sid (same host).
+    cookieName: 'khirby.sid',
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
@@ -151,14 +153,10 @@ async function bootstrap() {
       .setDescription(
         'REST API for CRM Khirby. ' +
           'Authenticate via session cookie — POST /api/auth/login first; ' +
-          'the connect.sid cookie is set automatically.',
+          'the khirby.sid cookie is set automatically.',
       )
       .setVersion('1.0')
-      .addCookieAuth(
-        'connect.sid',
-        { type: 'apiKey', in: 'cookie', name: 'connect.sid' },
-        'session',
-      )
+      .addCookieAuth('khirby.sid', { type: 'apiKey', in: 'cookie', name: 'khirby.sid' }, 'session')
       .addTag('auth', 'Login, logout, profile, password change')
       .addTag('users', 'User management (admin)')
       .addTag('contacts', 'CRM contacts')

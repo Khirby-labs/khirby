@@ -4,9 +4,13 @@
     "configure": "Skonfiguruj",
     "details": "Szczegóły",
     "disabled": "Zainstalowana, wyłączona",
+    "incompatible": "Niekompatybilna",
     "install": "Zainstaluj",
     "installing": "Instalowanie…",
-    "installed": "Zainstalowana"
+    "installed": "Zainstalowana",
+    "update": "Aktualizuj",
+    "updateAvailable": "Aktualizacja do v{version}",
+    "updating": "Aktualizowanie…"
   },
   "category": {
     "ai": "AI",
@@ -19,11 +23,12 @@
   "details": {
     "configureAfter": "Te wartości ustawia się po instalacji w Ustawieniach → Wtyczki.",
     "docs": "Przeczytaj dokumentację",
+    "permissions": "Uprawnienia",
     "requiredConfig": "Wymaga konfiguracji",
     "requiredCount": "{count} ustawienie do uzupełnienia | {count} ustawienia do uzupełnienia | {count} ustawień do uzupełnienia"
   },
   "empty": {
-    "message": "W tej wersji nie ma wtyczek z katalogu, więc nic nie można zainstalować.",
+    "message": "Dla tej instancji nie ma jeszcze pozycji w katalogu, więc nic nie można zainstalować.",
     "title": "Katalog jest pusty"
   },
   "errors": {
@@ -34,11 +39,33 @@
     "all": "Wszystkie kategorie",
     "label": "Kategoria"
   },
+  "section": {
+    "community": "Społeczność",
+    "verified": "Zweryfikowane"
+  },
+  "submit": {
+    "description": "Opis",
+    "name": "Nazwa wyświetlana",
+    "open": "Zgłoś wtyczkę",
+    "packageName": "Pakiet npm",
+    "publisherName": "Wydawca",
+    "repositoryUrl": "URL repozytorium",
+    "slug": "Slug",
+    "submit": "Wyślij",
+    "submitting": "Wysyłanie…",
+    "subtitle": "Wyślij listing do Control Plane do przeglądu. Zanim pojawi się w katalogu, musi zostać zatwierdzony.",
+    "title": "Zgłoś wtyczkę"
+  },
   "subtitle": "Przegląd możliwości CRM-a i instalacja wtyczki jednym kliknięciem.",
   "title": "Marketplace",
   "toast": {
     "alreadyInstalled": "Ta wtyczka jest już zainstalowana",
     "installFailed": "Instalacja się nie powiodła. Spróbuj ponownie lub sprawdź powód w logu API.",
-    "installed": "Zainstalowano wtyczkę {name}"
+    "installed": "Zainstalowano wtyczkę {name}",
+    "submitFailed": "Zgłoszenie się nie powiodło. Sprawdź ustawienia Control Plane i spróbuj ponownie.",
+    "submitted": "Wtyczka zgłoszona do przeglądu",
+    "updateFailed": "Aktualizacja się nie powiodła. Spróbuj ponownie lub sprawdź powód w logu API.",
+    "updated": "Zaktualizowano {name} do v{version}",
+    "webBundleRequired": "Pakiet npm tej wtyczki nie ma bundla Vue (dist/web). Opublikuj ponownie z build:web albo zainstaluj z lokalnego checkoutu, który już go ma."
   }
 }

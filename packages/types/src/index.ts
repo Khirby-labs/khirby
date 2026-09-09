@@ -264,6 +264,20 @@ export interface MarketplacePlugin {
   icon: string;
   docsUrl: string | null;
   configSchema: PluginConfigField[];
+  /** Control Plane slug — install/detail key when the package is not yet loaded. */
+  slug?: string;
+  packageName?: string;
+  publisherName?: string | null;
+  verified?: boolean;
+  compatible?: boolean;
+  permissions?: string[] | null;
+  /** Newest approved catalog version (Control Plane). */
+  latestVersion?: string | null;
+  /**
+   * True when `status === 'installed'` and `latestVersion` is a newer semver than
+   * the installed `version`. The SPA shows an update affordance.
+   */
+  updateAvailable?: boolean;
 }
 
 /**
@@ -302,6 +316,13 @@ export interface Plugin {
   codeLoaded?: boolean;
   /** False for native image plugins that cannot be removed from the instance. */
   canUninstall?: boolean;
+  /**
+   * Volume/marketplace SPA bundle URL when `dist/web/entry.js` exists on disk
+   * (ADR-0043). Same-origin; load via dynamic import with credentials cookie.
+   */
+  webBundleUrl?: string;
+  /** Cache-bust token (mtime ms) for `webBundleUrl`. */
+  webBundleVersion?: string;
 }
 
 /**

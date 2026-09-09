@@ -142,4 +142,39 @@ describe('router guard (beforeEach)', () => {
     expect(router.hasRoute('plugin-hello-world')).toBe(true);
     expect(router.currentRoute.value.name).toBe('plugin-hello-world');
   });
+
+  it('registers a route for an instance plugin with webBundleUrl', async () => {
+    const hotWeb: Plugin = {
+      id: 'p-hot',
+      name: 'crm_hot_web',
+      displayName: 'Hot Web',
+      description: null,
+      version: '0.1.0',
+      enabled: true,
+      config: {},
+      installedAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      webBundleUrl: '/api/plugins/crm_hot_web/web/entry.js',
+      webBundleVersion: '123',
+      frontendRoutes: [
+        {
+          path: '/plugins/hot-web',
+          name: 'plugin-hot-web',
+          navLabel: 'Hot Web',
+          navIcon: 'plugins',
+        },
+      ],
+    };
+
+    server.use(
+      authMe(() => HttpResponse.json(user)),
+      plugins([hotWeb]),
+    );
+
+    // Authenticated navigation registers routes; do not open the plugin URL
+    // (that would dynamic-import the bundle, which MSW cannot serve as ESM).
+    await router.push('/login?hot=1');
+
+    expect(router.hasRoute('plugin-hot-web')).toBe(true);
+  });
 });

@@ -6,8 +6,8 @@ import { InstancePluginHttpBridge } from './instance-plugin-http.bridge';
 
 /**
  * Maps Nest controllers from instance plugins onto InstancePluginHttpBridge.
- * Fastify 5 cannot route() after listen; GET /api/plugins/:segment is the
- * boot-time dispatcher, and this registrar fills the bridge map.
+ * Fastify 5 cannot route() after listen; ALL /api/plugins/* is the boot-time
+ * dispatcher, and this registrar fills the bridge map (GET/POST/PATCH/DELETE…).
  */
 @Injectable()
 export class PluginNestHttpRegistrar {

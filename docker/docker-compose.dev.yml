@@ -1,3 +1,8 @@
+# Postgres + Redis for local `pnpm dev` (`pnpm start:db`).
+# Explicit project + volume names so this never collides with another repo's
+# docker/compose (e.g. control-plane) that also lives under a `docker/` folder.
+name: khirby
+
 services:
   db:
     image: postgres:16-alpine
@@ -8,10 +13,10 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "${DB_PORT:-5432}:5432"
+      - '${DB_PORT:-5432}:5432'
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U crm -d crm"]
+      test: ['CMD-SHELL', 'pg_isready -U crm -d crm']
       interval: 5s
       timeout: 5s
       retries: 10
@@ -23,14 +28,16 @@ services:
     volumes:
       - redis_data:/data
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - '${REDIS_PORT:-6379}:6379'
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 5s
       timeout: 3s
       retries: 5
 
 volumes:
   postgres_data:
+    name: khirby_postgres_data
   redis_data:
+    name: khirby_redis_data

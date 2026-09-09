@@ -3,7 +3,10 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import 'reflect-metadata';
 import { createJiti } from 'jiti';
 import type { CrmPlugin } from '@khirby/plugin-sdk';
-import { loadVolumeNestModule } from '../../../../../packages/plugin-host/src/volume-nest';
+import {
+  loadVolumeNestModuleFile,
+  resolveVolumeNestModuleFile,
+} from '../../../../../packages/plugin-host/src/volume-nest';
 import { type InstancePluginScaffoldInput, writeScaffold } from './instance-plugin-scaffold';
 import { assertInstancePluginShape } from './instance-plugin-validate';
 
@@ -12,7 +15,7 @@ export const INSTANCE_MANIFEST = 'instance.manifest.json';
 export const MAX_INSTANCE_FILES = 24;
 export const MAX_INSTANCE_FILE_BYTES = 100_000;
 
-/** First-party checkout dirs. Scaffold/write must not land on top of these. */
+/** First-party checkout dirs. Scaffold must not land on top of these names. */
 export const FIRST_PARTY_PLUGIN_DIRS: readonly string[] = [
   'crm-plugin-webhook',
   'crm-plugin-discord',
@@ -21,6 +24,17 @@ export const FIRST_PARTY_PLUGIN_DIRS: readonly string[] = [
   'crm-plugin-ai-compose',
   'crm-plugin-pokelo',
 ];
+
+/**
+ * Dir names reserved for instance *scaffold* collision (former first-party
+ * checkouts + `node_modules`). Marketplace npm unpack may write into the
+ * first-party names on an empty-image host — pass
+ * `{ allowReservedScaffoldDirs: true }` into `pluginVolumeRoot` (wired from
+ * PluginPackageInstaller + MarketplaceService.install).
+ */
+export function isReservedScaffoldDir(directory: string): boolean {
+  return directory === 'node_modules' || FIRST_PARTY_PLUGIN_DIRS.includes(directory);
+}
 
 export type InstanceManifest = {
   plugins: Array<{ package: string; local: string }>;
@@ -59,12 +73,19 @@ export function isSafeLocalSegment(local: string): boolean {
   return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(local);
 }
 
+/** Prebuilt SPA entry for volume/marketplace hot-load (ADR-0043). */
+export const WEB_ENTRY_REL = 'dist/web/entry.js';
+
 export function packageDeclaresWeb(pkg: Record<string, unknown>): boolean {
   const exportsField = pkg.exports;
   if (!exportsField || typeof exportsField !== 'object' || Array.isArray(exportsField)) {
     return false;
   }
   return './web' in (exportsField as Record<string, unknown>);
+}
+
+export function hasWebEntryBundle(absDir: string): boolean {
+  return existsSync(join(absDir, WEB_ENTRY_REL));
 }
 
 function readManifest(dir: string): InstanceManifest {
@@ -126,6 +147,10 @@ export function findInstanceLocalDirForPlugin(
   }
   if (!existsSync(volumeDir)) return null;
   for (const local of readdirSync(volumeDir)) {
+    // TODO(control-plane): once marketplace unpacks into former first-party dir
+    // names, stop skipping FIRST_PARTY_PLUGIN_DIRS (empty image — those dirs are
+    // volume installs). Keep skip for now so monorepo checkouts are not scanned
+    // as instance plugins; hotLoad of non-first-party dirs is unaffected.
     if (!isSafeLocalSegment(local) || FIRST_PARTY_PLUGIN_DIRS.includes(local)) continue;
     const pkgDir = join(volumeDir, local);
     if (!statSync(pkgDir).isDirectory()) continue;
@@ -229,9 +254,11 @@ export function resolvePackageEntry(absDir: string): string {
 export function loadPluginFromDir(absDir: string): CrmPlugin {
   const pkgPath = join(absDir, 'package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>;
-  if (packageDeclaresWeb(pkg)) {
-    const err = new Error('web_not_hot_loadable');
-    err.name = 'web_not_hot_loadable';
+  // ./web is allowed when dist/web/entry.js is on disk (SPA hot-load, ADR-0043).
+  // Declaring ./web without a built bundle fails marketplace/hotLoad install.
+  if (packageDeclaresWeb(pkg) && !hasWebEntryBundle(absDir)) {
+    const err = new Error('web_bundle_required');
+    err.name = 'web_bundle_required';
     throw err;
   }
   const entry = resolvePackageEntry(absDir);
@@ -249,17 +276,27 @@ export function loadPluginFromDir(absDir: string): CrmPlugin {
   if (!plugin?.name) {
     throw new Error('createPlugin returned no name');
   }
+  // npm / volume packages: package.json is the published version; createPlugin()
+  // often hardcodes an older string that then lands in the `plugins` row.
+  if (typeof pkg.version === 'string' && pkg.version.trim()) {
+    plugin.version = pkg.version.trim();
+  }
   attachVolumeNestModule(plugin, absDir);
   assertInstancePluginShape(plugin);
   return plugin;
 }
 
-/** If src/nest-module.ts exists and the plugin omitted getNestModule, wire the host helper. */
+/**
+ * Wire Nest via ts-node for volume/marketplace packages.
+ *
+ * jiti breaks Nest DI metadata (e.g. `@Optional() @Inject(TOKEN) x = null` drops
+ * the inject token). Always prefer ts-node when a nest module file is on disk —
+ * even if createPlugin() already returned a jiti-imported Module class.
+ */
 function attachVolumeNestModule(plugin: CrmPlugin, absDir: string): void {
-  const srcDir = join(absDir, 'src');
-  if (!existsSync(join(srcDir, 'nest-module.ts'))) return;
-  if (typeof plugin.getNestModule === 'function') return;
-  plugin.getNestModule = () => loadVolumeNestModule(srcDir);
+  const nestFile = resolveVolumeNestModuleFile(absDir);
+  if (!nestFile) return;
+  plugin.getNestModule = () => loadVolumeNestModuleFile(nestFile);
 }
 
 /** Drop Node/jiti/ts-node cache for a volume plugin so the next load sees disk. */
@@ -301,6 +338,9 @@ export function loadInstancePlugins(
   if (!existsSync(absDir)) return [];
   const out: CrmPlugin[] = [];
   for (const local of listedLocals(absDir)) {
+    // TODO(control-plane): allow loading FIRST_PARTY_PLUGIN_DIRS when they are
+    // marketplace volume installs (empty image). Skipping still protects monorepo
+    // checkouts; non-first-party hotLoad is unchanged.
     if (!isSafeLocalSegment(local) || FIRST_PARTY_PLUGIN_DIRS.includes(local)) {
       if (!isSafeLocalSegment(local)) {
         log(`Instance plugin local path skipped: ${local}`);
@@ -383,11 +423,20 @@ export function listRelFiles(dir: string): string[] {
   return out.sort();
 }
 
-export function pluginVolumeRoot(volumeDir: string, directory: string): string {
+export function pluginVolumeRoot(
+  volumeDir: string,
+  directory: string,
+  opts?: { allowReservedScaffoldDirs?: boolean },
+): string {
   if (!isSafeLocalSegment(directory)) {
     throw new Error('bad_path');
   }
-  if (directory === 'node_modules' || FIRST_PARTY_PLUGIN_DIRS.includes(directory)) {
+  if (directory === 'node_modules') {
+    throw new Error('reserved_dir');
+  }
+  // Scaffold must not overwrite former first-party package dirs; marketplace npm
+  // unpack passes allowReservedScaffoldDirs from PluginPackageInstaller.
+  if (!opts?.allowReservedScaffoldDirs && isReservedScaffoldDir(directory)) {
     throw new Error('reserved_dir');
   }
   return join(volumeDir, directory);
@@ -397,6 +446,9 @@ export function scaffoldInstancePlugin(
   volumeDir: string,
   input: InstancePluginScaffoldInput,
 ): { directory: string; files: string[] } {
+  if (isReservedScaffoldDir(input.directory)) {
+    throw new Error('reserved_dir');
+  }
   const root = pluginVolumeRoot(volumeDir, input.directory);
   ensureInstanceDir(root);
   const files = writeScaffold(root, input);

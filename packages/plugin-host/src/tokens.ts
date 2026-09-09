@@ -334,7 +334,7 @@ export interface InstancePluginsLike {
   /** Delete volume files, manifest entry, and DB row (process memory until restart). */
   removeInstance(localDir: string): Promise<{ name: string }>;
   appendManifest(packageName: string, localDir: string): void;
-  /** Shared authoring contract (events, volume, ./web ban). */
+  /** Shared authoring contract (events, volume, web bundle rules). */
   pluginContract(): string;
   scaffold(input: InstancePluginScaffoldInput): { directory: string; files: string[] };
   writeFile(

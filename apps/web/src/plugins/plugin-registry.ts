@@ -5,9 +5,11 @@
  * Components come from:
  *   1. generatedPluginWebEntries (packages with exports["./web"], ADR-0016)
  *   2. legacy first-party map below (until those plugins ship ./web)
+ *   3. volume webBundleUrl (ADR-0043) — registered at runtime in the router
  *
  * pluginSettingsPanels: custom settings UIs embedded in Settings → Plugins
- * (ADR-0023) — not registered as sidebar routes.
+ * (ADR-0023) — not registered as sidebar routes. Still hosted in the SPA for
+ * plugins whose interactive secrets UI is not yet a volume `./web` export.
  *
  * mailComposeAssistants: ADR-0017 — plugins register compose assist components
  * that render above the reply textarea in MailThreadPanel.
@@ -19,7 +21,7 @@ import { generatedPluginWebEntries } from './plugin-registry.generated';
 const legacyComponentMap: Record<string, () => Promise<unknown>> = {};
 
 /**
- * First-party plugins whose settings are too interactive for PluginConfigForm
+ * Plugins whose settings are too interactive for PluginConfigForm
  * (tokens, encrypted keys, remote pickers). Mounted inside the Plugins list
  * expand panel — not as sidebar pages (ADR-0023).
  */
@@ -56,7 +58,6 @@ export { generatedPluginWebEntries };
 
 /**
  * ADR-0017: Mail compose assistant slot.
- * Plugins register here to render an assist component above the compose/reply textarea.
  * Each component receives { threadId?, leadId?, onSuggest } props.
  */
 export const mailComposeAssistants: Record<string, () => Promise<unknown>> = {

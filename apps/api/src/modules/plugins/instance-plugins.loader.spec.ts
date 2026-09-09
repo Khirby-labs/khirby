@@ -14,6 +14,7 @@ import {
   loadInstancePlugins,
   loadPluginFromDir,
   packageDeclaresWeb,
+  hasWebEntryBundle,
   pluginVolumeRoot,
   readInstancePluginFile,
   resolveInstancePluginDirectory,
@@ -22,7 +23,10 @@ import {
 } from './instance-plugins.loader';
 import { pluginClassName, scaffoldFileMap } from './instance-plugin-scaffold';
 
-function writePlugin(dir: string, opts: { name: string; web?: boolean; skipCreate?: boolean }) {
+function writePlugin(
+  dir: string,
+  opts: { name: string; web?: boolean; webBundle?: boolean; skipCreate?: boolean },
+) {
   mkdirSync(join(dir, 'src'), { recursive: true });
   const exportsField: Record<string, string> = { '.': './src/index.ts' };
   if (opts.web) exportsField['./web'] = './src/web/index.ts';
@@ -35,6 +39,13 @@ function writePlugin(dir: string, opts: { name: string; web?: boolean; skipCreat
       exports: exportsField,
     }),
   );
+  if (opts.webBundle) {
+    mkdirSync(join(dir, 'dist', 'web'), { recursive: true });
+    writeFileSync(
+      join(dir, 'dist', 'web', 'entry.js'),
+      'export const webEntry = { name: "x", component: () => Promise.resolve({}) };\n',
+    );
+  }
   if (opts.skipCreate) {
     writeFileSync(join(dir, 'src/index.ts'), 'export const nope = 1;\n');
     return;
@@ -96,10 +107,24 @@ describe('instance-plugins.loader', () => {
     expect(logs.some((l) => l.includes('clashes'))).toBe(true);
   });
 
-  it('loadPluginFromDir rejects exports["./web"]', () => {
+  it('loadPluginFromDir rejects exports["./web"] without dist/web/entry.js', () => {
     const dir = mkdtempSync(join(tmpdir(), 'instance-web-'));
     writePlugin(dir, { name: 'crm_webby', web: true });
-    expect(() => loadPluginFromDir(dir)).toThrow('web_not_hot_loadable');
+    expect(() => loadPluginFromDir(dir)).toThrow('web_bundle_required');
+  });
+
+  it('loadPluginFromDir accepts exports["./web"] when dist/web/entry.js exists', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'instance-web-ok-'));
+    writePlugin(dir, { name: 'crm_web_ok', web: true, webBundle: true });
+    expect(hasWebEntryBundle(dir)).toBe(true);
+    expect(loadPluginFromDir(dir).name).toBe('crm_web_ok');
+  });
+
+  it('loadPluginFromDir allows packages without ./web even without a web bundle', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'instance-no-web-'));
+    writePlugin(dir, { name: 'crm_api_only' });
+    expect(hasWebEntryBundle(dir)).toBe(false);
+    expect(loadPluginFromDir(dir).name).toBe('crm_api_only');
   });
 
   it('loadPluginFromDir rejects a package without createPlugin', () => {

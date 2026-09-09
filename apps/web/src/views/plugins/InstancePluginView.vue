@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Host page for instance plugins that declare getFrontendRoutes() but have no
- * exports["./web"] (ADR-0036). Heading is the plugin displayName; optional
+ * volume `dist/web/entry.js` (ADR-0043). Heading is the plugin displayName; optional
  * `stats` and `footer` come from GET /api{route.path} (plugin Nest controller).
  */
 import { computed, ref, watch } from 'vue';

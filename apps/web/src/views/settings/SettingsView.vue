@@ -139,8 +139,9 @@
       </div>
     </div>
 
-    <aside class="w-full max-w-sm shrink-0 lg:sticky lg:top-4">
+    <aside class="w-full max-w-sm shrink-0 space-y-4 lg:sticky lg:top-4">
       <VersionCard />
+      <ControlPlaneCard />
     </aside>
   </div>
 </template>
@@ -155,6 +156,7 @@ import { useLocale } from '../../composables/useLocale';
 import type { Locale } from '../../i18n/locales';
 import FormField from '../../components/ui/FormField.vue';
 import VersionCard from './VersionCard.vue';
+import ControlPlaneCard from './ControlPlaneCard.vue';
 
 const { t } = useI18n();
 const auth = useAuthStore();

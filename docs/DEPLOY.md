@@ -61,18 +61,20 @@ Template: [`docker/crm.env.example`](../docker/crm.env.example).
 | `GOOGLE_MAIL_CLIENT_ID` / `GOOGLE_MAIL_CLIENT_SECRET` | Optional — Gmail/Workspace OAuth |
 | `AI_COMPOSE_SECRETS_KEY` | 32-byte hex key — AI Compose |
 | `POKELO_SECRETS_KEY` | 32-byte hex key — Pokelo MCP token |
-| `MARKETPLACE_CATALOG_URL` | Optional. **Empty or unset = the Marketplace works from the catalog baked into the image and makes no network request at all** — the normal setup. Set it to a versioned JSON document to take the catalog from there instead; https is required in production. An unreachable, oversized, wrongly-typed or invalid document is ignored, the in-image copy is used, and one line is written to the log (ADR-0034) |
+| `CONTROL_PLANE_URL` | Optional. Base URL of Bearly Control Plane (no trailing slash), e.g. `https://control.bearly.pro`. **Empty or unset = no outbound Control Plane calls** — marketplace catalog stays empty, heartbeats soft-fail, register returns an error (ADR-0044) |
+| `DISABLE_TELEMETRY` | Optional. Set to `true`, `1`, or `yes` to disable anonymous installation heartbeats entirely. Catalog / register / submit still use `CONTROL_PLANE_URL` when set (ADR-0044) |
+| `MARKETPLACE_CATALOG_URL` | **Deprecated** (ADR-0044). Ignored in favour of Control Plane. Kept only so old compose files do not fail on an unknown key |
 | `INSTANCE_PLUGINS_DIR` | Writable `plugins/` dir for self-build (ADR-0036, ADR-0039). Images set `/app/plugins`; compose bind-mounts host `plugins/`, the stack bind-mounts `${DATA_PATH}/plugins`. Unset locally defaults to `<repo>/plugins` |
 
 `DATABASE_URL` / `REDIS_URL` are built by the stack (`khirby-postgres`, `khirby-redis`).
 
 ### First start
 
-On a **first** start — when the `plugins` table is entirely empty — the API seeds
-the six native plugins so a new instance behaves as it always has. On every later
-start it installs nothing: from then on a row in `plugins` is what "installed"
-means, and plugins are added from the Marketplace (ADR-0032). Truncating the table
-by hand makes the next start seed it again.
+The public image ships an **empty** `plugins.manifest.json` and does **not** seed
+native plugin rows. An empty `plugins` table stays empty until the operator
+installs from the Marketplace (Control Plane catalog → npm + checksum → volume
+hot-load) or self-builds (ADR-0044). A row in `plugins` is still what "installed"
+means.
 
 ---
 

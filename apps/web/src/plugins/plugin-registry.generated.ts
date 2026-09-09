@@ -6,10 +6,10 @@ export type GeneratedPluginWebEntry = {
   children?: unknown[];
   messages?: { en?: Record<string, unknown>; pl?: Record<string, unknown> };
 };
-import { webEntry as webEntry_0 } from '@khirby/plugin-listmonk/web';
+
 
 const entries: GeneratedPluginWebEntry[] = [
-  webEntry_0,
+
 ];
 
 export const generatedPluginWebEntries: Record<string, GeneratedPluginWebEntry> = Object.fromEntries(

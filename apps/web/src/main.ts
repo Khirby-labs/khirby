@@ -5,7 +5,11 @@ import { router } from './router';
 import { initTheme } from './composables/useTheme';
 import { initLocale } from './composables/useLocale';
 import { i18n } from './i18n';
+import { installKhirbyPeers } from './plugins/host-peers';
 import './style.css';
+
+// Peers must exist before any volume plugin dynamic-imports /api/plugins/.../web/.
+installKhirbyPeers();
 
 initTheme();
 
