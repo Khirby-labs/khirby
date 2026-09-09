@@ -14,6 +14,8 @@ import {
   loadInstancePlugins,
   loadPluginFromDir,
   packageDeclaresWeb,
+  preferLocalCheckoutPlugins,
+  applyRootEnvFile,
   hasWebEntryBundle,
   pluginVolumeRoot,
   readInstancePluginFile,
@@ -167,6 +169,88 @@ describe('instance-plugins.loader', () => {
     const root = mkdtempSync(join(tmpdir(), 'instance-first-party-'));
     writePlugin(join(root, 'crm-plugin-mcp'), { name: 'crm_from_disk' });
     expect(loadInstancePlugins(root, new Set())).toEqual([]);
+  });
+
+  it('preferLocalCheckoutPlugins reads 1/true/yes', () => {
+    expect(preferLocalCheckoutPlugins({ KHIRBY_PLUGINS_LOCAL: '1' })).toBe(true);
+    expect(preferLocalCheckoutPlugins({ KHIRBY_PLUGINS_LOCAL: 'true' })).toBe(true);
+    expect(preferLocalCheckoutPlugins({ KHIRBY_PLUGINS_LOCAL: 'yes' })).toBe(true);
+    expect(preferLocalCheckoutPlugins({ KHIRBY_PLUGINS_LOCAL: '0' })).toBe(false);
+    expect(preferLocalCheckoutPlugins({})).toBe(false);
+  });
+
+  it('loads a first-party checkout when KHIRBY_PLUGINS_LOCAL is on', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-local-flag-'));
+    writePlugin(join(root, 'crm-plugin-mcp'), { name: 'crm_from_checkout' });
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    process.env.KHIRBY_PLUGINS_LOCAL = '1';
+    try {
+      expect(loadInstancePlugins(root, new Set()).map((p) => p.name)).toEqual([
+        'crm_from_checkout',
+      ]);
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
+  });
+
+  it('prefers a first-party checkout over a marketplace unpack of the same name', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-local-wins-'));
+    writePlugin(join(root, 'crm-plugin-pokelo'), { name: 'crm_pokelo' });
+    writePlugin(join(root, 'khirby__plugin-pokelo'), { name: 'crm_pokelo' });
+    appendInstanceManifest(root, '@khirby/plugin-pokelo', 'khirby__plugin-pokelo');
+    const logs: string[] = [];
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    process.env.KHIRBY_PLUGINS_LOCAL = '1';
+    try {
+      const loaded = loadInstancePlugins(root, new Set(), (m) => logs.push(m));
+      expect(loaded).toHaveLength(1);
+      expect(loaded[0].name).toBe('crm_pokelo');
+      expect(logs.some((l) => l.includes('local checkout wins'))).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
+  });
+
+  it('still loads a marketplace unpack with no matching checkout when the flag is on', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-local-other-'));
+    writePlugin(join(root, 'khirby__plugin-discord'), { name: 'crm_discord' });
+    appendInstanceManifest(root, '@khirby/plugin-discord', 'khirby__plugin-discord');
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    process.env.KHIRBY_PLUGINS_LOCAL = '1';
+    try {
+      expect(loadInstancePlugins(root, new Set()).map((p) => p.name)).toEqual(['crm_discord']);
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
+  });
+
+  it('findInstanceLocalDirForPlugin skips first-party dirs even when the flag is on', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-find-checkout-'));
+    writePlugin(join(root, 'crm-plugin-pokelo'), { name: 'crm_pokelo' });
+    writePlugin(join(root, 'khirby__plugin-pokelo'), { name: 'crm_pokelo' });
+    appendInstanceManifest(root, '@khirby/plugin-pokelo', 'khirby__plugin-pokelo');
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    process.env.KHIRBY_PLUGINS_LOCAL = '1';
+    try {
+      expect(findInstanceLocalDirForPlugin(root, 'crm_pokelo')).toBe('khirby__plugin-pokelo');
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
+  });
+
+  it('applyRootEnvFile fills missing keys and does not override', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-dotenv-'));
+    writeFileSync(join(root, 'plugins.manifest.json'), '{"plugins":[]}');
+    writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages: []\n');
+    writeFileSync(join(root, '.env'), 'KHIRBY_PLUGINS_LOCAL=1\nOTHER_FLAG=from-file\n');
+    const env: NodeJS.ProcessEnv = { OTHER_FLAG: 'already' };
+    applyRootEnvFile(root, env);
+    expect(env.KHIRBY_PLUGINS_LOCAL).toBe('1');
+    expect(env.OTHER_FLAG).toBe('already');
   });
 
   it('pluginVolumeRoot rejects first-party dirs', () => {

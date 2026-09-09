@@ -235,6 +235,8 @@ with `web_bundle_required`. Without `./web`, Settings via `getConfigSchema()` an
 
 Editing first-party sources under `plugins/` survives `pnpm dev`: vendor keeps existing dirs and fills only gaps ([ADR-0037](adr/0037-hybrid-plugin-vendor-keep-local-sources.md)). `KHIRBY_PLUGINS_WORKSPACE=1` skips npm vendor entirely.
 
+To **run** those checkout sources instead of a Marketplace unpack (`khirby__plugin-*`) of the same plugin, set `KHIRBY_PLUGINS_LOCAL=1` in `.env` and restart the API ([ADR-0045](adr/0045-local-checkout-plugins-preferred-over-marketplace.md)). Unset in production. Marketplace uninstall still removes the unpack, not the checkout.
+
 ---
 
 ## Testing

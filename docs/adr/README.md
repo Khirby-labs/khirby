@@ -48,9 +48,10 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0036](0036-instance-volume-append-only-plugin-hot-load.md) | Instance-volume append-only plugin hot-load (self-build MCP) | Accepted — path amended by [0039](0039-instance-plugins-live-in-plugins-dir.md); `./web` ban superseded by [0043](0043-volume-plugin-vue-web-hot-load.md) |
 | [0037](0037-hybrid-plugin-vendor-keep-local-sources.md) | Hybrid plugin vendor: keep local `plugins/` sources, npm-fill gaps (amends 0030) | Accepted |
 | [0038](0038-instance-plugin-authoring-is-core.md) | Instance-plugin authoring lives in core (chat + MCP share `INSTANCE_PLUGINS`) | Accepted |
-| [0039](0039-instance-plugins-live-in-plugins-dir.md) | Instance-authored plugins live in `plugins/` (amends 0036 path) | Accepted |
+| [0039](0039-instance-plugins-live-in-plugins-dir.md) | Instance-authored plugins live in `plugins/` (amends 0036 path) | Accepted — boot skip amended by [0045](0045-local-checkout-plugins-preferred-over-marketplace.md) |
 | [0040](0040-ask-khirby-in-app-agent-is-core.md) | Ask Khirby: in-app agent is core (LLM via AI Compose, Pokelo + instance tools via host tokens) | Accepted |
 | [0041](0041-contact-custom-fields.md) | Contact custom fields (`metadata.custom` + `jsonb_set`) and JSON CSV import | Accepted |
 | [0042](0042-update-checks-use-github-releases.md) | Update checks use GitHub Releases (baked `APP_VERSION`), not Docker Hub | Accepted |
 | [0043](0043-volume-plugin-vue-web-hot-load.md) | Volume plugin Vue web hot-load via `dist/web/entry.js` (supersedes 0036 `./web` ban) | Accepted |
 | [0044](0044-control-plane-telemetry-and-marketplace-client.md) | Control Plane client: telemetry, marketplace catalog, npm install (partly supersedes 0030, 0032, 0034) | Accepted |
+| [0045](0045-local-checkout-plugins-preferred-over-marketplace.md) | `KHIRBY_PLUGINS_LOCAL` prefers `crm-plugin-*` checkouts over Marketplace unpacks | Accepted |

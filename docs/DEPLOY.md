@@ -65,6 +65,7 @@ Template: [`docker/crm.env.example`](../docker/crm.env.example).
 | `DISABLE_TELEMETRY` | Optional. Set to `true`, `1`, or `yes` to disable anonymous installation heartbeats entirely. Catalog / register / submit still use `CONTROL_PLANE_URL` when set (ADR-0044) |
 | `MARKETPLACE_CATALOG_URL` | **Deprecated** (ADR-0044). Ignored in favour of Control Plane. Kept only so old compose files do not fail on an unknown key |
 | `INSTANCE_PLUGINS_DIR` | Writable `plugins/` dir for self-build (ADR-0036, ADR-0039). Images set `/app/plugins`; compose bind-mounts host `plugins/`, the stack bind-mounts `${DATA_PATH}/plugins`. Unset locally defaults to `<repo>/plugins` |
+| `KHIRBY_PLUGINS_LOCAL` | Optional. Set to `true`, `1`, or `yes` to load `plugins/crm-plugin-*` git checkouts instead of Marketplace unpacks (`khirby__plugin-*`) of the same plugin (ADR-0045). **Local plugin development only** — leave unset in production |
 
 `DATABASE_URL` / `REDIS_URL` are built by the stack (`khirby-postgres`, `khirby-redis`).
 

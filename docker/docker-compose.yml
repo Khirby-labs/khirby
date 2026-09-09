@@ -20,6 +20,8 @@ services:
       TRUSTED_PROXY_CIDRS: 172.30.0.3
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost}
       INSTANCE_PLUGINS_DIR: /app/plugins
+      # Prefer plugins/crm-plugin-* checkouts over Marketplace unpacks (ADR-0045).
+      KHIRBY_PLUGINS_LOCAL: ${KHIRBY_PLUGINS_LOCAL:-}
     networks:
       default:
         ipv4_address: 172.30.0.2

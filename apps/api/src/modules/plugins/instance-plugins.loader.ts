@@ -65,6 +65,47 @@ export function defaultInstancePluginsDir(start = process.cwd()): string {
   return join(start, 'plugins');
 }
 
+/**
+ * `KHIRBY_PLUGINS_LOCAL=1|true|yes` — boot loads `plugins/crm-plugin-*` checkouts
+ * instead of Marketplace unpacks (`khirby__plugin-*`) of the same `CrmPlugin.name`
+ * (ADR-0045). Default off. Uninstall still targets the marketplace dir.
+ */
+export function preferLocalCheckoutPlugins(env: NodeJS.ProcessEnv = process.env): boolean {
+  const raw = env.KHIRBY_PLUGINS_LOCAL?.trim().toLowerCase();
+  return raw === '1' || raw === 'true' || raw === 'yes';
+}
+
+/**
+ * `loadPlugins()` runs during `AppModule` evaluation, before `ConfigModule.forRoot`.
+ * Fill missing keys from repo-root `.env` so a local flag in `.env` is visible.
+ * Never overwrites keys already in `process.env`.
+ */
+export function applyRootEnvFile(
+  start = process.cwd(),
+  env: NodeJS.ProcessEnv = process.env,
+): void {
+  const root = findRepoRoot(start);
+  if (!root) return;
+  const envPath = join(root, '.env');
+  if (!existsSync(envPath)) return;
+  for (const raw of readFileSync(envPath, 'utf8').split('\n')) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const eq = line.indexOf('=');
+    if (eq <= 0) continue;
+    const key = line.slice(0, eq).trim();
+    if (!key || env[key] !== undefined) continue;
+    let value = line.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    env[key] = value;
+  }
+}
+
 /** One path segment, no `..`, no absolute, no separators. */
 export function isSafeLocalSegment(local: string): boolean {
   if (!local || local === '.' || local === '..') return false;
@@ -328,6 +369,19 @@ function listedLocals(dir: string): string[] {
   return [...new Set([...fromManifest, ...fromDisk])];
 }
 
+/** Checkout dirs first when KHIRBY_PLUGINS_LOCAL is on, so they win name clashes. */
+function localsToLoad(dir: string): string[] {
+  const locals = listedLocals(dir);
+  if (!preferLocalCheckoutPlugins()) return locals;
+  const checkout: string[] = [];
+  const rest: string[] = [];
+  for (const local of locals) {
+    if (FIRST_PARTY_PLUGIN_DIRS.includes(local)) checkout.push(local);
+    else rest.push(local);
+  }
+  return [...checkout, ...rest];
+}
+
 export function loadInstancePlugins(
   dir: string | undefined,
   imageNames: Set<string>,
@@ -337,14 +391,17 @@ export function loadInstancePlugins(
   const absDir = resolve(dir);
   if (!existsSync(absDir)) return [];
   const out: CrmPlugin[] = [];
-  for (const local of listedLocals(absDir)) {
+  const loadedFrom = new Map<string, string>();
+  const preferCheckout = preferLocalCheckoutPlugins();
+  for (const local of localsToLoad(absDir)) {
     // TODO(control-plane): allow loading FIRST_PARTY_PLUGIN_DIRS when they are
     // marketplace volume installs (empty image). Skipping still protects monorepo
-    // checkouts; non-first-party hotLoad is unchanged.
-    if (!isSafeLocalSegment(local) || FIRST_PARTY_PLUGIN_DIRS.includes(local)) {
-      if (!isSafeLocalSegment(local)) {
-        log(`Instance plugin local path skipped: ${local}`);
-      }
+    // checkouts unless KHIRBY_PLUGINS_LOCAL is on (ADR-0045).
+    if (!isSafeLocalSegment(local)) {
+      log(`Instance plugin local path skipped: ${local}`);
+      continue;
+    }
+    if (!preferCheckout && FIRST_PARTY_PLUGIN_DIRS.includes(local)) {
       continue;
     }
     const pkgDir = join(absDir, local);
@@ -356,9 +413,15 @@ export function loadInstancePlugins(
         continue;
       }
       if (out.some((p) => p.name === plugin.name)) {
-        log(`Instance plugin ${plugin.name} listed twice — skipped`);
+        const winner = loadedFrom.get(plugin.name);
+        log(
+          preferCheckout && winner && FIRST_PARTY_PLUGIN_DIRS.includes(winner)
+            ? `Instance plugin ${plugin.name} skipped — local checkout wins (${local})`
+            : `Instance plugin ${plugin.name} listed twice — skipped`,
+        );
         continue;
       }
+      loadedFrom.set(plugin.name, local);
       out.push(plugin);
     } catch (err) {
       log(`Instance plugin ${local} failed to load: ${(err as Error).message}`);

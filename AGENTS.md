@@ -120,7 +120,8 @@ function makeChain(returnValue?: unknown) {
 | `moduleNameMapper` path | `<rootDir>/../../../packages/...` — `rootDir` = `apps/api/src`, so 3 levels up to repo root |
 | Guard name | `SessionGuard` (**NOT** `JwtGuard` — JWT was removed) — see `apps/api/src/core/auth/session.guard.ts` |
 | Plugin imports in `app.module.ts` | Use path `../../../plugins/...` relative to `src/` |
-| Vendor of `plugins/` | `predev` must **not** `rmSync` existing `plugins/<dir>` (ADR-0037). Keep local sources; npm-fill only missing dirs. `KHIRBY_PLUGINS_WORKSPACE=1` or `plugins/.git` = local-only. Delete a dir to refresh from npm |
+| Vendor of `plugins/` | `predev` must **not** `rmSync` existing `plugins/<dir>` (ADR-0037). Keep local sources; npm-fill only missing dirs. `KHIRBY_PLUGINS_WORKSPACE=1` or `plugins/.git` = local-only vendor. Delete a dir to refresh from npm |
+| Checkout vs Marketplace at boot | `KHIRBY_PLUGINS_LOCAL=1` loads `plugins/crm-plugin-*` instead of `khirby__plugin-*` (ADR-0045). Default off. Not the same flag as `KHIRBY_PLUGINS_WORKSPACE`. |
 | Instance-plugin writes | Go through `INSTANCE_PLUGINS` (`scaffold` / `writeFile` / …) into `plugins/<dir>/`, not a sibling `instance-plugins/` tree and not a second fs helper in the MCP plugin (ADR-0038, ADR-0039) |
 | Root db mock | Do **not** add `.then` to the root db mock object in tests |
 | Drizzle `.values()` / `.set()` | Add `as any` to avoid strict type inference errors in Drizzle 0.40 |

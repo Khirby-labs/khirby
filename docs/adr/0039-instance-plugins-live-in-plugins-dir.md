@@ -1,6 +1,6 @@
 # 0039 — Instance-authored plugins live in `plugins/`
 
-- **Status:** Accepted
+- **Status:** Accepted — boot skip of first-party dirs amended by [0045](0045-local-checkout-plugins-preferred-over-marketplace.md) (`KHIRBY_PLUGINS_LOCAL`)
 - **Date:** 2026-08-19
 - **Deciders:** Patryk
 
