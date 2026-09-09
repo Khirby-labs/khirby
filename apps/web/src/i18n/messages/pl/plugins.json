@@ -162,6 +162,15 @@
       "defaultModel": {
         "label": "Domyślny model",
         "description": "Używany, gdy użytkownik nie wybiera modelu."
+      },
+      "reasoningEffort": {
+        "label": "Poziom rozumowania",
+        "description": "Wysyłane tylko gdy model obsługuje tę funkcję.",
+        "providerDefault": "Domyślnie dostawcy",
+        "none": "Brak",
+        "low": "Niski",
+        "medium": "Średni",
+        "high": "Wysoki"
       }
     },
     "systemPrompt": {

@@ -2,7 +2,7 @@ import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
   INSTANCE_PLUGINS,
-  POKELO_CONTEXT_SERVICE,
+  KNOWLEDGE_CONTEXT,
   type InstancePluginsLike,
 } from '../../../../../../packages/plugin-host/src/tokens';
 import { PluginToolsAdapter, PokeloToolsAdapter } from './plugin-tools.adapter';
@@ -232,11 +232,11 @@ describe('PokeloToolsAdapter', () => {
     rbac = { hasPermission: jest.fn().mockResolvedValue(true) };
   });
 
-  it('returns no definitions when Pokelo is not configured', async () => {
+  it('returns no definitions when a knowledge provider is not configured', async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         PokeloToolsAdapter,
-        { provide: POKELO_CONTEXT_SERVICE, useValue: null },
+        { provide: KNOWLEDGE_CONTEXT, useValue: null },
         { provide: RbacService, useValue: rbac },
       ],
     }).compile();
@@ -246,7 +246,7 @@ describe('PokeloToolsAdapter', () => {
     await expect(adapter.run('user-1', 'search_knowledge_base', { query: 'x' })).resolves.toEqual({
       ok: false,
       code: 'unavailable',
-      summary: 'Pokelo not configured',
+      summary: 'Knowledge base not configured',
     });
   });
 
@@ -255,7 +255,7 @@ describe('PokeloToolsAdapter', () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         PokeloToolsAdapter,
-        { provide: POKELO_CONTEXT_SERVICE, useValue: pokelo },
+        { provide: KNOWLEDGE_CONTEXT, useValue: pokelo },
         { provide: RbacService, useValue: rbac },
       ],
     }).compile();

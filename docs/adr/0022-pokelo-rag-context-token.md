@@ -1,6 +1,6 @@
 # 0022 — Optional Pokelo RAG context via plugin-host token
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-0047](0047-knowledge-context-token.md)
 - **Date:** 2026-08-04
 - **Deciders:** team
 - **Pokelo ADR id:** `06d2d2ed-0572-42c5-bd53-36f5bd94663e` (Bearly CRM project)

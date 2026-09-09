@@ -1,4 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { AppException } from '../../core/errors/app-exception';
 import { ControlPlaneClient } from '../control-plane/control-plane.client';
 import type {
@@ -9,6 +11,7 @@ import type {
 import { InstallationIdentityService } from '../control-plane/installation-identity.service';
 import { PluginRegistryService } from '../plugins/plugin-registry.service';
 import { CatalogEntry, derivePluginNameFromPackage } from './catalog';
+import { findMarketplaceLocalDirForPlugin } from '../plugins/instance-plugins.loader';
 import { MarketplaceCatalogService } from './marketplace-catalog.service';
 import { assertWebBundlePresent, PluginPackageInstaller } from './plugin-package.installer';
 // Relative, not '@khirby/types': `nest build` is plain tsc and the bare specifier
@@ -38,6 +41,29 @@ export function isMarketplaceUpdateAvailable(
 }
 
 /**
+ * Version the Update button should compare. Boot may rewrite `plugins.version`
+ * from a local checkout (KHIRBY_PLUGINS_LOCAL); the Marketplace unpack is what
+ * `POST …/update` replaces.
+ */
+export function marketplaceUnpackVersion(
+  volumeDir: string,
+  pluginName: string,
+  fallback: string,
+): string {
+  const local = findMarketplaceLocalDirForPlugin(volumeDir, pluginName);
+  if (!local) return fallback;
+  const pkgPath = join(volumeDir, local, 'package.json');
+  if (!existsSync(pkgPath)) return fallback;
+  try {
+    const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as { version?: unknown };
+    if (typeof pkg.version === 'string' && pkg.version.trim()) return pkg.version.trim();
+  } catch {
+    // Broken unpack — fall back to the row.
+  }
+  return fallback;
+}
+
+/**
  * Turns the catalog document plus live installation state into the cards the SPA
  * renders. Status is resolved on EVERY request, never cached.
  */
@@ -61,10 +87,11 @@ export class MarketplaceService {
    */
   async list(): Promise<MarketplacePlugin[]> {
     const [document, { installed: installedRows }] = await Promise.all([
-      this.catalog.load(),
+      this.catalog.load(undefined, { fresh: true }),
       this.registry.snapshot(),
     ]);
 
+    const volumeDir = this.registry.instanceDir();
     const loaded = new Set(this.registry.loadedNames());
     const installedByName = new Map(installedRows.map((row) => [row.name, row]));
     const cards: MarketplacePlugin[] = [];
@@ -74,6 +101,7 @@ export class MarketplaceService {
       const row = installedByName.get(entry.name);
       if (row) {
         const latestVersion = entry.latestVersion ?? entry.version;
+        const version = marketplaceUnpackVersion(volumeDir, row.name, row.version);
         cards.push(
           this.card(entry, {
             name: row.name,
@@ -81,11 +109,11 @@ export class MarketplaceService {
             displayNameKey: row.displayNameKey,
             description: row.description,
             descriptionKey: row.descriptionKey,
-            version: row.version,
+            version,
             status: 'installed',
             enabled: row.enabled,
             configSchema: row.configSchema ?? [],
-            updateAvailable: isMarketplaceUpdateAvailable(row.version, latestVersion),
+            updateAvailable: isMarketplaceUpdateAvailable(version, latestVersion),
           }),
         );
         seen.add(row.name);
@@ -119,7 +147,7 @@ export class MarketplaceService {
           displayNameKey: row.displayNameKey,
           description: row.description,
           descriptionKey: row.descriptionKey,
-          version: row.version,
+          version: marketplaceUnpackVersion(volumeDir, row.name, row.version),
           status: 'installed',
           enabled: row.enabled,
           configSchema: row.configSchema ?? [],

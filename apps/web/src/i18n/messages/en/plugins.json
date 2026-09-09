@@ -162,6 +162,15 @@
       "defaultModel": {
         "label": "Default model",
         "description": "Used when the user does not pick one."
+      },
+      "reasoningEffort": {
+        "label": "Reasoning effort",
+        "description": "Only sent when the model supports this feature.",
+        "providerDefault": "Provider default",
+        "none": "None",
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
       }
     },
     "systemPrompt": {

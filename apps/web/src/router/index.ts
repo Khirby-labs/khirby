@@ -191,20 +191,13 @@ const staticRoutes: RouteRecordRaw[] = [
       },
 
       {
-        path: 'ask',
+        // One route record so /ask → /ask/:id reuses AskKhirbyView. Sibling
+        // ask-new / ask-thread records remounted the view and TransitionGroup
+        // replayed the streamed reply as a second bubble.
+        path: 'ask/:conversationId?',
+        name: 'ask-new',
+        component: () => import('../views/agent/AskKhirbyView.vue'),
         meta: { layout: 'chat-focus', titleKey: 'nav.workspace.ask' },
-        children: [
-          {
-            path: '',
-            name: 'ask-new',
-            component: () => import('../views/agent/AskKhirbyView.vue'),
-          },
-          {
-            path: ':conversationId',
-            name: 'ask-thread',
-            component: () => import('../views/agent/AskKhirbyView.vue'),
-          },
-        ],
       },
 
       // Back-compat: the old top-level admin routes now live under Settings

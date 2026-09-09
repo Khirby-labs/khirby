@@ -16,6 +16,7 @@ import { RequirePermission } from '../../core/rbac/require-permission.decorator'
 import { AgentChatService } from './agent-chat.service';
 import { AgentChatDto } from './dto/agent-chat.dto';
 import type { AgentSseEvent } from './agent-llm.client';
+import { agentSseErrorCode } from './agent-sse-error';
 
 @Controller('agent')
 @UseGuards(SessionGuard, PermissionGuard)
@@ -36,9 +37,11 @@ export class AgentChatController {
     reply.hijack();
     reply.raw.writeHead(200, {
       'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
+      'X-Accel-Buffering': 'no',
     });
+    reply.raw.flushHeaders?.();
 
     const ac = new AbortController();
     const onClose = () => {
@@ -55,13 +58,12 @@ export class AgentChatController {
       await this.chatService.runAgentLoop(userId, dto, { signal: ac.signal, write });
     } catch (e: unknown) {
       if (ac.signal.aborted) return;
-      const err = e as { status?: number; response?: { code?: string; message?: string } };
-      if (err?.status === 409) {
-        write({ type: 'error', code: 'stream_in_progress' });
-      } else {
-        this.logger.warn(e instanceof Error ? e.message : 'agent chat failed');
-        write({ type: 'error', code: 'internal' });
-      }
+      const err = e as { status?: number };
+      const code = err?.status === 409 ? 'stream_in_progress' : agentSseErrorCode(e);
+      this.logger.warn(
+        `agent chat failed (${code}): ${e instanceof Error ? e.message : 'unknown'}`,
+      );
+      write({ type: 'error', code });
     } finally {
       reply.raw.off('close', onClose);
       if (!reply.raw.writableEnded) reply.raw.end();

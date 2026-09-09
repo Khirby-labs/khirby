@@ -152,6 +152,15 @@ describe('MarketplaceCatalogService — caching', () => {
     expect(listPlugins).toHaveBeenCalledTimes(2);
   });
 
+  it('bypasses the success cache when fresh is set', async () => {
+    const listPlugins = jest.fn().mockResolvedValue([cpPlugin()]);
+    const svc = new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins }));
+
+    await svc.load();
+    await svc.load(undefined, { fresh: true });
+    expect(listPlugins).toHaveBeenCalledTimes(2);
+  });
+
   it('does not retry a failed remote inside the failure window', async () => {
     const listPlugins = jest.fn().mockResolvedValue(null);
     const svc = new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins }));

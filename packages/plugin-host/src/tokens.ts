@@ -270,24 +270,38 @@ export interface BoardStatusesServiceLike {
 }
 
 /**
- * Optional cross-plugin RAG context (ADR-0022).
- * Provided by crm-plugin-pokelo (@Global); consumers use @Optional().
+ * Optional firm-knowledge snippets for LLM prompts (ADR-0047).
+ * A knowledge plugin (today: crm-plugin-pokelo) registers the implementation on a
+ * `@Global()` module. Consumers — AI Compose, Ask Khirby — inject `@Optional()` and
+ * must not know which plugin provided it.
+ */
+export const KNOWLEDGE_CONTEXT = 'KNOWLEDGE_CONTEXT';
+
+export interface KnowledgeContextLike {
+  /** Snippets for the LLM system prompt; `''` if unconfigured, disabled, or error. */
+  fetchContext(query: string): Promise<string>;
+}
+
+/**
+ * @deprecated ADR-0047 — use {@link KNOWLEDGE_CONTEXT}. Same provider; keep until
+ * published plugins that still `provide: POKELO_CONTEXT_SERVICE` are bumped.
  */
 export const POKELO_CONTEXT_SERVICE = 'POKELO_CONTEXT_SERVICE';
 
-export type PokeloFetchOpts = {
-  /** Subset of bound project IDs to search; defaults to all bound projects. */
-  projectIds?: string[];
-};
-
+/**
+ * @deprecated ADR-0047 — use {@link KnowledgeContextLike}. Extra methods exist so
+ * older compose builds that routed projects still typecheck against this token.
+ */
 export interface PokeloContextServiceLike {
-  /** RAG snippets for LLM system prompt; '' if unconfigured/disabled/error. */
   fetchContext(query: string, opts?: PokeloFetchOpts): Promise<string>;
-  /** Projects selected in Pokelo settings (id + name for routing). */
   listBoundProjects?(): Promise<Array<{ id: string; name: string }>>;
-  /** All projects visible to the configured token (settings UI). */
   listProjects?(): Promise<Array<{ id: string; name: string }>>;
 }
+
+/** @deprecated ADR-0047 — project scoping stays inside the knowledge plugin. */
+export type PokeloFetchOpts = {
+  projectIds?: string[];
+};
 
 /**
  * Instance-volume plugins (ADR-0036, ADR-0038). Provided by PluginsModule.
@@ -358,7 +372,8 @@ export const PLUGIN_NAME_KEY = 'crm-plugin-name';
 
 /**
  * BYOK LLM config from crm-plugin-ai-compose (ADR-0040).
- * Agent chat consumes this token — @Optional() when plugin is absent.
+ * Agent chat consumes this token at call time (ADR-0048) — constructor
+ * `@Optional()` stays null for volume-loaded AI Compose.
  */
 export const AI_COMPOSE_LLM = 'AI_COMPOSE_LLM';
 
@@ -367,5 +382,11 @@ export interface AiComposeLlmLike {
     baseUrl: string;
     apiKey: string;
     model: string;
+    /** Sent when the model accepts reasoning: `/chat/completions` as
+     * `reasoning_effort`, or `/responses` as `reasoning.effort` when the
+     * turn also has function tools (ADR-0049). */
+    reasoningEffort?: 'none' | 'low' | 'medium' | 'high' | null;
+    /** From the provider `/models` catalog when advertised; omit when unknown. */
+    reasoningSupported?: boolean | null;
   } | null>;
 }

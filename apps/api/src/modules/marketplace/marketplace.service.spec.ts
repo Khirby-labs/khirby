@@ -1,6 +1,10 @@
 import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { MarketplaceService } from './marketplace.service';
 import { CATALOG_FORMAT_VERSION, CatalogDocument, CatalogEntry } from './catalog';
+import { appendInstanceManifest } from '../plugins/instance-plugins.loader';
 
 function makeCatalog(document: CatalogDocument) {
   return { load: jest.fn().mockResolvedValue(document) } as any;
@@ -58,6 +62,7 @@ function makeRegistry(options: {
       jest.fn().mockResolvedValue({ name: 'crm_a', status: 'installed' }),
     findAll: options.findAll ?? jest.fn().mockResolvedValue([]),
     findByName: options.findByName ?? jest.fn().mockResolvedValue(null),
+    instanceDir: () => '/tmp/khirby-no-plugin-volume',
   } as any;
 }
 
@@ -212,6 +217,56 @@ describe('MarketplaceService.list', () => {
         status: 'installed',
         version: '1.0.0',
         latestVersion: '2.0.0',
+        updateAvailable: true,
+      }),
+    );
+  });
+
+  it('flags updateAvailable from the Marketplace unpack when the row was rewritten by a checkout', async () => {
+    const volume = mkdtempSync(join(tmpdir(), 'mkt-unpack-'));
+    const unpack = join(volume, 'khirby__plugin-pokelo');
+    mkdirSync(join(unpack, 'src'), { recursive: true });
+    writeFileSync(
+      join(unpack, 'package.json'),
+      JSON.stringify({
+        name: '@khirby/plugin-pokelo',
+        version: '1.0.0',
+        main: './src/index.ts',
+      }),
+    );
+    writeFileSync(
+      join(unpack, 'src/index.ts'),
+      `export function createPlugin() {
+  return { name: 'crm_pokelo', displayName: 'Pokelo', version: '1.0.1' };
+}
+`,
+    );
+    appendInstanceManifest(volume, '@khirby/plugin-pokelo', 'khirby__plugin-pokelo');
+
+    const svc = makeService({
+      catalog: catalogWith([
+        {
+          name: 'crm_pokelo',
+          slug: 'crm-pokelo',
+          latestVersion: '1.0.1',
+          version: '1.0.1',
+        },
+      ]),
+      registry: {
+        ...makeRegistry({
+          loaded: ['crm_pokelo'],
+          installed: [installedRow('crm_pokelo', { version: '1.0.1' })],
+        }),
+        instanceDir: () => volume,
+      },
+    });
+
+    const [card] = await svc.list();
+    expect(card).toEqual(
+      expect.objectContaining({
+        status: 'installed',
+        version: '1.0.0',
+        latestVersion: '1.0.1',
         updateAvailable: true,
       }),
     );

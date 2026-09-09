@@ -42,12 +42,15 @@ export class MarketplaceCatalogService {
     private readonly controlPlane: ControlPlaneClient,
   ) {}
 
-  async load(search?: string): Promise<CatalogDocument> {
+  async load(search?: string, opts?: { fresh?: boolean }): Promise<CatalogDocument> {
     if (!this.controlPlane.isConfigured()) return LOCAL_CATALOG;
 
     const now = Date.now();
-    // Search bypasses the success cache so operators see filtered results.
-    if (!search && this.cached && now < this.cached.expiresAt) return this.cached.document;
+    // Search and Marketplace list bypass the success cache so a just-synced
+    // Control Plane version is visible (Update badge). Other callers may reuse.
+    if (!search && !opts?.fresh && this.cached && now < this.cached.expiresAt) {
+      return this.cached.document;
+    }
     if (now < this.failedUntil) return LOCAL_CATALOG;
 
     const document = await this.fetchFromControlPlane(search);

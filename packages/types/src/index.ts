@@ -519,7 +519,7 @@ export interface MailboxPublic {
   lastSyncAt: string | null;
   lastSyncError: string | null;
   backfillDays: number;
-  /** true when MAIL_SECRETS_KEY env var is configured on the server. */
+  /** true when KHIRBY_SECRETS_KEY (or a legacy alias) is configured on the server. */
   secretsKeyConfigured: boolean;
   /** true when GOOGLE_MAIL_CLIENT_ID + SECRET are set on the server. */
   googleOAuthConfigured: boolean;

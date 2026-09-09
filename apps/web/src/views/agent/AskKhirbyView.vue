@@ -20,7 +20,10 @@
             <div v-if="!messages.length" class="mx-auto max-w-2xl space-y-4 text-center">
               <h1 class="text-xl font-semibold text-text-primary">{{ t('agent.empty.title') }}</h1>
               <p class="text-sm text-text-muted">{{ t('agent.empty.subtitle') }}</p>
-              <div v-if="errorCode === 'ai_compose_unavailable'" class="pt-2">
+              <p v-if="errorCode" class="text-sm text-danger" role="alert">
+                {{ t(`agent.errors.${errorCode}`, errorCode) }}
+              </p>
+              <div v-if="isComposeSetupError" class="pt-2">
                 <RouterLink
                   to="/settings/integrations"
                   class="text-sm text-accent hover:text-accent-hover"
@@ -178,6 +181,17 @@ const chat = useAgentChatStore();
 const toast = useToastStore();
 const { messages, isStreaming, statusCode, errorCode, activeConversationId } = storeToRefs(chat);
 
+const COMPOSE_SETUP_CODES = new Set([
+  'ai_compose_unavailable',
+  'ai_compose_disabled',
+  'ai_compose_not_configured',
+  'ai_compose_decrypt_failed',
+  'ai_compose_no_model',
+  'llm_auth',
+  'llm_request',
+]);
+const isComposeSetupError = computed(() => COMPOSE_SETUP_CODES.has(errorCode.value ?? ''));
+
 const draft = ref('');
 const scrollEl = ref<HTMLElement | null>(null);
 const composerTextarea = ref<HTMLTextAreaElement | null>(null);
@@ -314,7 +328,13 @@ watch(
   () => route.params.conversationId,
   async (id) => {
     if (!hasAccess.value || isStreaming.value) return;
+    const stateDraft = (history.state as { draft?: string } | null)?.draft;
+    if (stateDraft) draft.value = stateDraft;
     if (typeof id === 'string' && id) {
+      if (chat.activeConversationId === id && chat.messages.length) {
+        scrollToBottom('auto');
+        return;
+      }
       await chat.loadConversation(id);
       scrollToBottom('auto');
     } else chat.newThread();
@@ -325,15 +345,16 @@ watch(
   () => chat.activeConversationId,
   (id) => {
     if (!id || route.params.conversationId === id || isStreaming.value) return;
-    router.replace({ name: 'ask-thread', params: { conversationId: id } });
+    router.replace({ name: 'ask-new', params: { conversationId: id } });
   },
 );
 
 watch(isStreaming, (streaming, wasStreaming) => {
   if (streaming || !wasStreaming) return;
+  if (chat.errorCode) return;
   const id = chat.activeConversationId;
   if (!id || route.params.conversationId === id) return;
-  router.replace({ name: 'ask-thread', params: { conversationId: id } });
+  router.replace({ name: 'ask-new', params: { conversationId: id } });
 });
 
 watch(draft, () => {

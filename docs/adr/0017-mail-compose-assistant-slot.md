@@ -1,7 +1,7 @@
 # ADR-0017: Mail compose assistant slot
 
 Date: 2026-08-03
-Status: Accepted
+Status: Accepted — encryption env amended by [ADR-0046](0046-one-instance-secrets-key.md) (`KHIRBY_SECRETS_KEY`; `AI_COMPOSE_SECRETS_KEY` remains a decrypt alias)
 Deciders: team
 
 ## Context

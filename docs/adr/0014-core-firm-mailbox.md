@@ -1,6 +1,6 @@
 # 0014 — Core firm mailbox (IMAP+SMTP), email threads as first-class CRM data
 
-- **Status:** Accepted
+- **Status:** Accepted — encryption env amended by [ADR-0046](0046-one-instance-secrets-key.md) (`KHIRBY_SECRETS_KEY`; `MAIL_SECRETS_KEY` remains a decrypt alias)
 - **Date:** 2026-07-29
 - **Deciders:** Damian
 

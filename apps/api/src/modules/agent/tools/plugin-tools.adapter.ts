@@ -1,10 +1,13 @@
-import { HttpException, Inject, Injectable, Optional } from '@nestjs/common';
+import { HttpException, Inject, Injectable } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import {
   INSTANCE_PLUGINS,
+  KNOWLEDGE_CONTEXT,
   POKELO_CONTEXT_SERVICE,
   type InstancePluginsLike,
-  type PokeloContextServiceLike,
+  type KnowledgeContextLike,
 } from '../../../../../../packages/plugin-host/src/tokens';
+import { resolveLoadedProvider } from '../../plugins/resolve-loaded-provider';
 import { RbacService } from '../../../core/rbac/rbac.service';
 import type { LlmToolDef } from '../agent-llm.client';
 import type { ToolRunResult } from './crm-tools.adapter';
@@ -247,16 +250,24 @@ function formatToolError(err: unknown): string {
 @Injectable()
 export class PokeloToolsAdapter {
   constructor(
-    @Optional() @Inject(POKELO_CONTEXT_SERVICE) private pokelo: PokeloContextServiceLike | null,
+    private readonly moduleRef: ModuleRef,
     private rbac: RbacService,
   ) {}
 
+  /** Volume plugins bind this token after core constructors (ADR-0048). */
+  private knowledge(): KnowledgeContextLike | null {
+    return (
+      resolveLoadedProvider<KnowledgeContextLike>(this.moduleRef, KNOWLEDGE_CONTEXT) ??
+      resolveLoadedProvider<KnowledgeContextLike>(this.moduleRef, POKELO_CONTEXT_SERVICE)
+    );
+  }
+
   definitions(): LlmToolDef[] {
-    if (!this.pokelo) return [];
+    if (!this.knowledge()) return [];
     return [
       fn(
         'search_knowledge_base',
-        'Search the organization Pokelo wiki for internal docs, runbooks, ADRs, and setup context. Call early and often for how-to, architecture, plugin, and process questions — before guessing.',
+        'Search the organization knowledge base for internal docs, runbooks, ADRs, and setup context. Call early and often for how-to, architecture, plugin, and process questions — before guessing.',
         {
           query: { type: 'string', description: 'Focused search query from the user question' },
         },
@@ -266,14 +277,16 @@ export class PokeloToolsAdapter {
   }
 
   async run(userId: string, name: string, args: Record<string, unknown>): Promise<ToolRunResult> {
-    if (!this.pokelo) return { ok: false, code: 'unavailable', summary: 'Pokelo not configured' };
+    const knowledge = this.knowledge();
+    if (!knowledge)
+      return { ok: false, code: 'unavailable', summary: 'Knowledge base not configured' };
     if (!(await this.rbac.hasPermission(userId, 'agent', 'use'))) {
       return { ok: false, code: 'forbidden', summary: 'Forbidden' };
     }
     if (name !== 'search_knowledge_base') {
       return { ok: false, code: 'unknown_tool', summary: 'Unknown tool' };
     }
-    const ctx = await this.pokelo.fetchContext(String(args.query ?? ''));
+    const ctx = await knowledge.fetchContext(String(args.query ?? ''));
     return { ok: true, summary: ctx.slice(0, 800) || 'No results' };
   }
 }

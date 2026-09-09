@@ -1,18 +1,38 @@
 import { encrypt, decrypt, isMailSecretsKeyConfigured } from './mail-crypto';
 
+const SECRET_ENVS = [
+  'KHIRBY_SECRETS_KEY',
+  'MAIL_SECRETS_KEY',
+  'AI_COMPOSE_SECRETS_KEY',
+  'POKELO_SECRETS_KEY',
+] as const;
+
+function clearSecretsEnv() {
+  for (const name of SECRET_ENVS) {
+    delete process.env[name];
+  }
+}
+
 describe('mail-crypto', () => {
   const VALID_KEY_HEX = 'a'.repeat(64); // 32 bytes as hex
 
   beforeEach(() => {
+    clearSecretsEnv();
     process.env.MAIL_SECRETS_KEY = VALID_KEY_HEX;
   });
 
   afterEach(() => {
-    delete process.env.MAIL_SECRETS_KEY;
+    clearSecretsEnv();
   });
 
   describe('isMailSecretsKeyConfigured', () => {
-    it('returns true when key is set and valid', () => {
+    it('returns true when a legacy alias is set and valid', () => {
+      expect(isMailSecretsKeyConfigured()).toBe(true);
+    });
+
+    it('returns true when KHIRBY_SECRETS_KEY is set', () => {
+      delete process.env.MAIL_SECRETS_KEY;
+      process.env.KHIRBY_SECRETS_KEY = VALID_KEY_HEX;
       expect(isMailSecretsKeyConfigured()).toBe(true);
     });
 
@@ -50,18 +70,24 @@ describe('mail-crypto', () => {
       const plaintext = 'пароль ñoño 🔑 <>"\'';
       expect(decrypt(encrypt(plaintext))).toBe(plaintext);
     });
+
+    it('decrypts a blob written under a legacy key after KHIRBY_SECRETS_KEY is added', () => {
+      const ciphertext = encrypt('legacy-row');
+      process.env.KHIRBY_SECRETS_KEY = 'b'.repeat(64);
+      expect(decrypt(ciphertext)).toBe('legacy-row');
+    });
   });
 
   describe('encrypt / decrypt error cases', () => {
-    it('throws when MAIL_SECRETS_KEY is missing during encrypt', () => {
+    it('throws when KHIRBY_SECRETS_KEY is missing during encrypt', () => {
       delete process.env.MAIL_SECRETS_KEY;
-      expect(() => encrypt('test')).toThrow('MAIL_SECRETS_KEY');
+      expect(() => encrypt('test')).toThrow('KHIRBY_SECRETS_KEY');
     });
 
-    it('throws when MAIL_SECRETS_KEY is missing during decrypt', () => {
+    it('throws when KHIRBY_SECRETS_KEY is missing during decrypt', () => {
       const ct = encrypt('test');
-      delete process.env.MAIL_SECRETS_KEY;
-      expect(() => decrypt(ct)).toThrow('MAIL_SECRETS_KEY');
+      clearSecretsEnv();
+      expect(() => decrypt(ct)).toThrow('KHIRBY_SECRETS_KEY');
     });
   });
 });

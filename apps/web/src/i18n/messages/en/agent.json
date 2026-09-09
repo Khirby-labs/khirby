@@ -32,7 +32,15 @@
     "runningTool": "Running {tool}…"
   },
   "errors": {
-    "ai_compose_unavailable": "AI Compose is not configured.",
+    "ai_compose_unavailable": "AI Compose is not installed or enabled.",
+    "ai_compose_disabled": "AI Compose is turned off.",
+    "ai_compose_not_configured": "AI Compose has no API key. Configure it in Integrations.",
+    "ai_compose_decrypt_failed": "Couldn't load your API key. Re-save it in Integrations.",
+    "ai_compose_no_model": "No default model is chosen. Set one in Integrations.",
+    "llm_auth": "The API key is invalid or expired. Check it in Integrations.",
+    "llm_request": "The request was rejected. Try another model in Integrations.",
+    "llm_upstream": "The model provider is unreachable. Try again in a moment.",
+    "internal": "Something went wrong. Try sending your message again.",
     "network_error": "Connection lost. Try again.",
     "stream_in_progress": "Already streaming this thread."
   },

@@ -1,8 +1,11 @@
-import { ConflictException, Injectable, Inject, Logger, Optional } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import {
   AI_COMPOSE_LLM,
   type AiComposeLlmLike,
 } from '../../../../../packages/plugin-host/src/tokens';
+import { resolveLoadedProvider } from '../plugins/resolve-loaded-provider';
+import { agentSseErrorCode } from './agent-sse-error';
 import { AgentConversationsService } from './agent-conversations.service';
 import { AgentChatDto } from './dto/agent-chat.dto';
 import {
@@ -43,8 +46,13 @@ export class AgentChatService {
     private marketplaceTools: MarketplaceToolsAdapter,
     private pluginTools: PluginToolsAdapter,
     private pokeloTools: PokeloToolsAdapter,
-    @Optional() @Inject(AI_COMPOSE_LLM) private llmProvider: AiComposeLlmLike | null,
+    private readonly moduleRef: ModuleRef,
   ) {}
+
+  /** Volume plugins bind this token after core constructors (ADR-0048). */
+  private llmProvider(): AiComposeLlmLike | null {
+    return resolveLoadedProvider<AiComposeLlmLike>(this.moduleRef, AI_COMPOSE_LLM);
+  }
 
   async runAgentLoop(userId: string, dto: AgentChatDto, opts: AgentLoopOpts): Promise<void> {
     let conversationId = dto.conversationId;
@@ -67,9 +75,29 @@ export class AgentChatService {
     try {
       await this.conversations.insertUserMessage(conversationId, dto.content);
       await this.conversations.touchConversation(conversationId);
+      // First SSE byte before BYOK lookup — do not wait on GET /models (ADR-0047).
+      opts.write({ type: 'status', code: 'thinking' });
 
-      const config = this.llmProvider ? await this.llmProvider.getCompletionConfig() : null;
+      const llm = this.llmProvider();
+      if (!llm) {
+        this.logger.warn('AI_COMPOSE_LLM is not bound — AI Compose Nest module is not loaded');
+        opts.write({ type: 'error', code: 'ai_compose_unavailable' });
+        return;
+      }
+
+      let config: Awaited<ReturnType<AiComposeLlmLike['getCompletionConfig']>>;
+      try {
+        config = await llm.getCompletionConfig();
+      } catch (err) {
+        const code = agentSseErrorCode(err);
+        this.logger.warn(
+          `AI Compose getCompletionConfig failed (${code}): ${err instanceof Error ? err.message : 'unknown'}`,
+        );
+        opts.write({ type: 'error', code });
+        return;
+      }
       if (!config?.apiKey || !config.baseUrl || !config.model) {
+        this.logger.warn('AI Compose getCompletionConfig returned an incomplete BYOK config');
         opts.write({ type: 'error', code: 'ai_compose_unavailable' });
         return;
       }
@@ -118,12 +146,12 @@ export class AgentChatService {
 
         opts.write({ type: 'status', code: iteration === 0 ? 'thinking' : 'writing' });
 
-        const { text: iterationText, toolCalls } = await this.collectCompletion(
-          config,
-          messages,
-          tools,
-          opts,
-          (delta) => opts.write({ type: 'text_delta', delta }),
+        const {
+          text: iterationText,
+          toolCalls,
+          outputItems,
+        } = await this.collectCompletion(config, messages, tools, opts, (delta) =>
+          opts.write({ type: 'text_delta', delta }),
         );
 
         if (!toolCalls.length) {
@@ -153,6 +181,7 @@ export class AgentChatService {
             type: 'function' as const,
             function: { name: tc.name, arguments: tc.arguments },
           })),
+          responsesOutput: outputItems,
         });
 
         for (const tc of toolCalls) {
@@ -213,7 +242,13 @@ export class AgentChatService {
   }
 
   private async collectCompletion(
-    config: { baseUrl: string; apiKey: string; model: string },
+    config: {
+      baseUrl: string;
+      apiKey: string;
+      model: string;
+      reasoningEffort?: string | null;
+      reasoningSupported?: boolean | null;
+    },
     messages: LlmMessage[],
     tools: ReturnType<CrmToolsAdapter['definitions']>,
     opts: AgentLoopOpts,
@@ -249,7 +284,13 @@ export class AgentChatService {
 
   /** One text-only pass when the model stopped after tools without a user summary. */
   private async synthesizeFinalAnswer(
-    config: { baseUrl: string; apiKey: string; model: string },
+    config: {
+      baseUrl: string;
+      apiKey: string;
+      model: string;
+      reasoningEffort?: string | null;
+      reasoningSupported?: boolean | null;
+    },
     messages: LlmMessage[],
     opts: AgentLoopOpts,
     toolTrace: Array<{ name: string; args: Record<string, unknown>; ok: boolean; summary: string }>,

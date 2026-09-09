@@ -20,6 +20,10 @@ services:
       TRUSTED_PROXY_CIDRS: 172.30.0.3
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost}
       INSTANCE_PLUGINS_DIR: /app/plugins
+      KHIRBY_SECRETS_KEY: ${KHIRBY_SECRETS_KEY:-}
+      MAIL_SECRETS_KEY: ${MAIL_SECRETS_KEY:-}
+      AI_COMPOSE_SECRETS_KEY: ${AI_COMPOSE_SECRETS_KEY:-}
+      POKELO_SECRETS_KEY: ${POKELO_SECRETS_KEY:-}
       # Prefer plugins/crm-plugin-* checkouts over Marketplace unpacks (ADR-0045).
       KHIRBY_PLUGINS_LOCAL: ${KHIRBY_PLUGINS_LOCAL:-}
     networks:

@@ -48,6 +48,8 @@ export {
   type BoardTaskPriority,
   BOARD_STATUSES_SERVICE,
   type BoardStatusesServiceLike,
+  KNOWLEDGE_CONTEXT,
+  type KnowledgeContextLike,
   POKELO_CONTEXT_SERVICE,
   type PokeloContextServiceLike,
   type PokeloFetchOpts,
@@ -63,3 +65,20 @@ export {
   loadVolumeNestModuleFile,
   resolveVolumeNestModuleFile,
 } from './volume-nest';
+export {
+  INSTANCE_SECRETS_KEY_ENV,
+  LEGACY_SECRETS_KEY_ENVS,
+  decrypt,
+  encrypt,
+  getInstanceSecretsKey,
+  instanceSecretsKeyCandidates,
+  instanceSecretsKeyProblem,
+  isInstanceSecretsKeyConfigured,
+} from './instance-secrets';
+export {
+  REASONING_EFFORTS,
+  applyReasoningEffort,
+  isReasoningEffort,
+  parseModelReasoningSupport,
+  type ReasoningEffort,
+} from './reasoning-effort';

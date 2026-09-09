@@ -1,6 +1,6 @@
 # 0040 — Ask Khirby: in-app agent is core
 
-- **Status:** Accepted
+- **Status:** Accepted — knowledge context token superseded by [ADR-0047](0047-knowledge-context-token.md); volume-plugin token lookup amended by [ADR-0048](0048-core-resolves-volume-plugin-tokens-at-call-time.md); tools + reasoning transport amended by [ADR-0049](0049-ask-khirby-reasoning-uses-responses-api.md)
 - **Date:** 2026-08-20
 - **Deciders:** Patryk
 - **Pokelo ADR id:** `6e17bffa-32e2-4199-aa79-0f164dc11782` (Bearly CRM project)

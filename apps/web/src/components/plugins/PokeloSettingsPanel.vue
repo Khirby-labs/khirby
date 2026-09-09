@@ -143,6 +143,10 @@
             }}
           </button>
         </div>
+        <div v-if="saveError" class="crm-error">{{ saveError }}</div>
+        <div v-if="savedOk" class="text-sm text-success">
+          {{ t('plugins.pokelo.status.saved') }}
+        </div>
       </section>
     </template>
   </div>
@@ -152,6 +156,7 @@
 import { ref, watch, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { apiGet, apiPatch } from '../../api/client';
+import { useToastStore } from '../../stores/toast.store';
 
 interface PokeloSettings {
   baseUrl: string;
@@ -167,6 +172,7 @@ interface PokeloProject {
 const props = withDefaults(defineProps<{ enabled?: boolean }>(), { enabled: true });
 
 const { t } = useI18n();
+const toast = useToastStore();
 
 const loadError = ref('');
 const saveError = ref('');
@@ -246,6 +252,7 @@ async function doSave(patch: Record<string, unknown>) {
     form.value.token = '';
     form.value.projectIds = [...(updated.projectIds ?? [])];
     savedOk.value = true;
+    toast.success(t('plugins.pokelo.status.saved'));
     setTimeout(() => {
       savedOk.value = false;
     }, 3000);
@@ -266,6 +273,7 @@ async function doSave(patch: Record<string, unknown>) {
     }
   } catch (e) {
     saveError.value = e instanceof Error ? e.message : t('plugins.pokelo.errors.save');
+    toast.error(saveError.value);
   } finally {
     saving.value = false;
   }

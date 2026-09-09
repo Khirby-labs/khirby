@@ -63,12 +63,12 @@ onMounted(() => {
 });
 
 function open(id: string) {
-  router.push({ name: 'ask-thread', params: { conversationId: id } });
+  router.push({ name: 'ask-new', params: { conversationId: id } });
 }
 
 function onNew() {
   chat.newThread();
-  router.push({ name: 'ask-new' });
+  void router.push('/ask');
 }
 
 async function onDelete(conversation: AgentConversation) {
@@ -81,6 +81,6 @@ async function onDelete(conversation: AgentConversation) {
 
   const wasActive = conversation.id === activeConversationId.value;
   await chat.deleteConversation(conversation.id);
-  if (wasActive) router.push({ name: 'ask-new' });
+  if (wasActive) void router.push('/ask');
 }
 </script>

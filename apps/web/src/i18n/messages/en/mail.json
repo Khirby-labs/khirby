@@ -11,7 +11,7 @@
     "testFailed": "Connection failed",
     "passwordHint": "Leave blank to keep the current password.",
     "backfillDays": "Initial backfill (days)",
-    "noSecretsKey": "MAIL_SECRETS_KEY is not configured on the server. Passwords cannot be stored and the mailbox cannot be enabled. Set a 32-byte hex key in your environment and restart the API.",
+    "noSecretsKey": "KHIRBY_SECRETS_KEY is not configured on the server. Passwords cannot be stored and the mailbox cannot be enabled. Set a 32-byte hex key in your environment and restart the API.",
     "status": {
       "disconnected": "Disconnected",
       "connected": "Connected",
