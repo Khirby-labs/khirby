@@ -44,7 +44,13 @@ describe('LoginView', () => {
     server.use(
       http.post(api('/api/auth/login'), () =>
         HttpResponse.json({
-          user: { id: 'u1', email: 'admin@example.com', locale: null, permissions: [] },
+          user: {
+            id: 'u1',
+            email: 'admin@example.com',
+            locale: null,
+            permissions: [],
+            isSuperAdmin: false,
+          },
         }),
       ),
     );
@@ -97,7 +103,13 @@ describe('LoginView', () => {
       http.post(api('/api/auth/login'), async () => {
         await gate;
         return HttpResponse.json({
-          user: { id: 'u1', email: 'admin@example.com', locale: null, permissions: [] },
+          user: {
+            id: 'u1',
+            email: 'admin@example.com',
+            locale: null,
+            permissions: [],
+            isSuperAdmin: false,
+          },
         });
       }),
     );

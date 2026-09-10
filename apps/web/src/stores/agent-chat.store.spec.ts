@@ -165,4 +165,37 @@ describe('agent-chat store', () => {
       expect.any(Function),
     );
   });
+
+  it('keeps streamed message ids when reloading the same transcript', async () => {
+    apiPostStream.mockImplementation(async (_path, _body, onLine: (line: string) => void) => {
+      onLine(`data: ${JSON.stringify({ type: 'conversation', conversationId: 'conv-1' })}`);
+      onLine(`data: ${JSON.stringify({ type: 'text_delta', delta: 'Hello Ada' })}`);
+      onLine(`data: ${JSON.stringify({ type: 'done' })}`);
+    });
+    apiGet.mockImplementation(async (path: string) => {
+      if (path === '/api/agent/conversations') return [];
+      return {
+        id: 'conv-1',
+        title: 'Hello',
+        messages: [
+          { id: 'server-user', role: 'user', content: 'hi', createdAt: '2026-01-01T00:00:00.000Z' },
+          {
+            id: 'server-asst',
+            role: 'assistant',
+            content: 'Hello Ada',
+            createdAt: '2026-01-01T00:00:01.000Z',
+          },
+        ],
+      };
+    });
+
+    const store = useAgentChatStore();
+    await store.sendMessage('hi');
+    const ids = store.messages.map((m) => m.id);
+    expect(ids.some((id) => id.startsWith('local-'))).toBe(true);
+
+    await store.loadConversation('conv-1');
+    expect(store.messages.map((m) => m.id)).toEqual(ids);
+    expect(store.messages[1]?.content).toBe('Hello Ada');
+  });
 });

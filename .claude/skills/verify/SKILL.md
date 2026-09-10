@@ -15,7 +15,7 @@ One command decides whether work can be called done. Never claim green — paste
    node .claude/scripts/verify.mjs
    ```
 
-   It runs `pnpm verify` (typecheck + lint + api/web/forms-client/forms-ui tests)
+   It runs `pnpm verify` (typecheck + eslint + design/i18n + prettier + api/web/forms-client/forms-ui tests)
    and — only on a green run — writes `.claude/.verify-ok.json`, the marker the
    Stop hook (`quality-gate.mjs`) requires before a code-editing turn may finish.
    Running bare `pnpm verify` proves nothing to the gate — always use the wrapper.

@@ -1,5 +1,6 @@
 # Local full stack (split api + web). Not for Swarm — use docker-stack.yml there.
 #   pnpm docker:up
+name: khirby
 
 services:
   api:
@@ -19,6 +20,14 @@ services:
       TRUSTED_PROXY_CIDRS: 172.30.0.3
       PUBLIC_URL: ${PUBLIC_URL:-http://localhost}
       INSTANCE_PLUGINS_DIR: /app/plugins
+      KHIRBY_SECRETS_KEY: ${KHIRBY_SECRETS_KEY:-}
+      MAIL_SECRETS_KEY: ${MAIL_SECRETS_KEY:-}
+      AI_COMPOSE_SECRETS_KEY: ${AI_COMPOSE_SECRETS_KEY:-}
+      POKELO_SECRETS_KEY: ${POKELO_SECRETS_KEY:-}
+      CONTROL_PLANE_URL: ${CONTROL_PLANE_URL-https://ctrl.bearly.pro}
+      DISABLE_TELEMETRY: ${DISABLE_TELEMETRY:-}
+      # Prefer plugins/crm-plugin-* checkouts over Marketplace unpacks (ADR-0045).
+      KHIRBY_PLUGINS_LOCAL: ${KHIRBY_PLUGINS_LOCAL:-}
     networks:
       default:
         ipv4_address: 172.30.0.2
@@ -89,7 +98,9 @@ services:
 
 volumes:
   postgres_data:
+    name: khirby_postgres_data
   redis_data:
+    name: khirby_redis_data
 
 # Stable web proxy address lets the API trust only nginx, even when port 3000 is exposed.
 networks:

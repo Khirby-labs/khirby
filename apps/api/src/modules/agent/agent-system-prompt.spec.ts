@@ -14,7 +14,7 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('list_pipeline_stages');
     expect(prompt).toContain('list_board_modules');
     expect(prompt).toContain('list_mail_threads');
-    expect(prompt).not.toContain('search_knowledge_base');
+    expect(prompt).not.toContain('search_documents');
     expect(prompt).not.toContain('list_marketplace_plugins');
   });
 
@@ -61,8 +61,10 @@ describe('buildAgentSystemPrompt', () => {
 
   it('includes Pokelo guidance when configured', () => {
     const prompt = buildAgentSystemPrompt({ hasPokelo: true, hasPluginTools: false });
-    expect(prompt).toContain('search_knowledge_base');
-    expect(prompt).toContain('Use it eagerly');
+    expect(prompt).toContain('search_documents');
+    expect(prompt).toContain('list_projects');
+    expect(prompt).toContain('use them eagerly');
+    expect(prompt).toContain('Bound projects only');
   });
 
   it('includes Marketplace guidance when marketplace tools are exposed', () => {

@@ -1,10 +1,12 @@
-import { HttpException, Inject, Injectable, Optional } from '@nestjs/common';
+import { HttpException, Inject, Injectable } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import {
   INSTANCE_PLUGINS,
-  POKELO_CONTEXT_SERVICE,
+  KNOWLEDGE_TOOLS,
   type InstancePluginsLike,
-  type PokeloContextServiceLike,
-} from '../../../../../../packages/plugin-host/src/tokens';
+  type KnowledgeToolsLike,
+  resolveLoadedProvider,
+} from '../../../../../../packages/plugin-host/src';
 import { RbacService } from '../../../core/rbac/rbac.service';
 import type { LlmToolDef } from '../agent-llm.client';
 import type { ToolRunResult } from './crm-tools.adapter';
@@ -246,35 +248,62 @@ function formatToolError(err: unknown): string {
 
 @Injectable()
 export class PokeloToolsAdapter {
+  private cachedNames = new Set<string>();
+
   constructor(
-    @Optional() @Inject(POKELO_CONTEXT_SERVICE) private pokelo: PokeloContextServiceLike | null,
+    private readonly moduleRef: ModuleRef,
     private rbac: RbacService,
   ) {}
 
-  definitions(): LlmToolDef[] {
-    if (!this.pokelo) return [];
-    return [
-      fn(
-        'search_knowledge_base',
-        'Search the organization Pokelo wiki for internal docs, runbooks, ADRs, and setup context. Call early and often for how-to, architecture, plugin, and process questions — before guessing.',
-        {
-          query: { type: 'string', description: 'Focused search query from the user question' },
+  /** Volume plugins bind this token after core constructors (ADR-0048 / ADR-0050). */
+  private knowledgeTools(): KnowledgeToolsLike | null {
+    return resolveLoadedProvider<KnowledgeToolsLike>(this.moduleRef, KNOWLEDGE_TOOLS);
+  }
+
+  ownsTool(name: string): boolean {
+    return this.cachedNames.has(name);
+  }
+
+  async definitions(): Promise<LlmToolDef[]> {
+    const tools = this.knowledgeTools();
+    if (!tools) {
+      return [];
+    }
+    try {
+      const listed = await tools.listTools();
+      this.cachedNames = new Set(listed.map((t) => t.name));
+      return listed.map((t) => ({
+        type: 'function' as const,
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters:
+            t.inputSchema && typeof t.inputSchema === 'object'
+              ? t.inputSchema
+              : { type: 'object', properties: {} },
         },
-        ['query'],
-      ),
-    ];
+      }));
+    } catch {
+      // Keep a warm cache so a concurrent failed listTools() does not reroute
+      // an in-flight Ask loop's Pokelo calls into crmTools unknown_tool.
+      return [];
+    }
   }
 
   async run(userId: string, name: string, args: Record<string, unknown>): Promise<ToolRunResult> {
-    if (!this.pokelo) return { ok: false, code: 'unavailable', summary: 'Pokelo not configured' };
+    const tools = this.knowledgeTools();
+    if (!tools) return { ok: false, code: 'unavailable', summary: 'Knowledge base not configured' };
     if (!(await this.rbac.hasPermission(userId, 'agent', 'use'))) {
       return { ok: false, code: 'forbidden', summary: 'Forbidden' };
     }
-    if (name !== 'search_knowledge_base') {
-      return { ok: false, code: 'unknown_tool', summary: 'Unknown tool' };
+
+    try {
+      const summary = await tools.callTool(name, args);
+      return { ok: true, summary: summary.trim() || 'OK' };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Tool failed';
+      return { ok: false, code: 'tool_error', summary: message.slice(0, 500) };
     }
-    const ctx = await this.pokelo.fetchContext(String(args.query ?? ''));
-    return { ok: true, summary: ctx.slice(0, 800) || 'No results' };
   }
 }
 

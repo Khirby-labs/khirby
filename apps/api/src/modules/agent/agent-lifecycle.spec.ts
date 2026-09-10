@@ -20,6 +20,16 @@ function setup() {
   };
   const empty = { definitions: () => [], run: jest.fn() };
   const mail = { definitions: () => [{ function: { name: 'send_mail' } }], run: jest.fn() };
+  const llm = {
+    getCompletionConfig: async () => ({
+      apiKey: 'fixture',
+      baseUrl: 'https://example.invalid',
+      model: 'fixture',
+    }),
+  };
+  const moduleRef = {
+    get: (token: string) => (token === 'AI_COMPOSE_LLM' ? llm : undefined),
+  };
   const service = new AgentChatService(
     conversations as any,
     empty as any,
@@ -27,13 +37,7 @@ function setup() {
     empty as any,
     empty as any,
     empty as any,
-    {
-      getCompletionConfig: async () => ({
-        apiKey: 'fixture',
-        baseUrl: 'https://example.invalid',
-        model: 'fixture',
-      }),
-    } as any,
+    moduleRef as any,
   );
   const completion = jest
     .spyOn(service as any, 'collectCompletion')
@@ -52,62 +56,77 @@ describe('agent lifecycle regressions', () => {
     ['next completion', 1, 'read'],
     ['final synthesis', MAX_ITERATIONS, 'fetch'],
     ['final synthesis', MAX_ITERATIONS, 'read'],
-  ] as const)('persists tool outcomes once on disconnect during %s %s %s', async (_, toolCount, phase) => {
-    const { service, conversations, mail, completion } = setup();
-    completion.mockRestore();
-    mail.run.mockResolvedValue({ ok: true, summary: 'Email sent' });
-    const ac = new AbortController();
-    const waiting = deferred();
-    let llmCalls = 0;
-    jest.spyOn(globalThis, 'fetch').mockImplementation(async () => {
-      llmCalls++;
-      if (llmCalls <= toolCount) {
-        const delta = {
-          tool_calls: [{
-            index: 0,
-            id: `call-${llmCalls}`,
-            function: { name: 'send_mail', arguments: '{}' },
-          }],
-        };
-        return new Response(`data: ${JSON.stringify({ choices: [{ delta }] })}\n\ndata: [DONE]\n\n`);
-      }
-      if (phase === 'fetch') {
-        return new Promise<Response>((_, reject) => {
-          ac.signal.addEventListener('abort', () => reject(ac.signal.reason), { once: true });
-          waiting.resolve();
-        });
-      }
-      return new Response(new ReadableStream({
-        pull(controller) {
-          ac.signal.addEventListener('abort', () => controller.error(ac.signal.reason), { once: true });
-          waiting.resolve();
-        },
-      }));
-    });
-    const pending = service.runAgentLoop(
-      'user',
-      { conversationId: 'conversation', content: 'send' },
-      { signal: ac.signal, write: jest.fn() },
-    );
-    await waiting.promise;
-    ac.abort();
-    await pending;
+  ] as const)(
+    'persists tool outcomes once on disconnect during %s %s %s',
+    async (_, toolCount, phase) => {
+      const { service, conversations, mail, completion } = setup();
+      completion.mockRestore();
+      mail.run.mockResolvedValue({ ok: true, summary: 'Email sent' });
+      const ac = new AbortController();
+      const waiting = deferred();
+      let llmCalls = 0;
+      jest.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+        llmCalls++;
+        if (llmCalls <= toolCount) {
+          const delta = {
+            tool_calls: [
+              {
+                index: 0,
+                id: `call-${llmCalls}`,
+                function: { name: 'send_mail', arguments: '{}' },
+              },
+            ],
+          };
+          return new Response(
+            `data: ${JSON.stringify({ choices: [{ delta }] })}\n\ndata: [DONE]\n\n`,
+          );
+        }
+        if (phase === 'fetch') {
+          return new Promise<Response>((_, reject) => {
+            ac.signal.addEventListener('abort', () => reject(ac.signal.reason), { once: true });
+            waiting.resolve();
+          });
+        }
+        return new Response(
+          new ReadableStream({
+            pull(controller) {
+              ac.signal.addEventListener('abort', () => controller.error(ac.signal.reason), {
+                once: true,
+              });
+              waiting.resolve();
+            },
+          }),
+        );
+      });
+      const pending = service.runAgentLoop(
+        'user',
+        { conversationId: 'conversation', content: 'send' },
+        { signal: ac.signal, write: jest.fn() },
+      );
+      await waiting.promise;
+      ac.abort();
+      await pending;
 
-    expect(llmCalls).toBe(toolCount + 1);
-    expect(mail.run).toHaveBeenCalledTimes(toolCount);
-    expect(conversations.insertAssistantMessage).toHaveBeenCalledTimes(1);
-    const [conversationId, content, trace] = conversations.insertAssistantMessage.mock.calls[0];
-    expect(conversationId).toBe('conversation');
-    expect(content).toBe('Email sent');
-    expect(trace).toHaveLength(toolCount);
-    expect(trace).toEqual(Array.from({ length: toolCount }, (_, index) => expect.objectContaining({
-      id: `call-${index + 1}`,
-      name: 'send_mail',
-      ok: true,
-      summary: 'Email sent',
-    })));
-    expect((service as any).activeStreams.has('conversation')).toBe(false);
-  });
+      expect(llmCalls).toBe(toolCount + 1);
+      expect(mail.run).toHaveBeenCalledTimes(toolCount);
+      expect(conversations.insertAssistantMessage).toHaveBeenCalledTimes(1);
+      const [conversationId, content, trace] = conversations.insertAssistantMessage.mock.calls[0];
+      expect(conversationId).toBe('conversation');
+      expect(content).toBe('Email sent');
+      expect(trace).toHaveLength(toolCount);
+      expect(trace).toEqual(
+        Array.from({ length: toolCount }, (_, index) =>
+          expect.objectContaining({
+            id: `call-${index + 1}`,
+            name: 'send_mail',
+            ok: true,
+            summary: 'Email sent',
+          }),
+        ),
+      );
+      expect((service as any).activeStreams.has('conversation')).toBe(false);
+    },
+  );
 
   it('admits only one concurrent request after asynchronous ownership checks', async () => {
     const { service, conversations } = setup();

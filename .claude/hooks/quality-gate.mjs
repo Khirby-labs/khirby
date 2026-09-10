@@ -69,7 +69,8 @@ if (existsSync(markerPath)) {
 }
 if (ok) process.exit(0);
 
-const list = [...edited].slice(0, 5).join(', ') + (edited.size > 5 ? ` (+${edited.size - 5} more)` : '');
+const list =
+  [...edited].slice(0, 5).join(', ') + (edited.size > 5 ? ` (+${edited.size - 5} more)` : '');
 console.log(
   JSON.stringify({
     decision: 'block',

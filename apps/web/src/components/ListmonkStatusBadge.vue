@@ -26,15 +26,11 @@ const props = defineProps<{
   info?: ListmonkSubscriberInfo | null;
 }>();
 
-const listNames = computed(() =>
-  props.info?.lists.map((l) => l.name).join(', ') ?? '',
-);
+const listNames = computed(() => props.info?.lists.map((l) => l.name).join(', ') ?? '');
 
 const tooltip = computed(() => {
   if (!props.info) return '';
-  const lists = props.info.lists
-    .map((l) => `${l.name} (${l.subscriptionStatus})`)
-    .join(', ');
+  const lists = props.info.lists.map((l) => `${l.name} (${l.subscriptionStatus})`).join(', ');
   // `status` is a raw Listmonk value and stays untranslated — only the
   // surrounding sentence is a message.
   return lists

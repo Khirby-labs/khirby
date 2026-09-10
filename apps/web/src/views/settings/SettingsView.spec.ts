@@ -1,11 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { flushPromises, type VueWrapper } from '@vue/test-utils';
-import { createPinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
 import SettingsView from './SettingsView.vue';
 import { mountWithI18n } from '../../test/i18n';
 import { useLocale } from '../../composables/useLocale';
 import { loadLocale } from '../../i18n';
 import { LOCALE_STORAGE_KEY } from '../../i18n/locales';
+import { useAuthStore } from '../../stores/auth.store';
 
 /**
  * Boundary spec for the language switcher (ADR-0010, `.claude/rules/i18n.md`).
@@ -15,13 +16,25 @@ import { LOCALE_STORAGE_KEY } from '../../i18n/locales';
  * pass while the user read `settings.password.submit` on screen, so the stub is
  * exactly the bug this spec exists to catch.
  */
-function mountSettings(): VueWrapper {
+function mountSettings(opts?: { isSuperAdmin?: boolean }): VueWrapper {
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  if (opts) {
+    useAuthStore().user = {
+      id: 'u1',
+      email: 'admin@example.com',
+      locale: null,
+      permissions: [],
+      isSuperAdmin: opts.isSuperAdmin === true,
+    };
+  }
   return mountWithI18n(SettingsView, {
     global: {
-      plugins: [createPinia()],
+      plugins: [pinia],
       stubs: {
-        // Version card hits /api/system/version — covered in VersionCard.spec.ts.
+        // Version / Control Plane cards hit /api/system/* — covered in their own specs.
         VersionCard: { template: '<aside class="version-stub" />' },
+        ControlPlaneCard: { template: '<aside class="control-plane-stub" />' },
       },
     },
   });
@@ -124,5 +137,18 @@ describe('SettingsView language switcher', () => {
     await flushPromises();
 
     expect(wrapper.text()).toContain('Podaj bieżące hasło.');
+  });
+});
+
+describe('SettingsView Control Plane card', () => {
+  it('hides telemetry from non-super-admins', () => {
+    const wrapper = mountSettings({ isSuperAdmin: false });
+    expect(wrapper.find('.control-plane-stub').exists()).toBe(false);
+    expect(wrapper.find('.version-stub').exists()).toBe(true);
+  });
+
+  it('shows telemetry to a super-admin', () => {
+    const wrapper = mountSettings({ isSuperAdmin: true });
+    expect(wrapper.find('.control-plane-stub').exists()).toBe(true);
   });
 });

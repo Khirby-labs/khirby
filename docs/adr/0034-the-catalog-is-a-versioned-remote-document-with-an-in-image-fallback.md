@@ -1,8 +1,11 @@
 # 0034 — The catalog is a versioned remote document with an in-image fallback
 
-- **Status:** Accepted
+- **Status:** Accepted — partly superseded by [0044](0044-control-plane-telemetry-and-marketplace-client.md)
 - **Date:** 2026-08-18
 - **Deciders:** Damian Orzeł
+
+> Note: catalog source is Control Plane (`CONTROL_PLANE_URL`), not
+> `MARKETPLACE_CATALOG_URL`; the in-image fallback is empty (ADR-0044).
 
 ## Context
 

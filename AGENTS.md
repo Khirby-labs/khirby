@@ -37,7 +37,7 @@ docker/               — docker-compose.yml, Dockerfiles, nginx.conf
 Work boards (projects/tasks kanban) are **core** (`apps/api/src/modules/boards/`,
 `apps/web/src/views/boards/`) — not a plugin (ADR-0026). Sales pipeline stays separate.
 
-Landing sites consume `@khirby/forms-*` from **npm** (`packages/forms-client/.npmrc.example`, `scripts/publish-forms-packages.sh`). Public product docs for those packages live on the **landing site** (ADR-0029), not under this CRM image. External plugin authors consume `@khirby/plugin-sdk` + `@khirby/plugin-host` from npm (`packages/plugin-sdk/.npmrc.example`, `scripts/publish-plugin-packages.sh`). First-party plugins live in **[Khirby-labs/plugins](https://github.com/Khirby-labs/plugins)** (clone into `./plugins`); this monorepo publishes host packages and forms packages only.
+Landing sites consume `@khirby/forms-*` from **npm** (`packages/forms-client/.npmrc.example`, `scripts/publish-forms-packages.sh`). Public product docs for those packages live on the **landing site** (ADR-0029), not under this CRM image. External plugin authors consume `@khirby/plugin-sdk` + `@khirby/plugin-host` from npm (`packages/plugin-sdk/.npmrc.example`, `scripts/publish-plugin-packages.sh`). First-party plugins live in **[Khirby-labs/plugins](https://github.com/Khirby-labs/plugins)** (clone into `./plugins`); this monorepo publishes host packages and forms packages only. Ship a first-party plugin with `/publish-plugin` (bump `package.json` in that checkout, CI on `main` publishes).
 
 ---
 
@@ -103,7 +103,7 @@ function makeChain(returnValue?: unknown) {
 - Interface: `CrmPlugin` from `@khirby/plugin-sdk`
 - Host surface for Nest plugins: `@khirby/plugin-host` (guards, `DB_TOKEN`, `AppException`, service tokens) — never import `apps/api` from a plugin (ADR-0016)
 - Registration: list packages in root `plugins.manifest.json` only — then `pnpm sync:plugins && pnpm install` (writes `apps/api` deps + regenerates loaders). Never hand-edit plugin deps in `apps/api/package.json`.
-- The manifest says what is **in the image**; a row in the `plugins` table says what is **installed** (ADR-0032). Marketplace installs a plugin already in the image by writing that row — no manifest edit, no restart. Only an empty `plugins` table seeds the native set, on a first boot.
+- The public image ships an **empty** `plugins.manifest.json` (ADR-0044). A row in the `plugins` table says what is **installed**. Marketplace install is Control Plane catalog + npm unpack (`pacote`/`ssri`) + `installFromDirectory` hot-load — not “write a row for an in-image plugin”. The tarball must be self-contained except host peers (ADR-0052); extract does **not** run `npm install`. An empty `plugins` table is a no-op (no native boot seed).
 - An `examples/*` fixture is declared with `"local": "<path>"` in the manifest; it resolves as a workspace link in every environment and is skipped by the vendor step (ADR-0035). Anything compiled into `apps/api/dist` imports `@khirby/plugin-host` **by relative path** — a bare specifier passes every gate and dies at boot in the image.
 - Events emitted: `contact.created`, `form.submitted`, …
 - Plugin config stored in DB (`plugins` table, `config` jsonb column)
@@ -120,7 +120,15 @@ function makeChain(returnValue?: unknown) {
 | `moduleNameMapper` path | `<rootDir>/../../../packages/...` — `rootDir` = `apps/api/src`, so 3 levels up to repo root |
 | Guard name | `SessionGuard` (**NOT** `JwtGuard` — JWT was removed) — see `apps/api/src/core/auth/session.guard.ts` |
 | Plugin imports in `app.module.ts` | Use path `../../../plugins/...` relative to `src/` |
-| Vendor of `plugins/` | `predev` must **not** `rmSync` existing `plugins/<dir>` (ADR-0037). Keep local sources; npm-fill only missing dirs. `KHIRBY_PLUGINS_WORKSPACE=1` or `plugins/.git` = local-only. Delete a dir to refresh from npm |
+| Vendor of `plugins/` | `predev` must **not** `rmSync` existing `plugins/<dir>` (ADR-0037). Keep local sources; npm-fill only missing dirs. `KHIRBY_PLUGINS_WORKSPACE=1` or `plugins/.git` = local-only vendor. Delete a dir to refresh from npm |
+| Checkout vs Marketplace at boot | `KHIRBY_PLUGINS_LOCAL=1` loads `plugins/crm-plugin-*` instead of `khirby__plugin-*` (ADR-0045). Default off. Not the same flag as `KHIRBY_PLUGINS_WORKSPACE`. |
+| Control Plane URL | Unset `CONTROL_PLANE_URL` defaults to `https://ctrl.bearly.pro` (ADR-0051). Explicit empty disables outbound CP. Telemetry opt-out is `DISABLE_TELEMETRY`, not an unset URL. |
+| Marketplace unpack | `pacote.extract` does **not** install `dependencies` (ADR-0052). Bundle runtime deps in the tarball; peer only host/Nest/Vue. Do not add `npm install` to `PluginPackageInstaller`. |
+| Instance secrets | One `KHIRBY_SECRETS_KEY` (32-byte hex/base64) for mailbox + plugin ciphertext (ADR-0046). Do not add `FOO_SECRETS_KEY` per plugin — use `encrypt`/`decrypt` from `@khirby/plugin-host`. Legacy `MAIL_` / `AI_COMPOSE_` / `POKELO_SECRETS_KEY` stay decrypt aliases. |
+| Knowledge context | Optional RAG enrichment is `KNOWLEDGE_CONTEXT.fetchContext` (ADR-0047). Ask Khirby uses `KNOWLEDGE_TOOLS` for the full Pokelo MCP catalog (ADR-0050). AI Compose resolves knowledge at call time — do not constructor-`@Optional()` it. Project ACL lives in the knowledge plugin. |
+| Volume plugin tokens in core | `AI_COMPOSE_LLM` / `KNOWLEDGE_CONTEXT` / `KNOWLEDGE_TOOLS` from Marketplace plugins are bound after core constructors (ADR-0048). Resolve at call time via `resolveLoadedProvider` from `@khirby/plugin-host` — do not constructor-`@Optional()` them in `apps/api` or Compose. |
+| Ask Khirby tools + reasoning | Function tools + non-none effort go to `POST /responses` with `reasoning.effort` (ADR-0049). Do not force `reasoning_effort: none` on `/chat/completions` — that endpoint rejects the combo on reasoning models. |
+| First-party plugin npm | Bump `plugins/crm-plugin-*/package.json` then push plugins `main` — CI publishes that version only. Do not auto-patch every commit. Skill: `/publish-plugin`. |
 | Instance-plugin writes | Go through `INSTANCE_PLUGINS` (`scaffold` / `writeFile` / …) into `plugins/<dir>/`, not a sibling `instance-plugins/` tree and not a second fs helper in the MCP plugin (ADR-0038, ADR-0039) |
 | Root db mock | Do **not** add `.then` to the root db mock object in tests |
 | Drizzle `.values()` / `.set()` | Add `as any` to avoid strict type inference errors in Drizzle 0.40 |
@@ -171,3 +179,10 @@ function makeChain(returnValue?: unknown) {
 - Do not restore unconditional `rmSync` of `plugins/crm-plugin-*` on `predev` — vendor is hybrid (ADR-0037)
 - Do not reimplement instance-plugin file ops or scaffolds in `crm-plugin-mcp` — they belong on `INSTANCE_PLUGINS` so chat can share them (ADR-0038)
 - Do not write self-build packages to `instance-plugins/` — they belong in `plugins/` (ADR-0039)
+- Do not add a per-plugin `*_SECRETS_KEY` — encrypt at rest with `KHIRBY_SECRETS_KEY` via `@khirby/plugin-host` (ADR-0046)
+- Do not inject Pokelo into AI Compose — optional RAG is `KNOWLEDGE_CONTEXT` (ADR-0047)
+- Do not constructor-`@Optional()` `AI_COMPOSE_LLM`, `KNOWLEDGE_CONTEXT`, or `KNOWLEDGE_TOOLS` in core or Compose — volume plugins bind those after boot; resolve at call time (ADR-0048, ADR-0050)
+- Do not reintroduce curated Ask wrappers (`search_knowledge_base`) — proxy Pokelo MCP via `KNOWLEDGE_TOOLS` (ADR-0050)
+- Do not force `reasoning_effort: none` on Ask Khirby when the model rejects tools on `/chat/completions` — POST `/responses` with `reasoning.effort` (ADR-0049)
+- Do not treat unset `CONTROL_PLANE_URL` as "no Control Plane" — it defaults to `https://ctrl.bearly.pro`; explicit empty disables outbound CP (ADR-0051)
+- Do not `npm install` a Marketplace plugin’s `dependencies` after `pacote.extract` — the tarball must bundle runtime deps; peer only `@khirby/plugin-sdk` / `plugin-host` / Nest / Vue (ADR-0052)

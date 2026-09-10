@@ -23,32 +23,42 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0011](0011-i18n-architecture.md) | i18n: two authored locales, keys as the contract | Accepted |
 | [0012](0012-date-input-standard.md) | One date-input standard: Reka Calendar over native date inputs | Accepted |
 | [0013](0013-mcp-plugin-bearer-tokens.md) | MCP plugin: Streamable HTTP + hashed bearer token (OAuth later) | Accepted |
-| [0014](0014-core-firm-mailbox.md) | Core firm mailbox (IMAP+SMTP), email threads as first-class CRM data | Accepted |
+| [0014](0014-core-firm-mailbox.md) | Core firm mailbox (IMAP+SMTP), email threads as first-class CRM data | Accepted — encryption env amended by [0046](0046-one-instance-secrets-key.md) |
 | [0015](0015-public-vitepress-docs.md) | Public VitePress docs vs internal `docs/` | Superseded by [0029](0029-public-docs-on-landing.md) |
 | [0016](0016-npm-community-plugins.md) | npm-installable community plugins (manifest + host package) | Accepted |
-| [0017](0017-mail-compose-assistant-slot.md) | Mail compose assistant slot (plugin UI in core mail) | Accepted |
-| [0018](0018-mailbox-google-oauth.md) | Google OAuth (XOAUTH2) for the firm mailbox | Accepted |
+| [0017](0017-mail-compose-assistant-slot.md) | Mail compose assistant slot (plugin UI in core mail) | Accepted — encryption env amended by [0046](0046-one-instance-secrets-key.md) |
+| [0018](0018-mailbox-google-oauth.md) | Google OAuth (XOAUTH2) for the firm mailbox | Accepted — encryption env amended by [0046](0046-one-instance-secrets-key.md) |
 | [0019](0019-mcp-mail-tools.md) | MCP mail tools: read threads + attributed send/reply | Accepted |
 | [0020](0020-listmonk-plugin-web-and-ai-generate.md) | Listmonk campaign UI in plugin `./web` + AI body generate | Accepted |
 | [0021](0021-listmonk-list-form-mapping.md) | Listmonk list ↔ CRM form mapping in plugin DB | Accepted |
-| [0022](0022-pokelo-rag-context-token.md) | Optional Pokelo RAG context via plugin-host token | Accepted |
+| [0022](0022-pokelo-rag-context-token.md) | Optional Pokelo RAG context via plugin-host token | Superseded by [0047](0047-knowledge-context-token.md) |
 | [0023](0023-plugin-settings-embed-in-plugins-list.md) | Settings-only plugin UIs embed in Settings → Plugins | Accepted |
-| [0024](0024-pokelo-settings-encrypted-multi-project.md) | Pokelo settings: encrypted token + multi-project binding | Accepted |
+| [0024](0024-pokelo-settings-encrypted-multi-project.md) | Pokelo settings: encrypted token + multi-project binding | Accepted — encryption env amended by [0046](0046-one-instance-secrets-key.md) |
 | [0025](0025-public-form-field-labels-i18n.md) | Public form field labels as multilingual persisted content (`?locale=`) | Accepted |
 | [0026](0026-boards-in-core.md) | Work boards are core; sales pipeline stays domain-specific | Accepted |
 | [0027](0027-mcp-boards-tools.md) | MCP boards tools: read + create/update (no delete) | Accepted |
 | [0028](0028-mcp-contacts-leads-write.md) | MCP contacts/leads create + update (no delete) | Accepted |
 | [0029](0029-public-docs-on-landing.md) | Public product docs live on the landing site | Accepted |
-| [0030](0030-first-party-plugins-from-npm.md) | First-party plugins install from npm (out of monorepo) | Accepted |
+| [0030](0030-first-party-plugins-from-npm.md) | First-party plugins install from npm (out of monorepo) | Accepted — partly superseded by [0044](0044-control-plane-telemetry-and-marketplace-client.md) |
 | [0031](0031-linear-writes-go-through-a-repo-script-mcp-stays-read-only.md) | Linear writes go through a repo script, MCP stays read-only | Accepted |
-| [0032](0032-a-row-in-plugins-means-installed-boot-seeds-only-an-empty-table.md) | A row in `plugins` means installed; boot seeds only an empty table | Accepted |
+| [0032](0032-a-row-in-plugins-means-installed-boot-seeds-only-an-empty-table.md) | A row in `plugins` means installed; boot seeds only an empty table | Accepted — partly superseded by [0044](0044-control-plane-telemetry-and-marketplace-client.md) |
 | [0033](0033-marketplace-is-the-one-discovery-surface-allowed-in-the-primary-sidebar.md) | Marketplace is the one discovery surface allowed in the primary sidebar (amends 0008) | Accepted |
-| [0034](0034-the-catalog-is-a-versioned-remote-document-with-an-in-image-fallback.md) | The Marketplace catalog is a versioned remote document with an in-image fallback | Accepted |
+| [0034](0034-the-catalog-is-a-versioned-remote-document-with-an-in-image-fallback.md) | The Marketplace catalog is a versioned remote document with an in-image fallback | Accepted — partly superseded by [0044](0044-control-plane-telemetry-and-marketplace-client.md) |
 | [0035](0035-the-example-plugin-is-a-workspace-package-first-party-plugins-still-are-not.md) | The example plugin is a workspace package; first-party plugins still are not (narrows 0030) | Accepted |
-| [0036](0036-instance-volume-append-only-plugin-hot-load.md) | Instance-volume append-only plugin hot-load (self-build MCP) | Accepted — path amended by [0039](0039-instance-plugins-live-in-plugins-dir.md) |
+| [0036](0036-instance-volume-append-only-plugin-hot-load.md) | Instance-volume append-only plugin hot-load (self-build MCP) | Accepted — path amended by [0039](0039-instance-plugins-live-in-plugins-dir.md); `./web` ban superseded by [0043](0043-volume-plugin-vue-web-hot-load.md) |
 | [0037](0037-hybrid-plugin-vendor-keep-local-sources.md) | Hybrid plugin vendor: keep local `plugins/` sources, npm-fill gaps (amends 0030) | Accepted |
 | [0038](0038-instance-plugin-authoring-is-core.md) | Instance-plugin authoring lives in core (chat + MCP share `INSTANCE_PLUGINS`) | Accepted |
-| [0039](0039-instance-plugins-live-in-plugins-dir.md) | Instance-authored plugins live in `plugins/` (amends 0036 path) | Accepted |
-| [0040](0040-ask-khirby-in-app-agent-is-core.md) | Ask Khirby: in-app agent is core (LLM via AI Compose, Pokelo + instance tools via host tokens) | Accepted |
+| [0039](0039-instance-plugins-live-in-plugins-dir.md) | Instance-authored plugins live in `plugins/` (amends 0036 path) | Accepted — boot skip amended by [0045](0045-local-checkout-plugins-preferred-over-marketplace.md) |
+| [0040](0040-ask-khirby-in-app-agent-is-core.md) | Ask Khirby: in-app agent is core (LLM via AI Compose, Pokelo + instance tools via host tokens) | Accepted — knowledge token superseded by [0047](0047-knowledge-context-token.md); token lookup timing amended by [0048](0048-core-resolves-volume-plugin-tokens-at-call-time.md); tools + reasoning transport amended by [0049](0049-ask-khirby-reasoning-uses-responses-api.md) |
 | [0041](0041-contact-custom-fields.md) | Contact custom fields (`metadata.custom` + `jsonb_set`) and JSON CSV import | Accepted |
 | [0042](0042-update-checks-use-github-releases.md) | Update checks use GitHub Releases (baked `APP_VERSION`), not Docker Hub | Accepted |
+| [0043](0043-volume-plugin-vue-web-hot-load.md) | Volume plugin Vue web hot-load via `dist/web/entry.js` (supersedes 0036 `./web` ban) | Accepted |
+| [0044](0044-control-plane-telemetry-and-marketplace-client.md) | Control Plane client: telemetry, marketplace catalog, npm install (partly supersedes 0030, 0032, 0034) | Accepted — default URL amended by [0051](0051-control-plane-url-defaults-to-ctrl-bearly-pro.md); tarball contract amended by [0052](0052-marketplace-plugins-are-self-contained-tarballs.md) |
+| [0045](0045-local-checkout-plugins-preferred-over-marketplace.md) | `KHIRBY_PLUGINS_LOCAL` prefers `crm-plugin-*` checkouts over Marketplace unpacks | Accepted |
+| [0046](0046-one-instance-secrets-key.md) | One instance AES key (`KHIRBY_SECRETS_KEY`) for mailbox and plugin secrets | Accepted |
+| [0047](0047-knowledge-context-token.md) | Generic `KNOWLEDGE_CONTEXT` token; AI Compose does not know Pokelo | Accepted — Ask MCP proxy in [0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) |
+| [0048](0048-core-resolves-volume-plugin-tokens-at-call-time.md) | Core resolves volume-plugin host tokens at call time, not constructor inject | Accepted — helper on plugin-host; Compose call-time in [0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) |
+| [0049](0049-ask-khirby-reasoning-uses-responses-api.md) | Ask Khirby: tools + reasoning use `/responses`, not `reasoning_effort: none` | Accepted |
+| [0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) | Ask Khirby proxies full Pokelo MCP tools; Compose keeps `fetchContext` on same client | Accepted |
+| [0051](0051-control-plane-url-defaults-to-ctrl-bearly-pro.md) | Unset `CONTROL_PLANE_URL` defaults to `https://ctrl.bearly.pro` (amends 0044) | Accepted |
+| [0052](0052-marketplace-plugins-are-self-contained-tarballs.md) | Marketplace plugins ship a self-contained tarball; no `npm install` on extract (amends 0044) | Accepted |

@@ -1,10 +1,10 @@
-import { useEffect } from 'react'
-import { FieldInput } from './FieldInput.js'
-import type { CrmFormProps } from './types.js'
-import { useCrmForm } from './useCrmForm.js'
+import { useEffect } from 'react';
+import { FieldInput } from './FieldInput.js';
+import type { CrmFormProps } from './types.js';
+import { useCrmForm } from './useCrmForm.js';
 
 function cx(...parts: Array<string | undefined | false>): string {
-  return parts.filter(Boolean).join(' ')
+  return parts.filter(Boolean).join(' ');
 }
 
 export function CrmForm({
@@ -18,26 +18,26 @@ export function CrmForm({
   onSuccess,
   onError,
 }: CrmFormProps) {
-  const form = useCrmForm({ token, baseUrl, locale })
+  const form = useCrmForm({ token, baseUrl, locale });
 
   useEffect(() => {
     if (form.status === 'success' && form.result) {
-      onSuccess?.(form.result)
+      onSuccess?.(form.result);
     }
-  }, [form.status, form.result, onSuccess])
+  }, [form.status, form.result, onSuccess]);
 
   useEffect(() => {
     if (form.status === 'error' && form.error) {
-      onError?.(new Error(form.error))
+      onError?.(new Error(form.error));
     }
-  }, [form.status, form.error, onError])
+  }, [form.status, form.error, onError]);
 
   if (form.status === 'loading' || form.status === 'idle') {
     return (
       <div className={cx('bcf-root', classNames?.root, className)} data-status={form.status}>
         <p className="bcf-loading">Loading form…</p>
       </div>
-    )
+    );
   }
 
   if (form.status === 'error' && form.fields.length === 0) {
@@ -45,7 +45,7 @@ export function CrmForm({
       <div className={cx('bcf-root', classNames?.root, className)} data-status="error">
         <div className={cx('bcf-error', classNames?.error)}>{form.error}</div>
       </div>
-    )
+    );
   }
 
   if (form.status === 'success') {
@@ -53,18 +53,18 @@ export function CrmForm({
       <div className={cx('bcf-root', classNames?.root, className)} data-status="success">
         <div className={cx('bcf-success', classNames?.success)}>{successMessage}</div>
       </div>
-    )
+    );
   }
 
-  const disabled = form.status === 'submitting'
+  const disabled = form.status === 'submitting';
 
   return (
     <form
       className={cx('bcf-root', classNames?.root, className)}
       data-status={form.status}
       onSubmit={(e) => {
-        e.preventDefault()
-        void form.submit()
+        e.preventDefault();
+        void form.submit();
       }}
       noValidate
     >
@@ -100,13 +100,9 @@ export function CrmForm({
         </div>
       ) : null}
 
-      <button
-        type="submit"
-        className={cx('bcf-submit', classNames?.submit)}
-        disabled={disabled}
-      >
+      <button type="submit" className={cx('bcf-submit', classNames?.submit)} disabled={disabled}>
         {disabled ? 'Sending…' : submitLabel}
       </button>
     </form>
-  )
+  );
 }

@@ -38,7 +38,8 @@ const git = (c) => {
 const findings = [];
 const scanLine = (file, lineNo, line) => {
   for (const p of PATTERNS) {
-    if (p.re.test(line)) findings.push(`${file}:${lineNo} [${p.label}] ${line.trim().slice(0, 120)}`);
+    if (p.re.test(line))
+      findings.push(`${file}:${lineNo} [${p.label}] ${line.trim().slice(0, 120)}`);
   }
 };
 
@@ -77,7 +78,9 @@ for (const f of git('git ls-files --others --exclude-standard').split('\n').filt
 }
 
 if (findings.length) {
-  console.log(`[placeholder-scan] ${findings.length} finding(s) in added lines — resolve or justify each in the ledger:`);
+  console.log(
+    `[placeholder-scan] ${findings.length} finding(s) in added lines — resolve or justify each in the ledger:`,
+  );
   for (const f of findings) console.log(`  ${f}`);
   process.exit(1);
 }

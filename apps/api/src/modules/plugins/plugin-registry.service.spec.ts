@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import 'reflect-metadata';
@@ -109,93 +109,81 @@ describe('PluginRegistryService', () => {
    * losing it would leave the whole unconditional-install regression uncovered.
    */
   describe('onModuleInit — first boot (empty plugins table)', () => {
-    const nativePlugins = () =>
-      NATIVE_PLUGIN_NAMES.map((name) => makePlugin({ name, displayName: name, version: '1.0.0' }));
+    it('seeds zero plugins — empty table is a no-op', async () => {
+      const { db, insertValues } = makeBootDb({ table: [] });
 
-    it('seeds one row per native plugin, enabled', async () => {
-      const { db, insertValues } = makeBootDb({
-        table: [],
-        inserted: [makeRow({ name: 'seeded' })],
-      });
-
-      const svc = makeService(nativePlugins(), db);
+      const svc = makeService(
+        NATIVE_PLUGIN_NAMES.map((name) =>
+          makePlugin({ name, displayName: name, version: '1.0.0' }),
+        ),
+        db,
+      );
       await svc.onModuleInit();
 
-      expect(insertValues).toHaveBeenCalledTimes(NATIVE_PLUGIN_NAMES.length);
-      const seededNames = insertValues.mock.calls.map((call: any[]) => call[0].name);
-      expect(seededNames.sort()).toEqual([...NATIVE_PLUGIN_NAMES].sort());
-      for (const call of insertValues.mock.calls) {
-        expect((call as any[])[0].enabled).toBe(true);
-      }
+      expect(db.insert).not.toHaveBeenCalled();
+      expect(insertValues).not.toHaveBeenCalled();
     });
 
-    it('does not seed a plugin the image does not ship', async () => {
-      const { db, insertValues } = makeBootDb({
-        table: [],
-        inserted: [makeRow({ name: 'crm_webhook' })],
-      });
-
-      // Only one of the six native names is present in this process.
-      const svc = makeService([makePlugin({ name: 'crm_webhook' })], db);
-      await svc.onModuleInit();
-
-      expect(insertValues).toHaveBeenCalledTimes(1);
-      expect((insertValues.mock.calls[0] as any[])[0].name).toBe('crm_webhook');
-    });
-
-    /*
-     * The concurrency trap this exists to prevent: docker-stack.yml deploys with
-     * order: start-first, so two processes overlap and both see an empty table.
-     * `plugins.name` is unique, so the loser's insert is a no-op returning no
-     * row. Adopting the winner's row is not cosmetic — without it this process
-     * has no context, and emit() skips context-less plugins, so every event in
-     * the replica would be dropped in silence.
-     */
-    it('adopts the winner row and still builds a context when the seed insert conflicts', async () => {
-      const adopted = makeRow({ name: 'crm_webhook', enabled: true, config: { A: '1' } });
-      const onInit = jest.fn().mockResolvedValue(undefined);
-      const { db } = makeBootDb({ table: [], inserted: [], lookup: [adopted] });
+    it('does not seed even when the process has registered plugins', async () => {
+      const onInit = jest.fn();
+      const { db, insertValues } = makeBootDb({ table: [] });
 
       const svc = makeService([makePlugin({ name: 'crm_webhook', onInit })], db);
       await svc.onModuleInit();
 
-      expect(onInit).toHaveBeenCalledWith(expect.objectContaining({ config: { A: '1' } }));
-      expect(svc.isEnabled('crm_webhook')).toBe(true);
+      expect(insertValues).not.toHaveBeenCalled();
+      expect(onInit).not.toHaveBeenCalled();
+      expect(svc.isEnabled('crm_webhook')).toBe(false);
     });
 
-    it('runs onMigrate before onInit while seeding', async () => {
-      const order: string[] = [];
-      const { db } = makeBootDb({
-        table: [],
-        inserted: [makeRow({ name: 'crm_webhook' })],
+    it('does not lazy-load volume Nest when there is no plugins row', async () => {
+      const nest = class OrphanVolumeModule {};
+      const load = jest.fn().mockResolvedValue({});
+      const registerModuleRoutes = jest.fn().mockResolvedValue(['/api/plugins/orphan']);
+      const { db } = makeBootDb({ table: [] });
+
+      const svc = makeService(
+        [makePlugin({ name: 'crm_ai_compose', getNestModule: () => nest })],
+        db,
+      );
+      (svc as any).lazyModuleLoader = { load };
+      Object.defineProperty(svc, 'pluginHttpRegistrar', {
+        get: () => ({ registerModuleRoutes }),
       });
 
-      const plugin = makePlugin({
-        name: 'crm_webhook',
-        onMigrate: jest.fn().mockImplementation(async () => void order.push('migrate')),
-        onInit: jest.fn().mockImplementation(async () => void order.push('init')),
-      });
-      const svc = makeService([plugin], db);
       await svc.onModuleInit();
 
-      expect(order).toEqual(['migrate', 'init']);
-      expect(plugin.onMigrate).toHaveBeenCalledWith(db.$client);
+      expect(load).not.toHaveBeenCalled();
+      expect(registerModuleRoutes).not.toHaveBeenCalled();
     });
+  });
 
-    it('a plugin whose onInit throws does not stop the rest of the boot', async () => {
-      const healthy = jest.fn().mockResolvedValue(undefined);
-      const { db } = makeBootDb({ table: [], inserted: [makeRow()] });
+  describe('onModuleInit — volume Nest bind gated by row', () => {
+    it('lazy-loads Nest only for volume plugins that have a row', async () => {
+      const nestInstalled = class InstalledVolumeModule {};
+      const nestOrphan = class OrphanVolumeModule {};
+      const load = jest.fn().mockResolvedValue({});
+      const registerModuleRoutes = jest.fn().mockResolvedValue(['/api/plugins/ai']);
+      const { db } = makeBootDb({ table: [makeRow({ name: 'crm_ai_compose' })] });
 
       const svc = makeService(
         [
-          makePlugin({ name: 'crm_webhook', onInit: jest.fn().mockRejectedValue(new Error('x')) }),
-          makePlugin({ name: 'crm_discord', onInit: healthy }),
+          makePlugin({ name: 'crm_ai_compose', getNestModule: () => nestInstalled }),
+          makePlugin({ name: 'crm_orphan', getNestModule: () => nestOrphan }),
         ],
         db,
       );
+      (svc as any).lazyModuleLoader = { load };
+      Object.defineProperty(svc, 'pluginHttpRegistrar', {
+        get: () => ({ registerModuleRoutes }),
+      });
 
-      await expect(svc.onModuleInit()).resolves.toBeUndefined();
-      expect(healthy).toHaveBeenCalled();
+      await svc.onModuleInit();
+
+      expect(load).toHaveBeenCalledTimes(1);
+      expect(registerModuleRoutes).toHaveBeenCalledWith(nestInstalled, {
+        pluginName: 'crm_ai_compose',
+      });
     });
   });
 
@@ -1108,10 +1096,17 @@ export function createPlugin() {
       return { db, deleteWhere };
     }
 
-    it('rejects native plugins', async () => {
-      const { db } = makeUninstallDb(makeRow({ name: 'crm_webhook' }));
+    it('allows uninstall of former native names (empty image — all rows removable)', async () => {
+      const row = makeRow({ name: 'crm_webhook', enabled: true });
+      const { db, deleteWhere } = makeUninstallDb(row);
       const svc = makeService([makePlugin({ name: 'crm_webhook' })], db);
-      await expect(svc.uninstall('crm_webhook')).rejects.toThrow(BadRequestException);
+      svc['contexts'].set('crm_webhook', { log: jest.fn(), config: {} });
+
+      const result = await svc.uninstall('crm_webhook');
+
+      expect(result).toEqual({ name: 'crm_webhook' });
+      expect(deleteWhere).toHaveBeenCalled();
+      expect(svc.isEnabled('crm_webhook')).toBe(false);
     });
 
     it('runs onUninstall then deletes the row for marketplace plugins', async () => {
@@ -1156,8 +1151,22 @@ export function createPlugin() {
       expect(list.find((p) => p.name === 'crm_hello')).toBeUndefined();
       expect(list.find((p) => p.name === 'crm_webhook')).toMatchObject({
         codeLoaded: true,
-        canUninstall: false,
+        canUninstall: true,
       });
+    });
+
+    it('clears HTTP registrar tokens on uninstall so a same-process reinstall can rebind', async () => {
+      const row = makeRow({ name: 'crm_hello', enabled: true });
+      const { db } = makeUninstallDb(row);
+      const unregisterPlugin = jest.fn();
+      const svc = makeService([makePlugin({ name: 'crm_hello' })], db);
+      Object.defineProperty(svc, 'pluginHttpRegistrar', {
+        get: () => ({ unregisterPlugin }),
+      });
+
+      await svc.uninstall('crm_hello');
+
+      expect(unregisterPlugin).toHaveBeenCalledWith('crm_hello');
     });
 
     it('excludes marketplace demo plugins from findAll but not snapshot', async () => {
@@ -1175,6 +1184,107 @@ export function createPlugin() {
 
       expect(installed.map((p) => p.name)).toEqual(['crm_webhook']);
       expect(snapshot.installed.map((p) => p.name).sort()).toEqual(['crm_hello', 'crm_webhook']);
+    });
+  });
+
+  describe('upgradeFromDirectory / removeInstance', () => {
+    it('does not bump plugins.version when onMigrate fails', async () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      const volume = mkdtempSync(join(tmpdir(), 'instance-upgrade-'));
+      process.env.INSTANCE_PLUGINS_DIR = volume;
+      try {
+        const row = makeRow({ name: 'crm_upg', version: '1.0.0', enabled: true });
+        const updateSet = jest.fn(() => ({
+          where: () => ({ returning: () => makeChain([{ ...row, version: '2.0.0' }]) }),
+        }));
+        const db: any = {
+          $client: { unsafe: jest.fn() },
+          select: jest.fn(() => ({
+            from: () => ({ where: () => ({ limit: () => makeChain([row]) }) }),
+          })),
+          update: jest.fn(() => ({ set: updateSet })),
+        };
+        const plugin = makePlugin({ name: 'crm_upg', version: '2.0.0' });
+        const svc = makeService([plugin], db);
+        scaffoldInstancePlugin(volume, {
+          directory: 'crm-plugin-upg',
+          name: 'crm_upg',
+          displayName: 'Upg',
+          nest: false,
+        });
+        jest.spyOn(svc as any, 'activate').mockResolvedValue(false);
+        jest
+          .spyOn(svc as any, 'reloadFromDirectory')
+          .mockResolvedValue({ name: 'crm_upg', status: 'reloaded' });
+        jest.spyOn(svc, 'loadedNames').mockReturnValue(['crm_upg']);
+
+        await expect(svc.upgradeFromDirectory('crm-plugin-upg')).rejects.toThrow(
+          BadRequestException,
+        );
+        expect(updateSet).not.toHaveBeenCalled();
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('re-activates the previous plugin after a failed upgrade wiped its context', async () => {
+      const onInit = jest.fn();
+      const onMigrate = jest.fn().mockResolvedValue(undefined);
+      const plugin = makePlugin({ name: 'crm_upg', onInit, onMigrate });
+      const row = makeRow({ name: 'crm_upg', version: '1.1.0', enabled: true });
+      const db: any = {
+        $client: { unsafe: jest.fn() },
+        select: jest.fn(() => ({
+          from: () => ({ where: () => ({ limit: () => makeChain([row]) }) }),
+        })),
+      };
+      const svc = makeService([plugin], db);
+
+      await (svc as any).activate(plugin, row);
+      expect(svc.isEnabled('crm_upg')).toBe(true);
+
+      (svc as any).contexts.delete('crm_upg');
+      expect(svc.isEnabled('crm_upg')).toBe(false);
+
+      jest
+        .spyOn(svc as any, 'reloadFromDirectory')
+        .mockResolvedValue({ name: 'crm_upg', status: 'reloaded' });
+
+      const result = await svc.restoreAfterFailedUpgrade('crm-plugin-upg');
+
+      expect(result).toEqual({ name: 'crm_upg', status: 'restored' });
+      expect(svc.isEnabled('crm_upg')).toBe(true);
+      expect(onInit).toHaveBeenCalledTimes(2);
+      expect(onMigrate).toHaveBeenCalledTimes(2);
+    });
+
+    it('refuses to rmSync a first-party checkout when no plugins row exists', async () => {
+      const prevDir = process.env.INSTANCE_PLUGINS_DIR;
+      const prevLocal = process.env.KHIRBY_PLUGINS_LOCAL;
+      const volume = mkdtempSync(join(tmpdir(), 'instance-fp-'));
+      process.env.INSTANCE_PLUGINS_DIR = volume;
+      process.env.KHIRBY_PLUGINS_LOCAL = '1';
+      try {
+        const checkout = join(volume, 'crm-plugin-mcp');
+        mkdirSync(checkout);
+        writeFileSync(join(checkout, 'KEEP.txt'), 'checkout');
+        const db: any = {
+          $client: { unsafe: jest.fn() },
+          select: jest.fn(() => ({
+            from: () => ({ where: () => ({ limit: () => makeChain([]) }) }),
+          })),
+        };
+        const svc = makeService([], db);
+
+        await expect(svc.removeInstance('crm-plugin-mcp')).rejects.toThrow(BadRequestException);
+        expect(existsSync(join(checkout, 'KEEP.txt'))).toBe(true);
+      } finally {
+        if (prevDir === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prevDir;
+        if (prevLocal === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+        else process.env.KHIRBY_PLUGINS_LOCAL = prevLocal;
+      }
     });
   });
 });

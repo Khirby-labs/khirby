@@ -18,8 +18,9 @@ export const useMarketplaceStore = defineStore('marketplace', () => {
   const entries = ref<MarketplacePlugin[]>([]);
   const loading = ref(false);
   const error = ref<MarketplaceError | null>(null);
-  /** Name of the plugin currently being installed — one at a time, per card. */
+  /** Name of the plugin currently being installed or updated — one at a time. */
   const installing = ref<string | null>(null);
+  const updating = ref<string | null>(null);
 
   /** Categories actually present, so the filter never offers an empty bucket. */
   const categories = computed<MarketplaceCategory[]>(() => {
@@ -46,6 +47,14 @@ export const useMarketplaceStore = defineStore('marketplace', () => {
   }
 
   /**
+   * Install key for Control Plane cards: prefer slug, fall back to crm_* name.
+   * The API accepts either (MarketplaceService.install).
+   */
+  function installKey(entry: MarketplacePlugin): string {
+    return entry.slug ?? entry.name;
+  }
+
+  /**
    * Install one plugin and fold the result back into the card.
    *
    * The plugin list is refetched afterwards because a plugin can contribute its
@@ -53,14 +62,27 @@ export const useMarketplaceStore = defineStore('marketplace', () => {
    * entry appears without a page reload. Without this the operator would install
    * something and see no trace of it until they refreshed.
    */
-  async function install(name: string): Promise<void> {
-    installing.value = name;
+  async function install(slugOrName: string): Promise<void> {
+    installing.value = slugOrName;
     try {
-      await apiPost(`/api/marketplace/plugins/${name}/install`, {});
-      markInstalled(name);
+      await apiPost(`/api/marketplace/plugins/${encodeURIComponent(slugOrName)}/install`, {});
+      // Refetch so `version` / `latestVersion` / `updateAvailable` come from the
+      // server — markInstalled alone would keep the pre-install catalog version.
+      await fetchCatalog();
       await usePluginsStore().fetchPlugins();
     } finally {
       installing.value = null;
+    }
+  }
+
+  async function update(slugOrName: string): Promise<void> {
+    updating.value = slugOrName;
+    try {
+      await apiPost(`/api/marketplace/plugins/${encodeURIComponent(slugOrName)}/update`, {});
+      await fetchCatalog();
+      await usePluginsStore().fetchPlugins();
+    } finally {
+      updating.value = null;
     }
   }
 
@@ -71,10 +93,35 @@ export const useMarketplaceStore = defineStore('marketplace', () => {
    * already installed it, so converging on "installed" is the truthful outcome —
    * leaving the card in an error state would misreport the system.
    */
-  function markInstalled(name: string): void {
-    const index = entries.value.findIndex((entry) => entry.name === name);
+  function markInstalled(slugOrName: string): void {
+    const index = entries.value.findIndex(
+      (entry) => entry.name === slugOrName || entry.slug === slugOrName,
+    );
     if (index === -1) return;
-    entries.value[index] = { ...entries.value[index], status: 'installed', enabled: true };
+    entries.value[index] = {
+      ...entries.value[index],
+      status: 'installed',
+      enabled: true,
+      updateAvailable: false,
+    };
+  }
+
+  const submitting = ref(false);
+
+  async function submit(body: {
+    slug: string;
+    name: string;
+    packageName: string;
+    description?: string;
+    publisherName?: string;
+    repositoryUrl?: string;
+  }): Promise<void> {
+    submitting.value = true;
+    try {
+      await apiPost('/api/marketplace/submissions', body);
+    } finally {
+      submitting.value = false;
+    }
   }
 
   return {
@@ -82,10 +129,15 @@ export const useMarketplaceStore = defineStore('marketplace', () => {
     loading,
     error,
     installing,
+    updating,
+    submitting,
     categories,
     hasInstallable,
+    installKey,
     fetchCatalog,
     install,
+    update,
     markInstalled,
+    submit,
   };
 });

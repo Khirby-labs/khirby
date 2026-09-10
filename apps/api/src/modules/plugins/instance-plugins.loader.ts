@@ -3,7 +3,10 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import 'reflect-metadata';
 import { createJiti } from 'jiti';
 import type { CrmPlugin } from '@khirby/plugin-sdk';
-import { loadVolumeNestModule } from '../../../../../packages/plugin-host/src/volume-nest';
+import {
+  loadVolumeNestModuleFile,
+  resolveVolumeNestModuleFile,
+} from '../../../../../packages/plugin-host/src/volume-nest';
 import { type InstancePluginScaffoldInput, writeScaffold } from './instance-plugin-scaffold';
 import { assertInstancePluginShape } from './instance-plugin-validate';
 
@@ -12,7 +15,7 @@ export const INSTANCE_MANIFEST = 'instance.manifest.json';
 export const MAX_INSTANCE_FILES = 24;
 export const MAX_INSTANCE_FILE_BYTES = 100_000;
 
-/** First-party checkout dirs. Scaffold/write must not land on top of these. */
+/** First-party checkout dirs. Scaffold must not land on top of these names. */
 export const FIRST_PARTY_PLUGIN_DIRS: readonly string[] = [
   'crm-plugin-webhook',
   'crm-plugin-discord',
@@ -21,6 +24,17 @@ export const FIRST_PARTY_PLUGIN_DIRS: readonly string[] = [
   'crm-plugin-ai-compose',
   'crm-plugin-pokelo',
 ];
+
+/**
+ * Dir names reserved for instance *scaffold* collision (former first-party
+ * checkouts + `node_modules`). Marketplace npm unpack may write into the
+ * first-party names on an empty-image host — pass
+ * `{ allowReservedScaffoldDirs: true }` into `pluginVolumeRoot` (wired from
+ * PluginPackageInstaller + MarketplaceService.install).
+ */
+export function isReservedScaffoldDir(directory: string): boolean {
+  return directory === 'node_modules' || FIRST_PARTY_PLUGIN_DIRS.includes(directory);
+}
 
 export type InstanceManifest = {
   plugins: Array<{ package: string; local: string }>;
@@ -51,6 +65,49 @@ export function defaultInstancePluginsDir(start = process.cwd()): string {
   return join(start, 'plugins');
 }
 
+/**
+ * `KHIRBY_PLUGINS_LOCAL=1|true|yes` — boot loads `plugins/crm-plugin-*` checkouts
+ * instead of Marketplace unpacks (`khirby__plugin-*`) of the same `CrmPlugin.name`
+ * (ADR-0045). Default off. Uninstall still targets the marketplace dir.
+ */
+export function preferLocalCheckoutPlugins(env: NodeJS.ProcessEnv = process.env): boolean {
+  const raw = env.KHIRBY_PLUGINS_LOCAL?.trim().toLowerCase();
+  return raw === '1' || raw === 'true' || raw === 'yes';
+}
+
+/**
+ * `loadPlugins()` runs during `AppModule` evaluation, before `ConfigModule.forRoot`.
+ * Fill missing keys from repo-root `.env` so a local flag in `.env` is visible.
+ * A key already present on `env` — including an explicit empty string — is
+ * left alone (ADR-0051: `CONTROL_PLANE_URL=` is opt-out, not "unset").
+ */
+export function applyRootEnvFile(
+  start = process.cwd(),
+  env: NodeJS.ProcessEnv = process.env,
+): void {
+  const root = findRepoRoot(start);
+  if (!root) return;
+  const envPath = join(root, '.env');
+  if (!existsSync(envPath)) return;
+  for (const raw of readFileSync(envPath, 'utf8').split('\n')) {
+    const line = raw.trim();
+    if (!line || line.startsWith('#')) continue;
+    const eq = line.indexOf('=');
+    if (eq <= 0) continue;
+    const key = line.slice(0, eq).trim();
+    if (!key) continue;
+    if (Object.prototype.hasOwnProperty.call(env, key)) continue;
+    let value = line.slice(eq + 1).trim();
+    if (
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"))
+    ) {
+      value = value.slice(1, -1);
+    }
+    env[key] = value;
+  }
+}
+
 /** One path segment, no `..`, no absolute, no separators. */
 export function isSafeLocalSegment(local: string): boolean {
   if (!local || local === '.' || local === '..') return false;
@@ -59,12 +116,19 @@ export function isSafeLocalSegment(local: string): boolean {
   return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(local);
 }
 
+/** Prebuilt SPA entry for volume/marketplace hot-load (ADR-0043). */
+export const WEB_ENTRY_REL = 'dist/web/entry.js';
+
 export function packageDeclaresWeb(pkg: Record<string, unknown>): boolean {
   const exportsField = pkg.exports;
   if (!exportsField || typeof exportsField !== 'object' || Array.isArray(exportsField)) {
     return false;
   }
   return './web' in (exportsField as Record<string, unknown>);
+}
+
+export function hasWebEntryBundle(absDir: string): boolean {
+  return existsSync(join(absDir, WEB_ENTRY_REL));
 }
 
 function readManifest(dir: string): InstanceManifest {
@@ -108,8 +172,29 @@ export function removeInstanceManifest(dir: string, localDir: string): void {
   );
 }
 
-/** Volume segment for an installed plugin name, or null when not on the instance volume. */
-export function findInstanceLocalDirForPlugin(
+function pluginNameFromDir(pkgDir: string): string | null {
+  if (!existsSync(join(pkgDir, 'package.json'))) return null;
+  try {
+    return loadPluginFromDir(pkgDir).name;
+  } catch {
+    return null;
+  }
+}
+
+function findCheckoutDirForPlugin(volumeDir: string, pluginName: string): string | null {
+  for (const local of FIRST_PARTY_PLUGIN_DIRS) {
+    const pkgDir = join(volumeDir, local);
+    if (!existsSync(pkgDir) || !statSync(pkgDir).isDirectory()) continue;
+    if (pluginNameFromDir(pkgDir) === pluginName) return local;
+  }
+  return null;
+}
+
+/**
+ * Marketplace unpack / self-build dir for `pluginName`. Never returns a
+ * first-party checkout — uninstall must not `rmSync` a git working tree.
+ */
+export function findMarketplaceLocalDirForPlugin(
   volumeDir: string,
   pluginName: string,
 ): string | null {
@@ -117,26 +202,28 @@ export function findInstanceLocalDirForPlugin(
   for (const entry of manifest.plugins) {
     if (entry.package === pluginName) return entry.local;
     const pkgDir = join(volumeDir, entry.local);
-    if (!existsSync(join(pkgDir, 'package.json'))) continue;
-    try {
-      if (loadPluginFromDir(pkgDir).name === pluginName) return entry.local;
-    } catch {
-      // Broken tree — keep scanning.
-    }
+    if (pluginNameFromDir(pkgDir) === pluginName) return entry.local;
   }
   if (!existsSync(volumeDir)) return null;
   for (const local of readdirSync(volumeDir)) {
     if (!isSafeLocalSegment(local) || FIRST_PARTY_PLUGIN_DIRS.includes(local)) continue;
     const pkgDir = join(volumeDir, local);
     if (!statSync(pkgDir).isDirectory()) continue;
-    if (!existsSync(join(pkgDir, 'package.json'))) continue;
-    try {
-      if (loadPluginFromDir(pkgDir).name === pluginName) return local;
-    } catch {
-      // Orphan or invalid package — skip.
-    }
+    if (pluginNameFromDir(pkgDir) === pluginName) return local;
   }
   return null;
+}
+
+/** Volume segment for an installed plugin name, or null when not on the instance volume. */
+export function findInstanceLocalDirForPlugin(
+  volumeDir: string,
+  pluginName: string,
+): string | null {
+  if (preferLocalCheckoutPlugins()) {
+    const checkout = findCheckoutDirForPlugin(volumeDir, pluginName);
+    if (checkout) return checkout;
+  }
+  return findMarketplaceLocalDirForPlugin(volumeDir, pluginName);
 }
 
 /** Strip `/plugins/` so an SPA path can be used as a volume ref. */
@@ -229,9 +316,11 @@ export function resolvePackageEntry(absDir: string): string {
 export function loadPluginFromDir(absDir: string): CrmPlugin {
   const pkgPath = join(absDir, 'package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>;
-  if (packageDeclaresWeb(pkg)) {
-    const err = new Error('web_not_hot_loadable');
-    err.name = 'web_not_hot_loadable';
+  // ./web is allowed when dist/web/entry.js is on disk (SPA hot-load, ADR-0043).
+  // Declaring ./web without a built bundle fails marketplace/hotLoad install.
+  if (packageDeclaresWeb(pkg) && !hasWebEntryBundle(absDir)) {
+    const err = new Error('web_bundle_required');
+    err.name = 'web_bundle_required';
     throw err;
   }
   const entry = resolvePackageEntry(absDir);
@@ -249,17 +338,27 @@ export function loadPluginFromDir(absDir: string): CrmPlugin {
   if (!plugin?.name) {
     throw new Error('createPlugin returned no name');
   }
+  // npm / volume packages: package.json is the published version; createPlugin()
+  // often hardcodes an older string that then lands in the `plugins` row.
+  if (typeof pkg.version === 'string' && pkg.version.trim()) {
+    plugin.version = pkg.version.trim();
+  }
   attachVolumeNestModule(plugin, absDir);
   assertInstancePluginShape(plugin);
   return plugin;
 }
 
-/** If src/nest-module.ts exists and the plugin omitted getNestModule, wire the host helper. */
+/**
+ * Wire Nest via ts-node for volume/marketplace packages.
+ *
+ * jiti breaks Nest DI metadata (e.g. `@Optional() @Inject(TOKEN) x = null` drops
+ * the inject token). Always prefer ts-node when a nest module file is on disk —
+ * even if createPlugin() already returned a jiti-imported Module class.
+ */
 function attachVolumeNestModule(plugin: CrmPlugin, absDir: string): void {
-  const srcDir = join(absDir, 'src');
-  if (!existsSync(join(srcDir, 'nest-module.ts'))) return;
-  if (typeof plugin.getNestModule === 'function') return;
-  plugin.getNestModule = () => loadVolumeNestModule(srcDir);
+  const nestFile = resolveVolumeNestModuleFile(absDir);
+  if (!nestFile) return;
+  plugin.getNestModule = () => loadVolumeNestModuleFile(nestFile);
 }
 
 /** Drop Node/jiti/ts-node cache for a volume plugin so the next load sees disk. */
@@ -291,6 +390,19 @@ function listedLocals(dir: string): string[] {
   return [...new Set([...fromManifest, ...fromDisk])];
 }
 
+/** Checkout dirs first when KHIRBY_PLUGINS_LOCAL is on, so they win name clashes. */
+function localsToLoad(dir: string): string[] {
+  const locals = listedLocals(dir);
+  if (!preferLocalCheckoutPlugins()) return locals;
+  const checkout: string[] = [];
+  const rest: string[] = [];
+  for (const local of locals) {
+    if (FIRST_PARTY_PLUGIN_DIRS.includes(local)) checkout.push(local);
+    else rest.push(local);
+  }
+  return [...checkout, ...rest];
+}
+
 export function loadInstancePlugins(
   dir: string | undefined,
   imageNames: Set<string>,
@@ -300,11 +412,17 @@ export function loadInstancePlugins(
   const absDir = resolve(dir);
   if (!existsSync(absDir)) return [];
   const out: CrmPlugin[] = [];
-  for (const local of listedLocals(absDir)) {
-    if (!isSafeLocalSegment(local) || FIRST_PARTY_PLUGIN_DIRS.includes(local)) {
-      if (!isSafeLocalSegment(local)) {
-        log(`Instance plugin local path skipped: ${local}`);
-      }
+  const loadedFrom = new Map<string, string>();
+  const preferCheckout = preferLocalCheckoutPlugins();
+  for (const local of localsToLoad(absDir)) {
+    // TODO(control-plane): allow loading FIRST_PARTY_PLUGIN_DIRS when they are
+    // marketplace volume installs (empty image). Skipping still protects monorepo
+    // checkouts unless KHIRBY_PLUGINS_LOCAL is on (ADR-0045).
+    if (!isSafeLocalSegment(local)) {
+      log(`Instance plugin local path skipped: ${local}`);
+      continue;
+    }
+    if (!preferCheckout && FIRST_PARTY_PLUGIN_DIRS.includes(local)) {
       continue;
     }
     const pkgDir = join(absDir, local);
@@ -316,10 +434,19 @@ export function loadInstancePlugins(
         continue;
       }
       if (out.some((p) => p.name === plugin.name)) {
-        log(`Instance plugin ${plugin.name} listed twice — skipped`);
+        const winner = loadedFrom.get(plugin.name);
+        log(
+          preferCheckout && winner && FIRST_PARTY_PLUGIN_DIRS.includes(winner)
+            ? `Instance plugin ${plugin.name} skipped — local checkout wins (${local})`
+            : `Instance plugin ${plugin.name} listed twice — skipped`,
+        );
         continue;
       }
+      loadedFrom.set(plugin.name, local);
       out.push(plugin);
+      if (preferCheckout && FIRST_PARTY_PLUGIN_DIRS.includes(local)) {
+        log(`Instance plugin ${plugin.name} loaded from local checkout (${local})`);
+      }
     } catch (err) {
       log(`Instance plugin ${local} failed to load: ${(err as Error).message}`);
     }
@@ -383,12 +510,24 @@ export function listRelFiles(dir: string): string[] {
   return out.sort();
 }
 
-export function pluginVolumeRoot(volumeDir: string, directory: string): string {
+export function pluginVolumeRoot(
+  volumeDir: string,
+  directory: string,
+  opts?: { allowReservedScaffoldDirs?: boolean },
+): string {
   if (!isSafeLocalSegment(directory)) {
     throw new Error('bad_path');
   }
-  if (directory === 'node_modules' || FIRST_PARTY_PLUGIN_DIRS.includes(directory)) {
+  if (directory === 'node_modules') {
     throw new Error('reserved_dir');
+  }
+  // Scaffold must not overwrite former first-party package dirs; marketplace npm
+  // unpack passes allowReservedScaffoldDirs from PluginPackageInstaller.
+  // KHIRBY_PLUGINS_LOCAL (ADR-0045) must be able to read/reload those checkouts.
+  if (!opts?.allowReservedScaffoldDirs && isReservedScaffoldDir(directory)) {
+    if (!(preferLocalCheckoutPlugins() && FIRST_PARTY_PLUGIN_DIRS.includes(directory))) {
+      throw new Error('reserved_dir');
+    }
   }
   return join(volumeDir, directory);
 }
@@ -397,6 +536,9 @@ export function scaffoldInstancePlugin(
   volumeDir: string,
   input: InstancePluginScaffoldInput,
 ): { directory: string; files: string[] } {
+  if (isReservedScaffoldDir(input.directory)) {
+    throw new Error('reserved_dir');
+  }
   const root = pluginVolumeRoot(volumeDir, input.directory);
   ensureInstanceDir(root);
   const files = writeScaffold(root, input);

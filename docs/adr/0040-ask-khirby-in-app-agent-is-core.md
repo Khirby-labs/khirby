@@ -1,6 +1,6 @@
 # 0040 — Ask Khirby: in-app agent is core
 
-- **Status:** Accepted
+- **Status:** Accepted — knowledge context token superseded by [ADR-0047](0047-knowledge-context-token.md); volume-plugin token lookup amended by [ADR-0048](0048-core-resolves-volume-plugin-tokens-at-call-time.md); tools + reasoning transport amended by [ADR-0049](0049-ask-khirby-reasoning-uses-responses-api.md)
 - **Date:** 2026-08-20
 - **Deciders:** Patryk
 - **Pokelo ADR id:** `6e17bffa-32e2-4199-aa79-0f164dc11782` (Bearly CRM project)
@@ -23,11 +23,10 @@ surface (`AskKhirbyView`, history rail), gated by `agent:use`.
 `crm-plugin-ai-compose` provides `{ baseUrl, apiKey, model }`. No separate agent BYOK
 table or env vars. Missing/disabled AI Compose → SSE error `ai_compose_unavailable`.
 
-**Pokelo:** `PokeloToolsAdapter` injects `@Optional() POKELO_CONTEXT_SERVICE` (ADR-0022).
-When wired, the agent exposes `search_knowledge_base` and the system prompt instructs
-early doc lookup. The adapter calls `fetchContext` per tool invocation — it does **not**
-use AI Compose's multi-project router inside `completeChat`; the agent chooses queries
-each turn.
+**Pokelo:** `PokeloToolsAdapter` resolves `KNOWLEDGE_TOOLS` at call time (ADR-0050)
+and exposes the live Pokelo MCP tool catalog (`list_projects`, `search_documents`, …)
+with bound-project ACL. Enrichment for AI Compose remains `KNOWLEDGE_CONTEXT.fetchContext`
+(ADR-0047) — not an MCP tool loop inside mail/newsletter draft.
 
 **Instance plugins:** `PluginToolsAdapter` calls `INSTANCE_PLUGINS` (ADR-0038) for
 scaffold / read / write / install / remove — same host surface as MCP, not a second fs

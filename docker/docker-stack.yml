@@ -67,14 +67,15 @@ services:
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
       CORS_ORIGIN: ${CORS_ORIGIN:?CORS_ORIGIN is required}
+      KHIRBY_SECRETS_KEY: ${KHIRBY_SECRETS_KEY:-}
       MAIL_SECRETS_KEY: ${MAIL_SECRETS_KEY:-}
       GOOGLE_MAIL_CLIENT_ID: ${GOOGLE_MAIL_CLIENT_ID:-}
       GOOGLE_MAIL_CLIENT_SECRET: ${GOOGLE_MAIL_CLIENT_SECRET:-}
       AI_COMPOSE_SECRETS_KEY: ${AI_COMPOSE_SECRETS_KEY:-}
       POKELO_SECRETS_KEY: ${POKELO_SECRETS_KEY:-}
-      # Empty = Marketplace reads only the catalog baked into the image, with no
-      # network request. This list is explicit, so a variable absent from it never
-      # reaches the container however well it is documented elsewhere (ADR-0034).
+      CONTROL_PLANE_URL: ${CONTROL_PLANE_URL-https://ctrl.bearly.pro}
+      DISABLE_TELEMETRY: ${DISABLE_TELEMETRY:-}
+      # Deprecated (ADR-0044). Kept so old compose files still parse.
       MARKETPLACE_CATALOG_URL: ${MARKETPLACE_CATALOG_URL:-}
       INSTANCE_PLUGINS_DIR: /app/plugins
     volumes:

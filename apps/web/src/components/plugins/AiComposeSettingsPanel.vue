@@ -137,6 +137,22 @@
           </p>
         </div>
 
+        <div class="space-y-1">
+          <span class="block text-sm text-text-secondary">
+            {{ t('plugins.aiCompose.models.reasoningEffort.label') }}
+          </span>
+          <AppSelect
+            v-model="form.reasoningEffort"
+            :options="reasoningEffortOptions"
+            :placeholder="t('plugins.aiCompose.models.reasoningEffort.providerDefault')"
+            :ariaLabel="t('plugins.aiCompose.models.reasoningEffort.label')"
+            trigger-class="w-full"
+          />
+          <p class="text-xs text-text-ghost">
+            {{ t('plugins.aiCompose.models.reasoningEffort.description') }}
+          </p>
+        </div>
+
         <button
           v-if="availableModels.length === 0"
           type="button"
@@ -171,6 +187,10 @@
             {{ t('plugins.aiCompose.systemPrompt.description') }}
           </p>
         </div>
+        <div v-if="saveError" class="crm-error">{{ saveError }}</div>
+        <div v-if="savedOk" class="text-sm text-success">
+          {{ t('plugins.aiCompose.status.saved') }}
+        </div>
         <button
           type="button"
           class="btn-primary disabled:opacity-50"
@@ -189,15 +209,18 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, nextTick } from 'vue';
+import { ref, watch, onMounted, nextTick, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { apiGet, apiPatch } from '../../api/client';
+import AppSelect from '../ui/AppSelect.vue';
+import { useToastStore } from '../../stores/toast.store';
 
 interface AiComposeSettings {
   baseUrl: string;
   defaultModel: string | null;
   allowedModels: string[];
   systemPrompt: string | null;
+  reasoningEffort: 'none' | 'low' | 'medium' | 'high' | null;
   apiKeyConfigured: boolean;
 }
 
@@ -209,6 +232,7 @@ interface ModelEntry {
 const props = withDefaults(defineProps<{ enabled?: boolean }>(), { enabled: true });
 
 const { t } = useI18n();
+const toast = useToastStore();
 
 const loadError = ref('');
 const saveError = ref('');
@@ -227,7 +251,16 @@ const form = ref({
   defaultModel: '',
   allowedModels: [] as string[],
   systemPrompt: '',
+  reasoningEffort: '',
 });
+
+const reasoningEffortOptions = computed(() => [
+  { value: '', label: t('plugins.aiCompose.models.reasoningEffort.providerDefault') },
+  { value: 'none', label: t('plugins.aiCompose.models.reasoningEffort.none') },
+  { value: 'low', label: t('plugins.aiCompose.models.reasoningEffort.low') },
+  { value: 'medium', label: t('plugins.aiCompose.models.reasoningEffort.medium') },
+  { value: 'high', label: t('plugins.aiCompose.models.reasoningEffort.high') },
+]);
 
 /** Grow with content so the full prompt stays visible (same pattern as mail compose). */
 function fitSystemPrompt() {
@@ -256,6 +289,7 @@ async function loadSettings() {
     form.value.defaultModel = data.defaultModel ?? '';
     form.value.allowedModels = [...data.allowedModels];
     form.value.systemPrompt = data.systemPrompt ?? '';
+    form.value.reasoningEffort = data.reasoningEffort ?? '';
     await nextTick();
     fitSystemPrompt();
   } catch (e) {
@@ -288,6 +322,7 @@ async function saveAllSettings() {
     defaultModel: form.value.defaultModel || null,
     allowedModels: form.value.allowedModels,
     systemPrompt: form.value.systemPrompt || null,
+    reasoningEffort: form.value.reasoningEffort || null,
   });
 }
 
@@ -300,11 +335,13 @@ async function doSave(patch: Record<string, unknown>) {
     settings.value = updated;
     form.value.apiKey = '';
     savedOk.value = true;
+    toast.success(t('plugins.aiCompose.status.saved'));
     setTimeout(() => {
       savedOk.value = false;
     }, 3000);
   } catch (e) {
     saveError.value = e instanceof Error ? e.message : t('plugins.aiCompose.errors.save');
+    toast.error(saveError.value);
   } finally {
     saving.value = false;
   }

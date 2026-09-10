@@ -93,6 +93,7 @@ describe('CommandPalette — Ask Khirby fallback', () => {
       email: 'admin@example.com',
       locale: null,
       permissions: [{ resource: 'agent', action: 'use' }],
+      isSuperAdmin: false,
     };
     expect(auth.hasPermission('agent', 'use')).toBe(true);
   });

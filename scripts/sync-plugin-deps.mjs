@@ -36,9 +36,7 @@ function workspacePluginDir(packageName) {
 
 /** Same local-only signal as vendor-plugins-for-build (ADR-0037). */
 function useLocalPluginWorkspace() {
-  return (
-    process.env.KHIRBY_PLUGINS_WORKSPACE === '1' || existsSync(join(pluginsRoot, '.git'))
-  );
+  return process.env.KHIRBY_PLUGINS_WORKSPACE === '1' || existsSync(join(pluginsRoot, '.git'));
 }
 
 function resolveDepRange(entry) {

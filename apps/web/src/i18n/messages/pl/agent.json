@@ -32,7 +32,15 @@
     "runningTool": "Uruchamiam {tool}…"
   },
   "errors": {
-    "ai_compose_unavailable": "AI Compose nie jest skonfigurowany.",
+    "ai_compose_unavailable": "AI Compose nie jest zainstalowany lub włączony.",
+    "ai_compose_disabled": "AI Compose jest wyłączony.",
+    "ai_compose_not_configured": "AI Compose nie ma klucza API. Skonfiguruj go w integracjach.",
+    "ai_compose_decrypt_failed": "Nie udało się załadować klucza API. Ponownie zapisz go w integracjach.",
+    "ai_compose_no_model": "Nie wybrano domyślnego modelu. Ustaw go w integracjach.",
+    "llm_auth": "Klucz API jest nieprawidłowy lub wygasł. Sprawdź go w integracjach.",
+    "llm_request": "Żądanie zostało odrzucone. Spróbuj innego modelu w integracjach.",
+    "llm_upstream": "Dostawca modelu jest niedostępny. Spróbuj ponownie za chwilę.",
+    "internal": "Coś poszło nie tak. Spróbuj wysłać pytanie jeszcze raz.",
     "network_error": "Utracono połączenie. Spróbuj ponownie.",
     "stream_in_progress": "Ten wątek już odpowiada."
   },

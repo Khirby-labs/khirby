@@ -61,10 +61,7 @@ export const FORM_SCHEMA_TEMPLATES: Record<FormKind, FormSchemaTemplate> = {
     id: 'waitlist',
     labelKey: 'forms.kind.waitlist',
     kind: 'waitlist',
-    fields: [
-      seedField('email', 'email', true, 'Email'),
-      seedField('name', 'text', false, 'Name'),
-    ],
+    fields: [seedField('email', 'email', true, 'Email'), seedField('name', 'text', false, 'Name')],
   },
   wishlist: {
     id: 'wishlist',

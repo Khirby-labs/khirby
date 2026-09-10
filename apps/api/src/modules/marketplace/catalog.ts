@@ -1,5 +1,5 @@
 /**
- * The Marketplace catalog: its format, and the copy baked into this image.
+ * The Marketplace catalog: its format, and the empty in-image fallback.
  *
  * A TypeScript module rather than a JSON file, deliberately. `apps/api` does not
  * enable `resolveJsonModule`, `nest-cli.json` declares no assets, and the runtime
@@ -7,10 +7,9 @@
  * every test, and then be missing in production. As a module it compiles into
  * `dist` with the rest of the code.
  *
- * The catalog carries METADATA only: category, vendor, glyph, docs link. Names and
- * descriptions come from the plugin instance, the same path Settings uses. Copying
- * them here would create two sources for one string and they would diverge at the
- * first edit (ADR-0034).
+ * Live entries come from the Control Plane (default `https://ctrl.bearly.pro`,
+ * override or empty `CONTROL_PLANE_URL` — ADR-0051). This module keeps the
+ * shared shape + empty fallback used when the client is unconfigured.
  */
 
 /**
@@ -53,22 +52,32 @@ export const MARKETPLACE_ICONS = [
 export type MarketplaceIcon = (typeof MARKETPLACE_ICONS)[number];
 
 /**
- * Major version of the document format. A document declaring anything else is
- * rejected in full and the in-image copy is used instead.
+ * Major version of the document format. Kept for the in-image empty document;
+ * Control Plane entries are mapped into CatalogEntry without a remote format version.
  */
 export const CATALOG_FORMAT_VERSION = 1;
 
 export interface CatalogEntry {
-  /** npm package (or workspace) name — informational; installs go by `name`. */
+  /** npm package name — informational; installs go by slug then resolve crm_* name. */
   package: string;
-  /** The plugin's own `crm_*` identifier. Every route parameter uses THIS. */
+  /** The plugin's `crm_*` identifier (derived or from version manifest.id). */
   name: string;
+  /** Control Plane marketplace slug — primary install/detail key for CP cards. */
+  slug: string;
   version: string;
   category: MarketplaceCategory;
   vendor: string;
   icon: MarketplaceIcon;
-  /** https only, and on the landing site — product docs do not live here (ADR-0029). */
-  docsUrl: string;
+  /** https only when present. */
+  docsUrl: string | null;
+  displayName: string;
+  description: string | null;
+  packageName: string;
+  publisherName: string;
+  verified: boolean;
+  compatible: boolean;
+  permissions: string[] | null;
+  latestVersion: string | null;
 }
 
 export interface CatalogDocument {
@@ -77,84 +86,31 @@ export interface CatalogDocument {
 }
 
 /**
- * The copy that ships in this image — the fallback whenever
- * `MARKETPLACE_CATALOG_URL` is unset or the remote document cannot be trusted.
- *
- * Retired plugins must never reappear here (ADR-0026): `crm_taskboard` is gone
- * because boards became core, and an entry for it would offer an install that
- * could not work.
+ * Empty marketplace image fallback when Control Plane is unset or unreachable.
+ * Installed rows are still unioned by MarketplaceService.
  */
 export const LOCAL_CATALOG: CatalogDocument = {
   version: CATALOG_FORMAT_VERSION,
-  entries: [
-    {
-      package: '@khirby/plugin-webhook',
-      name: 'crm_webhook',
-      version: '1.0.0',
-      category: 'automation',
-      vendor: 'Khirby',
-      icon: 'plugins',
-      docsUrl: 'https://khirby.com/docs/plugins/webhook',
-    },
-    {
-      package: '@khirby/plugin-discord',
-      name: 'crm_discord',
-      version: '1.0.0',
-      category: 'communication',
-      vendor: 'Khirby',
-      icon: 'plugins',
-      docsUrl: 'https://khirby.com/docs/plugins/discord',
-    },
-    {
-      package: '@khirby/plugin-listmonk',
-      name: 'crm_listmonk',
-      version: '1.1.0',
-      category: 'marketing',
-      vendor: 'Khirby',
-      icon: 'mail',
-      docsUrl: 'https://khirby.com/docs/plugins/listmonk',
-    },
-    {
-      package: '@khirby/plugin-mcp',
-      name: 'crm_mcp',
-      version: '1.1.0',
-      category: 'integration',
-      vendor: 'Khirby',
-      icon: 'plugins',
-      docsUrl: 'https://khirby.com/docs/plugins/mcp',
-    },
-    {
-      package: '@khirby/plugin-ai-compose',
-      name: 'crm_ai_compose',
-      version: '1.1.0',
-      category: 'ai',
-      vendor: 'Khirby',
-      icon: 'mail',
-      docsUrl: 'https://khirby.com/docs/plugins/ai-compose',
-    },
-    {
-      package: '@khirby/plugin-pokelo',
-      name: 'crm_pokelo',
-      version: '1.0.0',
-      category: 'ai',
-      vendor: 'Khirby',
-      icon: 'plugins',
-      docsUrl: 'https://khirby.com/docs/plugins/pokelo',
-    },
-    /*
-     * The example plugin, and in V1 the only entry that is NOT part of the native
-     * set — so the only card a fresh instance shows with an Install button. It is
-     * what makes the install path demonstrable at all: without it every card would
-     * already be installed and the feature could not be exercised end to end.
-     */
-    {
-      package: 'crm-plugin-hello',
-      name: 'crm_hello',
-      version: '1.0.0',
-      category: 'automation',
-      vendor: 'Khirby',
-      icon: 'plugins',
-      docsUrl: 'https://khirby.com/docs/plugins/create',
-    },
-  ],
+  entries: [],
 };
+
+/**
+ * Map an npm package name to the conventional `crm_*` plugin id.
+ * `@khirby/plugin-webhook` → `crm_webhook`; `@khirby/crm-plugin-mcp` → `crm_mcp`.
+ */
+export function derivePluginNameFromPackage(packageName: string): string {
+  const segment = (packageName.split('/').pop() ?? packageName).trim();
+  if (!segment) return 'crm_unknown';
+  if (/^crm_[a-z0-9_]+$/.test(segment)) return segment;
+
+  let rest = segment;
+  if (rest.startsWith('crm-plugin-')) rest = rest.slice('crm-plugin-'.length);
+  else if (rest.startsWith('plugin-')) rest = rest.slice('plugin-'.length);
+
+  const normalized = rest
+    .replace(/-/g, '_')
+    .replace(/[^a-zA-Z0-9_]/g, '_')
+    .toLowerCase();
+  if (/^crm_/.test(normalized)) return normalized;
+  return `crm_${normalized || 'unknown'}`;
+}

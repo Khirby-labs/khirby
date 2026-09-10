@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+  <div class="flex w-full flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
     <div class="max-w-lg min-w-0 flex-1 space-y-6">
       <div class="crm-panel p-5 space-y-3">
         <h3 class="text-sm font-medium text-text-secondary">
@@ -139,8 +139,9 @@
       </div>
     </div>
 
-    <aside class="w-full max-w-sm shrink-0 lg:sticky lg:top-4">
+    <aside class="w-full max-w-sm shrink-0 space-y-4 lg:sticky lg:top-4">
       <VersionCard />
+      <ControlPlaneCard v-if="auth.isSuperAdmin" />
     </aside>
   </div>
 </template>
@@ -155,6 +156,7 @@ import { useLocale } from '../../composables/useLocale';
 import type { Locale } from '../../i18n/locales';
 import FormField from '../../components/ui/FormField.vue';
 import VersionCard from './VersionCard.vue';
+import ControlPlaneCard from './ControlPlaneCard.vue';
 
 const { t } = useI18n();
 const auth = useAuthStore();

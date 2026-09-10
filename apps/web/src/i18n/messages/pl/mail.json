@@ -11,7 +11,7 @@
     "testFailed": "Połączenie nieudane",
     "passwordHint": "Zostaw puste, aby zachować aktualne hasło.",
     "backfillDays": "Wstępne uzupełnienie historii (dni)",
-    "noSecretsKey": "Klucz MAIL_SECRETS_KEY nie jest skonfigurowany na serwerze. Hasła nie mogą być przechowywane i skrzynka nie może zostać włączona. Ustaw 32-bajtowy klucz hex w środowisku i uruchom API ponownie.",
+    "noSecretsKey": "Klucz KHIRBY_SECRETS_KEY nie jest skonfigurowany na serwerze. Hasła nie mogą być przechowywane i skrzynka nie może zostać włączona. Ustaw 32-bajtowy klucz hex w środowisku i uruchom API ponownie.",
     "status": {
       "disconnected": "Rozłączona",
       "connected": "Połączona",

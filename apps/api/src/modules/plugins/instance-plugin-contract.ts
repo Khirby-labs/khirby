@@ -46,10 +46,15 @@ public guide):
 - Do not import './nest-module' from src/index.ts — jiti cannot evaluate Nest
   method decorators. Keep getNestModule() as loadVolumeNestModule(__dirname).
   Published npm packages import the Nest class instead; that is not this path.
-- Do not set exports["./web"] — Vue is not hot-loadable (400 web_not_hot_loadable).
-- Without ./web the SPA uses InstancePluginView: heading = displayName, body from
+- Do not set exports["./web"] without shipping dist/web/entry.js — hot-load
+  requires the prebuilt ESM bundle (400 web_bundle_required). Build Vue with
+  vue/vue-router/vue-i18n externalized to the host import map (ADR-0043).
+- Without ./web (or without a bundle) the SPA uses InstancePluginView: heading =
+  displayName, body from
   GET /api{route.path} as { stats: [{ label: string, value: number }, ...], footer?: string }.
   Empty stats/footer is a valid starting point; fill from user intent.
+  With dist/web/entry.js present, the SPA dynamic-imports
+  /api/plugins/<name>/web/entry.js instead.
 - Canonical SPA path /plugins/<slug> where slug = name without crm_ and with _ → -
   (crm_hello_stats → /plugins/hello-stats). Must match @Controller('plugins/<slug>').
   Directory name is independent — never build the URL from the folder.

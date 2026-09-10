@@ -1,17 +1,17 @@
-import type { FormField } from '@khirby/forms-client'
-import type { CrmFormClassNames } from './types.js'
+import type { FormField } from '@khirby/forms-client';
+import type { CrmFormClassNames } from './types.js';
 
 type FieldInputProps = {
-  field: FormField
-  value: unknown
-  error?: string
-  classNames?: CrmFormClassNames
-  onChange: (value: unknown) => void
-  disabled?: boolean
-}
+  field: FormField;
+  value: unknown;
+  error?: string;
+  classNames?: CrmFormClassNames;
+  onChange: (value: unknown) => void;
+  disabled?: boolean;
+};
 
 function cx(...parts: Array<string | undefined | false>): string {
-  return parts.filter(Boolean).join(' ')
+  return parts.filter(Boolean).join(' ');
 }
 
 export function FieldInput({
@@ -22,8 +22,8 @@ export function FieldInput({
   onChange,
   disabled,
 }: FieldInputProps) {
-  const inputId = `crm-field-${field.name}`
-  const type = field.type || 'text'
+  const inputId = `crm-field-${field.name}`;
+  const type = field.type || 'text';
 
   if (type === 'checkbox') {
     return (
@@ -44,7 +44,7 @@ export function FieldInput({
         </label>
         {error ? <div className={cx('bcf-error', classNames?.error)}>{error}</div> : null}
       </div>
-    )
+    );
   }
 
   if (type === 'textarea') {
@@ -56,7 +56,12 @@ export function FieldInput({
         </label>
         <textarea
           id={inputId}
-          className={cx('bcf-input', 'bcf-textarea', classNames?.input, error && 'bcf-input--error')}
+          className={cx(
+            'bcf-input',
+            'bcf-textarea',
+            classNames?.input,
+            error && 'bcf-input--error',
+          )}
           value={String(value ?? '')}
           disabled={disabled}
           required={field.required}
@@ -65,11 +70,11 @@ export function FieldInput({
         />
         {error ? <div className={cx('bcf-error', classNames?.error)}>{error}</div> : null}
       </div>
-    )
+    );
   }
 
   if (type === 'select') {
-    const options = field.options ?? []
+    const options = field.options ?? [];
     return (
       <div className={cx('bcf-field', classNames?.field)}>
         <label className={cx('bcf-label', classNames?.label)} htmlFor={inputId}>
@@ -93,11 +98,11 @@ export function FieldInput({
         </select>
         {error ? <div className={cx('bcf-error', classNames?.error)}>{error}</div> : null}
       </div>
-    )
+    );
   }
 
   const inputType =
-    type === 'email' || type === 'tel' || type === 'url' || type === 'number' ? type : 'text'
+    type === 'email' || type === 'tel' || type === 'url' || type === 'number' ? type : 'text';
 
   return (
     <div className={cx('bcf-field', classNames?.field)}>
@@ -112,11 +117,9 @@ export function FieldInput({
         value={String(value ?? '')}
         disabled={disabled}
         required={field.required}
-        onChange={(e) =>
-          onChange(type === 'number' ? e.target.value : e.target.value)
-        }
+        onChange={(e) => onChange(type === 'number' ? e.target.value : e.target.value)}
       />
       {error ? <div className={cx('bcf-error', classNames?.error)}>{error}</div> : null}
     </div>
-  )
+  );
 }

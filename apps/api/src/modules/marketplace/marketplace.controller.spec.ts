@@ -23,6 +23,7 @@ describe('MarketplaceController', () => {
       list: jest.fn(),
       findOne: jest.fn(),
       install: jest.fn(),
+      submit: jest.fn(),
     };
 
     moduleRef = await Test.createTestingModule({
@@ -90,6 +91,18 @@ describe('MarketplaceController', () => {
       service.install.mockResolvedValue(out);
       await expect(controller.install('crm_a')).resolves.toBe(out);
       expect(service.install).toHaveBeenCalledWith('crm_a');
+    });
+
+    it('submit delegates to the service', async () => {
+      const out = { slug: 'a', status: 'submitted' } as any;
+      service.submit.mockResolvedValue(out);
+      const body = {
+        slug: 'a',
+        name: 'A',
+        packageName: '@khirby/plugin-a',
+      };
+      await expect(controller.submit(body)).resolves.toBe(out);
+      expect(service.submit).toHaveBeenCalledWith(body);
     });
   });
 

@@ -78,6 +78,33 @@ const installRoute = (status = 201) =>
         ),
   );
 
+/**
+ * Catalog that flips to installed after a successful (or 409) install POST —
+ * mirrors production, where install() refetches the listing.
+ */
+function catalogWithInstall(initial: MarketplacePlugin[], installStatus = 201) {
+  let list = initial.map((e) => ({ ...e }));
+  return [
+    http.get(api('/api/marketplace/plugins'), () => HttpResponse.json(list)),
+    http.post(api('/api/marketplace/plugins/:name/install'), ({ params }) => {
+      if (installStatus === 201 || installStatus === 409) {
+        list = list.map((e) =>
+          e.name === params.name || e.slug === params.name
+            ? { ...e, status: 'installed' as const, enabled: true, updateAvailable: false }
+            : e,
+        );
+      }
+      if (installStatus === 201) {
+        return HttpResponse.json({ name: String(params.name) }, { status: 201 });
+      }
+      return HttpResponse.json(
+        { statusCode: installStatus, code: 'ALREADY_EXISTS', message: 'Already installed' },
+        { status: installStatus },
+      );
+    }),
+  ];
+}
+
 const pluginsRoute = () => http.get(api('/api/plugins'), () => HttpResponse.json([]));
 
 afterEach(() => {
@@ -165,6 +192,98 @@ describe('MarketplaceView — view states', () => {
     expect(text).toContain('v1.0.0');
     expect(text).toContain('Khirby');
     expect(text).toContain('Automation');
+    // Unverified entries land under Community (verified section omitted when empty).
+    expect(text).toContain('Community');
+    expect(text).not.toContain('Verified');
+  });
+
+  it('puts verified entries above community and shows publisher + incompatible badge', async () => {
+    server.use(
+      catalogRoute([
+        entry({
+          name: 'crm_community',
+          displayName: 'Community Plug',
+          verified: false,
+          publisherName: 'Indie Dev',
+        }),
+        entry({
+          name: 'crm_verified',
+          displayName: 'Verified Plug',
+          slug: 'verified-plug',
+          verified: true,
+          publisherName: 'Khirby Labs',
+          compatible: false,
+        }),
+      ]),
+    );
+    const wrapper = mountView();
+    await flushPromises();
+
+    const text = wrapper.text();
+    expect(text).toContain('Verified');
+    expect(text).toContain('Community');
+    expect(text).toContain('Verified Plug');
+    expect(text).toContain('Community Plug');
+    expect(text).toContain('Khirby Labs');
+    expect(text).toContain('Indie Dev');
+    expect(text).toContain('Incompatible');
+
+    // Verified section heading appears before the community one in DOM order.
+    const verifiedAt = text.indexOf('Verified');
+    const communityAt = text.indexOf('Community');
+    expect(verifiedAt).toBeGreaterThanOrEqual(0);
+    expect(communityAt).toBeGreaterThan(verifiedAt);
+  });
+
+  it('lists permissions in the details modal', async () => {
+    server.use(
+      catalogRoute([
+        entry({
+          permissions: ['contacts:read', 'integrations:manage'],
+        }),
+      ]),
+    );
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Details')!
+      .trigger('click');
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Permissions');
+    expect(wrapper.text()).toContain('contacts:read');
+    expect(wrapper.text()).toContain('integrations:manage');
+  });
+
+  it('installs with slug when present', async () => {
+    let installedPath = '';
+    const base = entry({
+      name: 'crm_hello',
+      slug: 'hello-example',
+    });
+    let list = [base];
+    server.use(
+      http.get(api('/api/marketplace/plugins'), () => HttpResponse.json(list)),
+      http.post(api('/api/marketplace/plugins/:name/install'), ({ params }) => {
+        installedPath = String(params.name);
+        list = [{ ...base, status: 'installed', enabled: true, updateAvailable: false }];
+        return HttpResponse.json({ name: 'crm_hello' }, { status: 201 });
+      }),
+      pluginsRoute(),
+    );
+    const wrapper = mountView();
+    await flushPromises();
+
+    await wrapper
+      .findAll('button')
+      .find((b) => b.text() === 'Install')!
+      .trigger('click');
+    await flushPromises();
+
+    expect(installedPath).toBe('hello-example');
+    expect(wrapper.text()).toContain('Installed');
   });
 
   /*
@@ -181,11 +300,31 @@ describe('MarketplaceView — view states', () => {
     expect(wrapper.text()).not.toContain('The catalog is empty');
     expect(wrapper.text()).toContain('Hello Example');
   });
+
+  it('shows an update badge and Update button when updateAvailable is set', async () => {
+    server.use(
+      catalogRoute([
+        entry({
+          status: 'installed',
+          enabled: true,
+          version: '1.0.0',
+          latestVersion: '1.2.0',
+          updateAvailable: true,
+        }),
+      ]),
+    );
+    const wrapper = mountView();
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('v1.0.0');
+    expect(wrapper.text()).toContain('Update to v1.2.0');
+    expect(wrapper.findAll('button').some((b) => b.text() === 'Update')).toBe(true);
+  });
 });
 
 describe('MarketplaceView — install', () => {
   it('installs on click and turns the card into an installed one, with no navigation', async () => {
-    server.use(catalogRoute([entry()]), installRoute(201), pluginsRoute());
+    server.use(...catalogWithInstall([entry()]), pluginsRoute());
     const wrapper = mountView();
     await flushPromises();
 
@@ -207,7 +346,7 @@ describe('MarketplaceView — install', () => {
    * misreport the system to the operator.
    */
   it('converges to installed when the server says it already is', async () => {
-    server.use(catalogRoute([entry()]), installRoute(409), pluginsRoute());
+    server.use(...catalogWithInstall([entry()], 409), pluginsRoute());
     const wrapper = mountView();
     await flushPromises();
 

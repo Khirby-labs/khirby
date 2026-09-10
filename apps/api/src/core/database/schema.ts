@@ -443,3 +443,20 @@ export const customFieldDefinitions = pgTable(
     entitySlug: unique('custom_field_definitions_entity_slug').on(t.entity, t.slug),
   }),
 );
+
+/**
+ * Fixed primary key for the single `instance_identity` row (singleton table).
+ * Always upsert this id — never insert a second row.
+ */
+export const INSTANCE_IDENTITY_ROW_ID = '00000000-0000-0000-0000-000000000001';
+
+/** Stable anonymous id for Control Plane telemetry / marketplace registration. */
+export const instanceIdentity = pgTable('instance_identity', {
+  id: uuid('id').primaryKey(),
+  installationId: uuid('installation_id').notNull().unique(),
+  registeredEmail: text('registered_email'),
+  registeredAt: timestamp('registered_at', { withTimezone: true }),
+  lastHeartbeatAt: timestamp('last_heartbeat_at', { withTimezone: true }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});

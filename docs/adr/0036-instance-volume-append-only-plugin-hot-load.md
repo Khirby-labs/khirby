@@ -1,6 +1,6 @@
 # 0036 — Instance-volume append-only plugin hot-load
 
-- **Status:** Accepted — volume path amended by [0039](0039-instance-plugins-live-in-plugins-dir.md)
+- **Status:** Accepted — path amended by [0039](0039-instance-plugins-live-in-plugins-dir.md); `./web` ban superseded by [0043](0043-volume-plugin-vue-web-hot-load.md)
 - **Date:** 2026-08-18
 - **Deciders:** Patryk
 
@@ -8,23 +8,23 @@
 
 Marketplace V1 (ADR-0032) installs only code already in the image: `install()` writes a `plugins` row. ADR-0016 banned unloading a Nest `DynamicModule` at runtime. Self-build needs a way for Cursor/Claude (MCP client) to author a plugin on a live instance and **test it without rebuilding the image**, without `npm publish`, and without Marketplace listing.
 
-Loading arbitrary TypeScript from a writable directory is in-process execution (same trust model as an npm plugin). Vue `exports["./web"]` is generated into the SPA at build time and cannot appear after a hot-load.
+Loading arbitrary TypeScript from a writable directory is in-process execution (same trust model as an npm plugin). Vue `exports["./web"]` was originally generated into the SPA at build time and could not appear after a hot-load (superseded for prebuilt `dist/web/entry.js` by ADR-0043).
 
 ## Decision
 
 We load operator-authored plugins from `INSTANCE_PLUGINS_DIR` (`/data/instance-plugins` in images, `./instance-plugins` locally). Boot concatenates the image list with `jiti`+`createPlugin()` packages listed in that volume's `plugins.manifest.json`. The `CRM_PLUGINS` array stays the same reference so a later `push` is visible to `emit()`.
 
-Hot-load is **append-only**: write files, append the instance manifest, `jiti`, `push`, Nest `LazyModuleLoader` when `getNestModule()` exists, then the existing `install()`/`activate()` path. We never unload. `install_instance_plugin` rejects `exports["./web"]`. Templates use bare `@khirby/plugin-sdk` / `@khirby/plugin-host` (volume packages are not compiled into `apps/api/dist`).
+Hot-load is **append-only**: write files, append the instance manifest, `jiti`, `push`, Nest `LazyModuleLoader` when `getNestModule()` exists, then the existing `install()`/`activate()` path. We never unload. Templates use bare `@khirby/plugin-sdk` / `@khirby/plugin-host` (volume packages are not compiled into `apps/api/dist`). (Vue `./web` on the volume now requires a prebuilt `dist/web/entry.js` — see ADR-0043.)
 
 This does **not** amend ADR-0034's catalog availability filter. A hot-loaded plugin may show as Marketplace `other` via the existing process ∪ catalog union; first-class listing is a later ticket.
 
 ## Consequences
 
-Easier: an agent with an MCP bearer can scaffold, validate, and test an API-only plugin on this instance; restart survives via the volume.
+Easier: an agent with an MCP bearer can scaffold, validate, and test a plugin on this instance; restart survives via the volume.
 
-Harder: no Vue UI until the image is rebuilt; Nest modules are never unloaded from the container (a bad plugin's *module* stays until process restart); Swarm must pin `app` to the node that holds `${DATA_PATH}` because the volume is a host bind-mount. `jiti` is a production dependency of `apps/api`. After `write_instance_plugin_file` (or a repeat `install_instance_plugin`) the host re-jiti's the volume package and rebinds GET handlers on `InstancePluginHttpBridge` — page copy/stats can change without a restart. That is not SPA hot-load and not Nest module unload.
+Harder: Nest modules are never unloaded from the container (a bad plugin's *module* stays until process restart); Swarm must pin `app` to the node that holds `${DATA_PATH}` because the volume is a host bind-mount. `jiti` is a production dependency of `apps/api`. After `write_instance_plugin_file` (or a repeat `install_instance_plugin`) the host re-jiti's the volume package and rebinds GET handlers on `InstancePluginHttpBridge` — page copy/stats can change without a restart. That is not Nest module unload. SPA Vue for volume packages is covered by ADR-0043.
 
-Agents must not "fix" this into module unload, SPA hot-load, or routing codegen through AI Compose.
+Agents must not "fix" this into module unload or routing codegen through AI Compose.
 
 ## Considered alternatives
 

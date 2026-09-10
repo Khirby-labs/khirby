@@ -191,20 +191,13 @@ const staticRoutes: RouteRecordRaw[] = [
       },
 
       {
-        path: 'ask',
+        // One route record so /ask → /ask/:id reuses AskKhirbyView. Sibling
+        // ask-new / ask-thread records remounted the view and TransitionGroup
+        // replayed the streamed reply as a second bubble.
+        path: 'ask/:conversationId?',
+        name: 'ask-new',
+        component: () => import('../views/agent/AskKhirbyView.vue'),
         meta: { layout: 'chat-focus', titleKey: 'nav.workspace.ask' },
-        children: [
-          {
-            path: '',
-            name: 'ask-new',
-            component: () => import('../views/agent/AskKhirbyView.vue'),
-          },
-          {
-            path: ':conversationId',
-            name: 'ask-thread',
-            component: () => import('../views/agent/AskKhirbyView.vue'),
-          },
-        ],
       },
 
       // Back-compat: the old top-level admin routes now live under Settings
@@ -238,6 +231,8 @@ export const router = createRouter({
 
 /** Nazwy tras dodanych dynamicznie — do usuwania przy disable pluginu */
 const registeredPluginRouteNames = new Set<string>();
+/** Bundle identity last bound to a named plugin route (url + ?v=). */
+const registeredPluginRouteBundles = new Map<string, string>();
 
 /** Parent layout route — trasy pluginów muszą być jego dziećmi (relative path). */
 const LAYOUT_ROUTE_NAME = 'app';
@@ -254,6 +249,8 @@ export function registerPluginRoutes(
   plugins: Array<{
     name: string;
     enabled: boolean;
+    webBundleUrl?: string;
+    webBundleVersion?: string;
     frontendRoutes?: Array<{
       path: string;
       name: string;
@@ -268,32 +265,39 @@ export function registerPluginRoutes(
   for (const plugin of plugins) {
     if (!plugin.enabled || !plugin.frontendRoutes?.length) continue;
     for (const route of plugin.frontendRoutes) {
-      // Image plugins ship Vue via exports["./web"] (generated map). Instance
-      // plugins declare the tab with getFrontendRoutes() and reuse one host
-      // page — ./web is not hot-loadable (ADR-0036).
+      // Image plugins: generated ./web map. Volume plugins with dist/web/entry.js:
+      // dynamic import from the API (ADR-0043). Otherwise InstancePluginView.
       const component =
         pluginComponentMap[plugin.name] ??
-        (() => import('../views/plugins/InstancePluginView.vue'));
+        (plugin.webBundleUrl
+          ? () => loadVolumeWebComponent(plugin.webBundleUrl!, plugin.webBundleVersion)
+          : () => import('../views/plugins/InstancePluginView.vue'));
 
       enabledRouteNames.add(route.name);
 
-      if (!router.hasRoute(route.name)) {
-        router.addRoute(LAYOUT_ROUTE_NAME, {
-          path: toLayoutChildPath(route.path),
-          name: route.name,
-          component,
-          // A plugin screen gets a tab title too: its declared key when the SPA
-          // knows it, otherwise the literal the plugin shipped (ADR-0011).
-          meta: { titleKey: route.navLabelKey, title: route.navLabel },
-          children: pluginChildRoutes[plugin.name] ?? [],
-        });
+      const bundleKey = `${plugin.webBundleUrl ?? ''}@${plugin.webBundleVersion ?? ''}`;
+      if (router.hasRoute(route.name)) {
+        if (registeredPluginRouteBundles.get(route.name) === bundleKey) continue;
+        router.removeRoute(route.name);
       }
+
+      router.addRoute(LAYOUT_ROUTE_NAME, {
+        path: toLayoutChildPath(route.path),
+        name: route.name,
+        component,
+        // A plugin screen gets a tab title too: its declared key when the SPA
+        // knows it, otherwise the literal the plugin shipped (ADR-0011).
+        meta: { titleKey: route.navLabelKey, title: route.navLabel },
+        children: pluginChildRoutes[plugin.name] ?? [],
+      });
+      registeredPluginRouteBundles.set(route.name, bundleKey);
     }
   }
 
   for (const name of registeredPluginRouteNames) {
     if (!enabledRouteNames.has(name) && router.hasRoute(name)) {
       router.removeRoute(name);
+      registeredPluginRouteBundles.delete(name);
     }
   }
 
@@ -301,6 +305,25 @@ export function registerPluginRoutes(
   for (const name of enabledRouteNames) {
     registeredPluginRouteNames.add(name);
   }
+}
+
+/** Dynamic-import a volume plugin's prebuilt `webEntry` / default export. */
+export async function loadVolumeWebComponent(
+  webBundleUrl: string,
+  webBundleVersion?: string,
+): Promise<unknown> {
+  const bust = webBundleVersion ? `?v=${encodeURIComponent(webBundleVersion)}` : '';
+  const url = `${webBundleUrl}${bust}`;
+  const mod = (await import(/* @vite-ignore */ url)) as {
+    webEntry?: { component?: unknown };
+    default?: { component?: unknown } | unknown;
+  };
+  const entry = mod.webEntry ?? mod.default;
+  if (entry && typeof entry === 'object' && 'component' in entry) {
+    const c = (entry as { component: unknown }).component;
+    return typeof c === 'function' ? (c as () => unknown)() : c;
+  }
+  return entry;
 }
 
 router.beforeEach(async (to) => {

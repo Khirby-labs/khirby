@@ -36,6 +36,7 @@ const I18N_ENFORCED = [
   // S1 — foundation
   'apps/web/src/views/settings/SettingsView.vue',
   'apps/web/src/views/settings/VersionCard.vue',
+  'apps/web/src/views/settings/ControlPlaneCard.vue',
   'apps/web/src/views/settings/SettingsLayout.vue',
   // S3 — app shell & navigation
   'apps/web/src/components/shell/AppSidebar.vue',
@@ -178,6 +179,8 @@ const PL_PROPER_NOUNS = new Set([
   'Newsletter',
   'Pipeline',
   'MCP',
+  'Control',
+  'Plane',
   'Claude',
   'Code', // product name "Claude Code"
   'Cursor',

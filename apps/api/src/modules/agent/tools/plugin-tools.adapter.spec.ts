@@ -2,9 +2,9 @@ import { BadRequestException } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import {
   INSTANCE_PLUGINS,
-  POKELO_CONTEXT_SERVICE,
+  KNOWLEDGE_TOOLS,
   type InstancePluginsLike,
-} from '../../../../../../packages/plugin-host/src/tokens';
+} from '../../../../../../packages/plugin-host/src';
 import { PluginToolsAdapter, PokeloToolsAdapter } from './plugin-tools.adapter';
 import { RbacService } from '../../../core/rbac/rbac.service';
 
@@ -232,38 +232,118 @@ describe('PokeloToolsAdapter', () => {
     rbac = { hasPermission: jest.fn().mockResolvedValue(true) };
   });
 
-  it('returns no definitions when Pokelo is not configured', async () => {
+  it('returns no definitions when knowledge tools are not configured', async () => {
     const moduleRef = await Test.createTestingModule({
       providers: [
         PokeloToolsAdapter,
-        { provide: POKELO_CONTEXT_SERVICE, useValue: null },
+        { provide: KNOWLEDGE_TOOLS, useValue: null },
         { provide: RbacService, useValue: rbac },
       ],
     }).compile();
     adapter = moduleRef.get(PokeloToolsAdapter);
 
-    expect(adapter.definitions()).toEqual([]);
-    await expect(adapter.run('user-1', 'search_knowledge_base', { query: 'x' })).resolves.toEqual({
+    await expect(adapter.definitions()).resolves.toEqual([]);
+    expect(adapter.ownsTool('list_projects')).toBe(false);
+    await expect(adapter.run('user-1', 'list_projects', {})).resolves.toEqual({
       ok: false,
       code: 'unavailable',
-      summary: 'Pokelo not configured',
+      summary: 'Knowledge base not configured',
     });
   });
 
-  it('searches the knowledge base when configured', async () => {
-    const pokelo = { fetchContext: jest.fn().mockResolvedValue('snippet one') };
+  it('proxies native MCP tools from the knowledge provider', async () => {
+    const tools = {
+      listTools: jest.fn().mockResolvedValue([
+        {
+          name: 'list_projects',
+          description: 'List projects',
+          inputSchema: { type: 'object', properties: {} },
+        },
+        {
+          name: 'search_documents',
+          description: 'Search docs',
+          inputSchema: {
+            type: 'object',
+            properties: { projectId: { type: 'string' }, query: { type: 'string' } },
+            required: ['projectId', 'query'],
+          },
+        },
+      ]),
+      callTool: jest.fn().mockResolvedValue('{"items":[{"projectId":"p1","name":"CRM"}]}'),
+    };
     const moduleRef = await Test.createTestingModule({
       providers: [
         PokeloToolsAdapter,
-        { provide: POKELO_CONTEXT_SERVICE, useValue: pokelo },
+        { provide: KNOWLEDGE_TOOLS, useValue: tools },
         { provide: RbacService, useValue: rbac },
       ],
     }).compile();
     adapter = moduleRef.get(PokeloToolsAdapter);
 
-    expect(adapter.definitions().map((d) => d.function.name)).toEqual(['search_knowledge_base']);
+    const defs = await adapter.definitions();
+    expect(defs.map((d) => d.function.name)).toEqual(['list_projects', 'search_documents']);
+    expect(adapter.ownsTool('list_projects')).toBe(true);
+    expect(adapter.ownsTool('search_knowledge_base')).toBe(false);
+
+    await expect(adapter.run('user-1', 'list_projects', {})).resolves.toEqual({
+      ok: true,
+      summary: '{"items":[{"projectId":"p1","name":"CRM"}]}',
+    });
+    expect(tools.callTool).toHaveBeenCalledWith('list_projects', {});
+  });
+
+  it('surfaces callTool errors to the model', async () => {
+    const tools = {
+      listTools: jest
+        .fn()
+        .mockResolvedValue([
+          { name: 'get_document', description: 'Get doc', inputSchema: { type: 'object' } },
+        ]),
+      callTool: jest
+        .fn()
+        .mockRejectedValue(new Error('Project x is not in the operator-bound Pokelo set')),
+    };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        PokeloToolsAdapter,
+        { provide: KNOWLEDGE_TOOLS, useValue: tools },
+        { provide: RbacService, useValue: rbac },
+      ],
+    }).compile();
+    adapter = moduleRef.get(PokeloToolsAdapter);
+    await adapter.definitions();
+
     await expect(
-      adapter.run('user-1', 'search_knowledge_base', { query: 'pipeline' }),
-    ).resolves.toEqual({ ok: true, summary: 'snippet one' });
+      adapter.run('user-1', 'get_document', { projectId: 'x', documentId: 'd1' }),
+    ).resolves.toEqual({
+      ok: false,
+      code: 'tool_error',
+      summary: 'Project x is not in the operator-bound Pokelo set',
+    });
+  });
+
+  it('keeps a warm tool cache when a later listTools() fails', async () => {
+    const tools = {
+      listTools: jest
+        .fn()
+        .mockResolvedValueOnce([
+          { name: 'list_projects', description: 'List projects', inputSchema: { type: 'object' } },
+        ])
+        .mockRejectedValueOnce(new Error('timeout')),
+      callTool: jest.fn(),
+    };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        PokeloToolsAdapter,
+        { provide: KNOWLEDGE_TOOLS, useValue: tools },
+        { provide: RbacService, useValue: rbac },
+      ],
+    }).compile();
+    adapter = moduleRef.get(PokeloToolsAdapter);
+
+    await adapter.definitions();
+    expect(adapter.ownsTool('list_projects')).toBe(true);
+    await expect(adapter.definitions()).resolves.toEqual([]);
+    expect(adapter.ownsTool('list_projects')).toBe(true);
   });
 });

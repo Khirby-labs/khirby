@@ -1,5 +1,6 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { All, Controller, Req, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { FastifyRequest } from 'fastify';
 import {
   PermissionGuard,
   RequirePermission,
@@ -8,19 +9,25 @@ import {
 import { InstancePluginHttpBridge } from './instance-plugin-http.bridge';
 
 /**
- * Single boot-time route for hot-loaded instance plugins (Fastify 5 blocks route()
- * after listen). Each plugin registers GET handlers on the bridge at hotLoad.
+ * Boot-time catch-all for hot-loaded / volume plugin Nest controllers.
+ * Fastify 5 blocks route() after listen — LazyModuleLoader alone leaves no
+ * Fastify route (INCIDENTS 2026-08-18), so plugins register on the bridge and
+ * this dispatcher forwards by method + path.
+ *
+ * Wildcard must be trailing `*` (same Fastify/find-my-way rule as web bundles).
+ * More-specific routes on PluginsController / PluginWebBundleController
+ * (`installed/:name`, `:name/enable`, `:name/web/*`, …) stay preferred.
  */
 @ApiTags('plugins')
 @ApiBearerAuth('session')
-@Controller()
+@Controller('plugins')
 @UseGuards(SessionGuard, PermissionGuard)
 @RequirePermission('integrations', 'manage')
 export class InstancePluginHttpBridgeController {
   constructor(private readonly bridge: InstancePluginHttpBridge) {}
 
-  @Get('plugins/:segment')
-  dispatch(@Param('segment') segment: string) {
-    return this.bridge.dispatch('GET', `plugins/${segment}`);
+  @All('*')
+  dispatch(@Req() req: FastifyRequest) {
+    return this.bridge.dispatchRequest(req);
   }
 }

@@ -1,6 +1,6 @@
 # 0018 — Google OAuth (XOAUTH2) for the firm mailbox
 
-- **Status:** Accepted
+- **Status:** Accepted — encryption env amended by [ADR-0046](0046-one-instance-secrets-key.md) (`KHIRBY_SECRETS_KEY`; `MAIL_SECRETS_KEY` remains a decrypt alias)
 - **Date:** 2026-08-03
 - **Deciders:** Damian
 

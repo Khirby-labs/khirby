@@ -6,13 +6,14 @@ import { InstancePluginHttpBridge } from './instance-plugin-http.bridge';
 
 /**
  * Maps Nest controllers from instance plugins onto InstancePluginHttpBridge.
- * Fastify 5 cannot route() after listen; GET /api/plugins/:segment is the
- * boot-time dispatcher, and this registrar fills the bridge map.
+ * Fastify 5 cannot route() after listen; ALL /api/plugins/* is the boot-time
+ * dispatcher, and this registrar fills the bridge map (GET/POST/PATCH/DELETE…).
  */
 @Injectable()
 export class PluginNestHttpRegistrar {
   private readonly container: NestContainer;
   private readonly registeredModuleTokens = new Set<string>();
+  private readonly tokensByPlugin = new Map<string, Set<string>>();
 
   constructor(
     moduleRef: ModuleRef,
@@ -36,7 +37,26 @@ export class PluginNestHttpRegistrar {
 
     const paths = this.instanceBridge.registerModuleRoutes(moduleType, options?.pluginName);
     this.registeredModuleTokens.add(module.token);
+    if (options?.pluginName) {
+      const set = this.tokensByPlugin.get(options.pluginName) ?? new Set<string>();
+      set.add(module.token);
+      this.tokensByPlugin.set(options.pluginName, set);
+    }
     return paths;
+  }
+
+  /**
+   * Drop bridge routes and remember the Nest module token is free to rebind.
+   * Uninstall is append-only in memory (ADR-0036) but HTTP must come back on
+   * a same-process Marketplace reinstall.
+   */
+  unregisterPlugin(pluginName: string): void {
+    const tokens = this.tokensByPlugin.get(pluginName);
+    if (tokens) {
+      for (const token of tokens) this.registeredModuleTokens.delete(token);
+      this.tokensByPlugin.delete(pluginName);
+    }
+    this.instanceBridge.unregisterPlugin(pluginName);
   }
 
   /** LazyModuleLoader.load() must run before this — module is already in the container. */

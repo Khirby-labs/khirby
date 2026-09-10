@@ -45,6 +45,11 @@ export type AgentSseEvent =
   | { type: 'done' }
   | { type: 'error'; code: string; message?: string };
 
+function sameTranscript(local: AgentMessage[], remote: AgentMessage[]): boolean {
+  if (local.length !== remote.length) return false;
+  return local.every((m, i) => m.role === remote[i]?.role && m.content === remote[i]?.content);
+}
+
 export const useAgentChatStore = defineStore('agent-chat', () => {
   const conversations = ref<AgentConversation[]>([]);
   const messages = ref<AgentMessage[]>([]);
@@ -80,8 +85,14 @@ export const useAgentChatStore = defineStore('agent-chat', () => {
     const data = await apiGet<{ id: string; title: string; messages: AgentMessage[] }>(
       `/api/agent/conversations/${id}`,
     );
+    const incoming = data.messages ?? [];
+    // Same transcript, different ids (local-* vs persisted) — keep the bubbles
+    // already on screen so TransitionGroup does not replay them as a copy.
+    if (activeConversationId.value === data.id && sameTranscript(messages.value, incoming)) {
+      return;
+    }
     activeConversationId.value = data.id;
-    messages.value = data.messages ?? [];
+    messages.value = incoming;
     resetStreamState();
   }
 

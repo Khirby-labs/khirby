@@ -324,7 +324,7 @@ function onKeydown(e: KeyboardEvent) {
 function run(item: Command) {
   ui.closeCommand();
   if (item.kind === 'ask' && item.draft) {
-    router.push({ name: 'ask-new', state: { draft: item.draft } });
+    router.push({ path: '/ask', state: { draft: item.draft } });
     return;
   }
   router.push(item.to);

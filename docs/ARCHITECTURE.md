@@ -247,7 +247,7 @@ The **core mail module** (`apps/api/src/modules/mail/`) connects the CRM to a si
 - **IMAP IDLE** — a long-lived session (`imapflow`) receives push notifications from the mail server. No polling.
 - **Threading** — uses RFC Message-ID / In-Reply-To / References headers; never subject-based.
 - **Lead resolution** — inbound messages are matched to contacts by email address, then to the most-recent open lead (`!isWon && !isLost`, ordered by `updated_at DESC`).
-- **Secrets** — IMAP/SMTP passwords and Google OAuth refresh tokens stored AES-256-GCM encrypted (`imapPasswordEnc` / `smtpPasswordEnc` / `oauthRefreshTokenEnc`), keyed from env `MAIL_SECRETS_KEY`. Never returned by API.
+- **Secrets** — IMAP/SMTP passwords and Google OAuth refresh tokens stored AES-256-GCM encrypted (`imapPasswordEnc` / `smtpPasswordEnc` / `oauthRefreshTokenEnc`), keyed from env `KHIRBY_SECRETS_KEY` (legacy `MAIL_SECRETS_KEY` still decrypts). Never returned by API.
 - **Auth methods** — `password` (generic IMAP/SMTP) or `google_oauth` (XOAUTH2 via “Sign in with Google”; see [ADR-0018](./adr/0018-mailbox-google-oauth.md)).
 - **Outbound atomicity** — messages insert as `pending`, transition to `sent` or `failed` after SMTP delivery.
 - **Listmonk boundary** — Listmonk plugin handles marketing/bulk email; the mail module handles 1:1 transactional correspondence. They share no tables or services.

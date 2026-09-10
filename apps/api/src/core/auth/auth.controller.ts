@@ -64,8 +64,7 @@ export class AuthController {
     await req.session.regenerate();
     req.session.userId = user.id;
     await req.session.save();
-    const permissions = await this.rbac.getUserPermissions(user.id);
-    return { user: { ...user, permissions } };
+    return { user: await this.toSessionUser(user) };
   }
 
   @Post('logout')
@@ -87,8 +86,7 @@ export class AuthController {
   async me(@Req() req: FastifyRequest): Promise<SessionUser> {
     const user = await this.auth.findById((req.session as any).userId);
     if (!user) throw AppException.sessionExpired();
-    const permissions = await this.rbac.getUserPermissions(user.id);
-    return { id: user.id, email: user.email, locale: user.locale, permissions };
+    return this.toSessionUser(user);
   }
 
   @Put('locale')
@@ -116,5 +114,17 @@ export class AuthController {
       dto.currentPassword,
       dto.newPassword,
     );
+  }
+
+  private async toSessionUser(user: {
+    id: string;
+    email: string;
+    locale: string | null;
+  }): Promise<SessionUser> {
+    const [permissions, isSuperAdmin] = await Promise.all([
+      this.rbac.getUserPermissions(user.id),
+      this.rbac.isSuperAdmin(user.id),
+    ]);
+    return { id: user.id, email: user.email, locale: user.locale, permissions, isSuperAdmin };
   }
 }

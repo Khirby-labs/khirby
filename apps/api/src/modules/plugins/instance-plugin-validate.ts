@@ -15,11 +15,10 @@ export function assertInstancePluginShape(plugin: CrmPlugin): void {
   const routes = plugin.getFrontendRoutes?.() ?? [];
   const hasNestModule = typeof plugin.getNestModule === 'function';
 
+  // Sidebar routes need Nest (HTTP for InstancePluginView). Nest alone is fine —
+  // marketplace packages (AI Compose, MCP, …) are API/settings-only with no SPA tab.
   if (routes.length && !hasNestModule) {
     errors.push('getFrontendRoutes() requires getNestModule() — scaffold with nest: true');
-  }
-  if (hasNestModule && !routes.length) {
-    errors.push('getNestModule() requires getFrontendRoutes() with at least one route');
   }
 
   const expectedSlug = pluginRouteSlug(plugin.name);

@@ -10,10 +10,14 @@ import {
   isSafeLocalSegment,
   isSafeRelPath,
   findInstanceLocalDirForPlugin,
+  findMarketplaceLocalDirForPlugin,
   listInstancePluginFiles,
   loadInstancePlugins,
   loadPluginFromDir,
   packageDeclaresWeb,
+  preferLocalCheckoutPlugins,
+  applyRootEnvFile,
+  hasWebEntryBundle,
   pluginVolumeRoot,
   readInstancePluginFile,
   resolveInstancePluginDirectory,
@@ -22,7 +26,10 @@ import {
 } from './instance-plugins.loader';
 import { pluginClassName, scaffoldFileMap } from './instance-plugin-scaffold';
 
-function writePlugin(dir: string, opts: { name: string; web?: boolean; skipCreate?: boolean }) {
+function writePlugin(
+  dir: string,
+  opts: { name: string; web?: boolean; webBundle?: boolean; skipCreate?: boolean },
+) {
   mkdirSync(join(dir, 'src'), { recursive: true });
   const exportsField: Record<string, string> = { '.': './src/index.ts' };
   if (opts.web) exportsField['./web'] = './src/web/index.ts';
@@ -35,6 +42,13 @@ function writePlugin(dir: string, opts: { name: string; web?: boolean; skipCreat
       exports: exportsField,
     }),
   );
+  if (opts.webBundle) {
+    mkdirSync(join(dir, 'dist', 'web'), { recursive: true });
+    writeFileSync(
+      join(dir, 'dist', 'web', 'entry.js'),
+      'export const webEntry = { name: "x", component: () => Promise.resolve({}) };\n',
+    );
+  }
   if (opts.skipCreate) {
     writeFileSync(join(dir, 'src/index.ts'), 'export const nope = 1;\n');
     return;
@@ -96,10 +110,24 @@ describe('instance-plugins.loader', () => {
     expect(logs.some((l) => l.includes('clashes'))).toBe(true);
   });
 
-  it('loadPluginFromDir rejects exports["./web"]', () => {
+  it('loadPluginFromDir rejects exports["./web"] without dist/web/entry.js', () => {
     const dir = mkdtempSync(join(tmpdir(), 'instance-web-'));
     writePlugin(dir, { name: 'crm_webby', web: true });
-    expect(() => loadPluginFromDir(dir)).toThrow('web_not_hot_loadable');
+    expect(() => loadPluginFromDir(dir)).toThrow('web_bundle_required');
+  });
+
+  it('loadPluginFromDir accepts exports["./web"] when dist/web/entry.js exists', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'instance-web-ok-'));
+    writePlugin(dir, { name: 'crm_web_ok', web: true, webBundle: true });
+    expect(hasWebEntryBundle(dir)).toBe(true);
+    expect(loadPluginFromDir(dir).name).toBe('crm_web_ok');
+  });
+
+  it('loadPluginFromDir allows packages without ./web even without a web bundle', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'instance-no-web-'));
+    writePlugin(dir, { name: 'crm_api_only' });
+    expect(hasWebEntryBundle(dir)).toBe(false);
+    expect(loadPluginFromDir(dir).name).toBe('crm_api_only');
   });
 
   it('loadPluginFromDir rejects a package without createPlugin', () => {
@@ -141,11 +169,141 @@ describe('instance-plugins.loader', () => {
   it('does not load a first-party directory even if it has createPlugin', () => {
     const root = mkdtempSync(join(tmpdir(), 'instance-first-party-'));
     writePlugin(join(root, 'crm-plugin-mcp'), { name: 'crm_from_disk' });
-    expect(loadInstancePlugins(root, new Set())).toEqual([]);
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    delete process.env.KHIRBY_PLUGINS_LOCAL;
+    try {
+      expect(loadInstancePlugins(root, new Set())).toEqual([]);
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
+  });
+
+  it('preferLocalCheckoutPlugins reads 1/true/yes', () => {
+    expect(preferLocalCheckoutPlugins({ KHIRBY_PLUGINS_LOCAL: '1' })).toBe(true);
+    expect(preferLocalCheckoutPlugins({ KHIRBY_PLUGINS_LOCAL: 'true' })).toBe(true);
+    expect(preferLocalCheckoutPlugins({ KHIRBY_PLUGINS_LOCAL: 'yes' })).toBe(true);
+    expect(preferLocalCheckoutPlugins({ KHIRBY_PLUGINS_LOCAL: '0' })).toBe(false);
+    expect(preferLocalCheckoutPlugins({})).toBe(false);
+  });
+
+  it('loads a first-party checkout when KHIRBY_PLUGINS_LOCAL is on', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-local-flag-'));
+    writePlugin(join(root, 'crm-plugin-mcp'), { name: 'crm_from_checkout' });
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    process.env.KHIRBY_PLUGINS_LOCAL = '1';
+    try {
+      expect(loadInstancePlugins(root, new Set()).map((p) => p.name)).toEqual([
+        'crm_from_checkout',
+      ]);
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
+  });
+
+  it('prefers a first-party checkout over a marketplace unpack of the same name', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-local-wins-'));
+    writePlugin(join(root, 'crm-plugin-pokelo'), { name: 'crm_pokelo' });
+    writePlugin(join(root, 'khirby__plugin-pokelo'), { name: 'crm_pokelo' });
+    appendInstanceManifest(root, '@khirby/plugin-pokelo', 'khirby__plugin-pokelo');
+    const logs: string[] = [];
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    process.env.KHIRBY_PLUGINS_LOCAL = '1';
+    try {
+      const loaded = loadInstancePlugins(root, new Set(), (m) => logs.push(m));
+      expect(loaded).toHaveLength(1);
+      expect(loaded[0].name).toBe('crm_pokelo');
+      expect(logs.some((l) => l.includes('local checkout wins'))).toBe(true);
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
+  });
+
+  it('still loads a marketplace unpack with no matching checkout when the flag is on', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-local-other-'));
+    writePlugin(join(root, 'khirby__plugin-discord'), { name: 'crm_discord' });
+    appendInstanceManifest(root, '@khirby/plugin-discord', 'khirby__plugin-discord');
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    process.env.KHIRBY_PLUGINS_LOCAL = '1';
+    try {
+      expect(loadInstancePlugins(root, new Set()).map((p) => p.name)).toEqual(['crm_discord']);
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
+  });
+
+  it('findInstanceLocalDirForPlugin prefers the checkout when KHIRBY_PLUGINS_LOCAL is on', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-find-prefer-'));
+    writePlugin(join(root, 'crm-plugin-pokelo'), { name: 'crm_pokelo' });
+    writePlugin(join(root, 'khirby__plugin-pokelo'), { name: 'crm_pokelo' });
+    appendInstanceManifest(root, '@khirby/plugin-pokelo', 'khirby__plugin-pokelo');
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    process.env.KHIRBY_PLUGINS_LOCAL = '1';
+    try {
+      expect(findInstanceLocalDirForPlugin(root, 'crm_pokelo')).toBe('crm-plugin-pokelo');
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
+  });
+
+  it('findMarketplaceLocalDirForPlugin stays on the unpack even when the flag is on', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-find-market-'));
+    writePlugin(join(root, 'crm-plugin-pokelo'), { name: 'crm_pokelo' });
+    writePlugin(join(root, 'khirby__plugin-pokelo'), { name: 'crm_pokelo' });
+    appendInstanceManifest(root, '@khirby/plugin-pokelo', 'khirby__plugin-pokelo');
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    process.env.KHIRBY_PLUGINS_LOCAL = '1';
+    try {
+      expect(findMarketplaceLocalDirForPlugin(root, 'crm_pokelo')).toBe('khirby__plugin-pokelo');
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
+  });
+
+  it('pluginVolumeRoot allows first-party dirs when KHIRBY_PLUGINS_LOCAL is on', () => {
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    process.env.KHIRBY_PLUGINS_LOCAL = '1';
+    try {
+      expect(pluginVolumeRoot('/tmp', 'crm-plugin-mcp')).toBe(join('/tmp', 'crm-plugin-mcp'));
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
+  });
+
+  it('applyRootEnvFile fills missing keys and does not override set values, including empty', () => {
+    const root = mkdtempSync(join(tmpdir(), 'instance-dotenv-'));
+    writeFileSync(join(root, 'plugins.manifest.json'), '{"plugins":[]}');
+    writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages: []\n');
+    writeFileSync(
+      join(root, '.env'),
+      'KHIRBY_PLUGINS_LOCAL=1\nOTHER_FLAG=from-file\nCONTROL_PLANE_URL=https://ctrl.bearly.pro\n',
+    );
+    const env: NodeJS.ProcessEnv = {
+      OTHER_FLAG: 'already',
+      KHIRBY_PLUGINS_LOCAL: '',
+      CONTROL_PLANE_URL: '',
+    };
+    applyRootEnvFile(root, env);
+    expect(env.KHIRBY_PLUGINS_LOCAL).toBe('');
+    expect(env.CONTROL_PLANE_URL).toBe('');
+    expect(env.OTHER_FLAG).toBe('already');
   });
 
   it('pluginVolumeRoot rejects first-party dirs', () => {
-    expect(() => pluginVolumeRoot('/tmp', 'crm-plugin-mcp')).toThrow('reserved_dir');
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    delete process.env.KHIRBY_PLUGINS_LOCAL;
+    try {
+      expect(() => pluginVolumeRoot('/tmp', 'crm-plugin-mcp')).toThrow('reserved_dir');
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
   });
 
   it('isSafeRelPath rejects traversal', () => {

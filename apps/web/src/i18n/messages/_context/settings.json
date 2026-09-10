@@ -38,5 +38,27 @@
   "version.updateAvailable": "Banner when a newer GitHub Release exists. One short sentence. Do not interpolate version numbers — they are shown separately.",
   "version.checkFailed": "Hint when GitHub could not be reached. Still shows the running version. One short sentence.",
   "version.devHint": "Hint when APP_VERSION is the local-dev sentinel `dev`. Explains this is a development build, not a release image. One short sentence.",
-  "version.releaseLink": "External link to the GitHub Release page when an update is available. Imperative or noun phrase, ≤3 words."
+  "version.releaseLink": "External link to the GitHub Release page when an update is available. Imperative or noun phrase, ≤3 words.",
+
+  "controlPlane.title": "Panel heading of the Control Plane card on Settings → General. Product name — stays Control Plane in both languages.",
+  "controlPlane.loading": "Transient status while GET /api/system/control-plane/status loads. May end with …",
+  "controlPlane.telemetry": "Label for whether outbound telemetry heartbeats are enabled. Noun, 1 word. Glossary: telemetry → telemetria.",
+  "controlPlane.telemetryOn": "Value when telemetry is enabled. Short. PL: feminine agreeing with telemetria.",
+  "controlPlane.telemetryOff": "Value when TELEMETRY_DISABLED (or equivalent) is set. Short. PL: feminine agreeing with telemetria.",
+  "controlPlane.installationId": "Label for the UUID identifying this install. ≤2 words.",
+  "controlPlane.registeredEmail": "Label for the email registered with Control Plane. ≤2 words.",
+  "controlPlane.notRegistered": "Value when registeredEmail is null. Short adjective/phrase. PL: feminine agreeing with instancja.",
+  "controlPlane.lastHeartbeat": "Label for the ISO timestamp of the last successful heartbeat. ≤2 words. Glossary: heartbeat stays English.",
+  "controlPlane.never": "Value when lastHeartbeatAt is null. One short word.",
+  "controlPlane.notConfigured": "Hint when CONTROL_PLANE_URL is missing. Mentions the env var name. One short sentence.",
+  "controlPlane.emailLabel": "Label of the register form email field. ≤2 words.",
+  "controlPlane.register": "Submit button posting the admin email to Control Plane. Imperative, 1 word.",
+  "controlPlane.registering": "Same button while the request is in flight. Ends with …",
+  "controlPlane.registered": "Success toast after register. Past tense, ≤3 words.",
+  "controlPlane.copyId": "title/aria of the button that copies installationId. Imperative, ≤3 words.",
+  "controlPlane.copied": "Toast after clipboard write succeeds. Past tense, 1 word.",
+  "controlPlane.copyFailed": "Toast when clipboard write fails. What happened + what to do. One short sentence.",
+  "controlPlane.loadFailed": "Fallback when the status request fails. One short sentence.",
+  "controlPlane.errors.emailRequired": "Field error: email left empty. Says what to do.",
+  "controlPlane.errors.registerFailed": "Banner when register POST fails. What happened + what to check. No apology."
 }

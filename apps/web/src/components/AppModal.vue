@@ -3,9 +3,7 @@
     <DialogPortal>
       <DialogOverlay class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm" />
       <DialogContent
-        class="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2
-               bg-surface-panel border border-border rounded-xl p-6 shadow-2xl
-               focus:outline-none"
+        class="fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 bg-surface-panel border border-border rounded-xl p-6 shadow-2xl focus:outline-none"
         @open-auto-focus="handleAutoFocus"
       >
         <DialogTitle v-if="title" class="text-base font-semibold text-text-primary mb-5">
@@ -20,7 +18,12 @@
           :aria-label="t('common.actions.close')"
         >
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              stroke-width="2"
+              d="M6 18L18 6M6 6l12 12"
+            />
           </svg>
         </DialogClose>
         <slot />

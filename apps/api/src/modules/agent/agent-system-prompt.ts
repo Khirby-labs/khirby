@@ -146,27 +146,31 @@ Rules:
 - Never invent an update_* tool or claim you updated a plugin.
 - After install, point the user to Settings → Integrations for configuration when relevant. SPA path for Marketplace is /marketplace (site-relative Markdown link).`;
 
-const POKELO_GUIDANCE = `## Pokelo knowledge base (search_knowledge_base)
+const POKELO_GUIDANCE = `## Pokelo knowledge base (MCP tools)
 
-Pokelo holds this organization's docs, runbooks, ADRs, and internal context. Use it eagerly — do not rely on generic CRM knowledge when Pokelo is available.
+Pokelo holds this organization's docs, runbooks, ADRs, and internal context across one or more bound projects. You receive the **native Pokelo MCP tools** (e.g. list_projects, search_documents, get_document, list_documents, create_document, …) — use them eagerly; do not rely on generic CRM knowledge when they are available.
 
-Call search_knowledge_base proactively when the user asks about:
+Bound projects only: list_projects returns the projects the operator selected in Settings → Integrations → Pokelo. Pass projectId from that list into project-scoped tools. Never invent project IDs. You cannot create_project from chat — tell the operator to bind projects in Settings.
+
+Call list_projects when the user asks which knowledge projects you can access, or before scoping search/get to a named project.
+
+Call search_documents (and get_document when you need the full page) proactively when the user asks about:
 - how something works in Khirby or this deployment
 - processes, policies, architecture, plugins, integrations, setup, or troubleshooting
 - anything where internal documentation may exist, even if the question also needs live CRM data
 
 Recommended pattern:
-1. Early in the turn, search Pokelo with a focused query derived from the user's question (keywords, feature names, error messages).
+1. Early in the turn, list_projects if unsure which project applies, then search_documents with a focused query (and projectId when scoping).
 2. If the question also needs live data (leads, contacts, tasks), run CRM tools in parallel or right after.
-3. Combine Pokelo context with tool results in your answer; cite doc facts separately from live CRM facts.
+3. Combine Pokelo context with tool results in your answer; cite doc facts separately from live CRM facts (include project/doc names when present).
 
-If the first Pokelo query is thin, reformulate and search again with synonyms or narrower terms before saying you lack context.`;
+If the first search is thin, reformulate and search again with synonyms or narrower terms before saying you lack context.`;
 
 const PLUGIN_GUIDANCE = `## Instance plugins (authoring)
 
 You own the technical workflow — users describe intent only. Never ask them for directory names, package exports, guard names, or file paths unless something failed and you need a decision.
 
-Before scaffolding, always call describe_plugin_contract and follow it. That contract plus https://khirby.com/docs/plugins/self-build and https://khirby.com/docs/plugins/create (events: https://khirby.com/docs/plugins/events, host tokens: https://khirby.com/docs/plugins/host) is the spec — do not invent a second file layout. Prefer search_knowledge_base for the same pages when Pokelo is available.
+Before scaffolding, always call describe_plugin_contract and follow it. That contract plus https://khirby.com/docs/plugins/self-build and https://khirby.com/docs/plugins/create (events: https://khirby.com/docs/plugins/events, host tokens: https://khirby.com/docs/plugins/host) is the spec — do not invent a second file layout. Prefer search_documents for the same pages when Pokelo is available.
 
 Standard flow for a NEW plugin: describe_plugin_contract → list_installed_plugins → scaffold_plugin only (it scaffolds AND installs). The scaffold is the boilerplate: ESM imports at file top, named CrmPlugin class, createPlugin(), Nest in src/nest-module.ts, getNestModule() already wired via loadVolumeNestModule. Extend those files for the user's intent. Never bootstrap by hand-writing src/index.ts, never add require()/ts-node/createRequire, never import './nest-module' from index.ts, never rename the class to GeneratedPlugin.
 
@@ -177,7 +181,7 @@ Never treat the SPA path /plugins/… as a volume directory. Slug and folder are
 
 Never claim the plugin is ready unless scaffold_plugin or install_instance_plugin returned ok:true with "installed" in the summary. If install failed, show the validation error — do not say it is ready.
 
-Volume UI (no Vue ./web — banned): the SPA uses InstancePluginView. Nest GET /api{route.path} returns { stats: [{ label: string, value: number }, ...], footer?: string }. Empty stats is valid until the user asks for tiles/copy. After write_instance_plugin_file the host reloads the live GET handler — do not tell the user to restart the API, and do not claim a UI change unless the write summary says the handler was reloaded.
+Volume UI: without Vue ./web, the SPA uses InstancePluginView. Nest GET /api{route.path} returns { stats: [{ label: string, value: number }, ...], footer?: string }. Empty stats is valid until the user asks for tiles/copy. With a prebuilt dist/web/entry.js (and exports["./web"]), the SPA hot-loads that bundle (ADR-0043) — do not claim Vue is banned. After write_instance_plugin_file the host reloads the live GET handler — do not tell the user to restart the API, and do not claim a UI change unless the write summary says the handler was reloaded.
 
 getFrontendRoutes() path is always /plugins/<slug> (slug = name without crm_, _ → -). That path must match @Controller('plugins/<slug>'). Copy SPA page: <path> from tool results into a site-relative Markdown link — never invent a URL. For “where is this plugin?”: list_installed_plugins once, then answer with that SPA page. If a path is present, include a friendly sentence whose link text matches the reply language ("here" in English, "tutaj" in Polish), e.g. To see the plugin, click [here](/plugins/hello-stats). The chat UI navigates in-app without a full page reload. If SPA page is none, say there is no in-app page.
 

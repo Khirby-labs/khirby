@@ -7,6 +7,13 @@ on:
       - develop
   pull_request:
 
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
 jobs:
   verify:
     name: Verify (typecheck, lint, tests, build)
@@ -14,15 +21,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
         with:
           version: 11.0.9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
@@ -36,8 +43,35 @@ jobs:
       - name: Guard plugin sync drift
         run: git diff --exit-code -- apps/api/package.json apps/api/plugin-deps.generated.json apps/web/package.json apps/web/plugin-deps.generated.json apps/api/src/modules/plugins/load-plugins.generated.ts apps/web/src/plugins/plugin-registry.generated.ts
 
-      - name: Verify
-        run: pnpm verify
+      - name: Typecheck
+        run: pnpm typecheck
 
-      - name: Build
-        run: pnpm build
+      - name: ESLint
+        run: pnpm lint
+
+      - name: Design tokens
+        run: pnpm lint:design
+
+      - name: i18n
+        run: pnpm lint:i18n
+
+      - name: Prettier
+        run: pnpm format:check
+
+      - name: Test API
+        run: pnpm test:api
+
+      - name: Test web
+        run: pnpm test:web
+
+      - name: Test forms-client
+        run: pnpm test:forms-client
+
+      - name: Test forms-ui
+        run: pnpm test:forms-ui
+
+      - name: Build API
+        run: pnpm build:api
+
+      - name: Build web
+        run: pnpm build:web

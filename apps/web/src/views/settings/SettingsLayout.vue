@@ -1,5 +1,5 @@
 <template>
-  <div class="flex h-full flex-col">
+  <div class="flex h-full min-h-0 w-full flex-col">
     <h2 class="crm-page-title mb-6 flex-shrink-0">{{ t('settings.title') }}</h2>
     <div class="flex min-h-0 flex-1 flex-col gap-8 lg:flex-row lg:gap-12">
       <!-- Sub-nav — a left rail for the Settings area; stays a horizontal bar below lg,
@@ -21,7 +21,7 @@
       </nav>
 
       <!-- Section content — each view manages its own max width (General is a narrow form) -->
-      <div class="min-w-0 min-h-0 flex-1">
+      <div class="min-h-0 min-w-0 w-full flex-1">
         <RouterView />
       </div>
     </div>

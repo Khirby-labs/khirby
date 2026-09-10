@@ -52,7 +52,10 @@ describe('AgentChatService', () => {
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
-        { provide: PokeloToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();
@@ -74,7 +77,7 @@ describe('AgentChatService', () => {
     expect(conversations.insertAssistantMessage).toHaveBeenCalled();
   });
 
-  it('emits ai_compose_unavailable when LLM config is null', async () => {
+  it('emits thinking then ai_compose_unavailable when LLM config is null', async () => {
     llmProvider.getCompletionConfig.mockResolvedValue(null);
     await service.runAgentLoop(
       'user-1',
@@ -83,8 +86,47 @@ describe('AgentChatService', () => {
         write: (e) => events.push(e),
       },
     );
+    const kinds = events.map((e) => (e.type === 'status' ? `status:${e.code}` : e.type));
+    expect(kinds.indexOf('status:thinking')).toBeGreaterThanOrEqual(0);
+    expect(kinds.indexOf('status:thinking')).toBeLessThan(kinds.indexOf('error'));
     expect(events).toContainEqual({ type: 'error', code: 'ai_compose_unavailable' });
     expect(conversations.insertUserMessage).toHaveBeenCalled();
+  });
+
+  it('emits ai_compose_unavailable when AI_COMPOSE_LLM is not bound', async () => {
+    const moduleRef: TestingModule = await Test.createTestingModule({
+      providers: [
+        AgentChatService,
+        { provide: AgentConversationsService, useValue: conversations },
+        { provide: CrmToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
+      ],
+    }).compile();
+    const unbound = moduleRef.get(AgentChatService);
+    const local: unknown[] = [];
+    await unbound.runAgentLoop('user-1', { content: 'hello' }, { write: (e) => local.push(e) });
+    expect(local).toContainEqual({ type: 'error', code: 'ai_compose_unavailable' });
+  });
+
+  it('maps a decrypt failure onto ai_compose_decrypt_failed instead of unavailable', async () => {
+    const { AppException } = await import('../../../../../packages/plugin-host/src');
+    llmProvider.getCompletionConfig.mockRejectedValue(
+      AppException.pluginNotConfigured('ai-compose', 'AI Compose API key cannot be decrypted'),
+    );
+    await service.runAgentLoop(
+      'user-1',
+      { content: 'hello' },
+      {
+        write: (e) => events.push(e),
+      },
+    );
+    expect(events).toContainEqual({ type: 'error', code: 'ai_compose_decrypt_failed' });
   });
 
   it('throws 409 when conversation already streaming', async () => {
@@ -201,7 +243,10 @@ describe('AgentChatService', () => {
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
-        { provide: PokeloToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();
@@ -283,7 +328,10 @@ describe('AgentChatService', () => {
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
-        { provide: PokeloToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();
@@ -370,7 +418,10 @@ describe('AgentChatService', () => {
             run: pluginRun,
           },
         },
-        { provide: PokeloToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();
@@ -417,7 +468,10 @@ describe('AgentChatService', () => {
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
-        { provide: PokeloToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();
@@ -482,7 +536,10 @@ describe('AgentChatService', () => {
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
-        { provide: PokeloToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();

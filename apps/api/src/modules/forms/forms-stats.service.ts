@@ -36,12 +36,8 @@ export class FormsStatsService {
 
     const whereClause = submissionFilters.length ? and(...submissionFilters) : undefined;
 
-    const totalQuery = this.db
-      .select({ count: sql<number>`count(*)::int` })
-      .from(submissions);
-    const [{ count: total }] = whereClause
-      ? await totalQuery.where(whereClause)
-      : await totalQuery;
+    const totalQuery = this.db.select({ count: sql<number>`count(*)::int` }).from(submissions);
+    const [{ count: total }] = whereClause ? await totalQuery.where(whereClause) : await totalQuery;
 
     const [{ count: activeForms }] = await this.db
       .select({ count: sql<number>`count(*)::int` })
@@ -52,9 +48,7 @@ export class FormsStatsService {
     if (from) joinFilters.push(gte(submissions.createdAt, from));
     if (to) joinFilters.push(lte(submissions.createdAt, to));
 
-    const joinCondition = joinFilters.length === 1
-      ? joinFilters[0]
-      : and(...joinFilters);
+    const joinCondition = joinFilters.length === 1 ? joinFilters[0] : and(...joinFilters);
 
     let byFormQuery = this.db
       .select({
@@ -84,9 +78,7 @@ export class FormsStatsService {
         .groupBy(sql`to_char(${submissions.createdAt}, 'YYYY-MM-DD')`)
         .orderBy(sql`to_char(${submissions.createdAt}, 'YYYY-MM-DD')`);
 
-      const dayRows = whereClause
-        ? await dayQuery.where(whereClause)
-        : await dayQuery;
+      const dayRows = whereClause ? await dayQuery.where(whereClause) : await dayQuery;
 
       byDay = dayRows.map((r) => ({ day: r.day, count: r.count }));
     }

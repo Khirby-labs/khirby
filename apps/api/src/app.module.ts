@@ -13,6 +13,7 @@ import { RolesModule } from './modules/roles/roles.module';
 import { UsersModule } from './modules/users/users.module';
 import { PluginsModule } from './modules/plugins/plugins.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
+import { ControlPlaneModule } from './modules/control-plane/control-plane.module';
 import { loadPlugins } from './modules/plugins/load-plugins';
 import { HealthModule } from './core/health/health.module';
 import { EventsModule } from './core/events/events.module';
@@ -36,6 +37,7 @@ import { SystemModule } from './modules/system/system.module';
     UsersModule,
     PluginsModule.forRoot(loadPlugins()),
     // After PluginsModule: the Marketplace reads the registry that module provides.
+    ControlPlaneModule,
     MarketplaceModule,
     HealthModule,
     SystemModule,

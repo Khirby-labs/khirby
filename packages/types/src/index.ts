@@ -136,6 +136,8 @@ export interface SessionUser {
   locale: string | null;
   /** Effective RBAC grants for this session; `[]` when the user has no roles. */
   permissions: RolePermission[];
+  /** True when the user holds a protected super-admin role. */
+  isSuperAdmin: boolean;
 }
 
 export interface LoginResponse {
@@ -264,6 +266,20 @@ export interface MarketplacePlugin {
   icon: string;
   docsUrl: string | null;
   configSchema: PluginConfigField[];
+  /** Control Plane slug — install/detail key when the package is not yet loaded. */
+  slug?: string;
+  packageName?: string;
+  publisherName?: string | null;
+  verified?: boolean;
+  compatible?: boolean;
+  permissions?: string[] | null;
+  /** Newest approved catalog version (Control Plane). */
+  latestVersion?: string | null;
+  /**
+   * True when `status === 'installed'` and `latestVersion` is a newer semver than
+   * the installed `version`. The SPA shows an update affordance.
+   */
+  updateAvailable?: boolean;
 }
 
 /**
@@ -302,6 +318,13 @@ export interface Plugin {
   codeLoaded?: boolean;
   /** False for native image plugins that cannot be removed from the instance. */
   canUninstall?: boolean;
+  /**
+   * Volume/marketplace SPA bundle URL when `dist/web/entry.js` exists on disk
+   * (ADR-0043). Same-origin; load via dynamic import with credentials cookie.
+   */
+  webBundleUrl?: string;
+  /** Cache-bust token (mtime ms) for `webBundleUrl`. */
+  webBundleVersion?: string;
 }
 
 /**
@@ -498,7 +521,7 @@ export interface MailboxPublic {
   lastSyncAt: string | null;
   lastSyncError: string | null;
   backfillDays: number;
-  /** true when MAIL_SECRETS_KEY env var is configured on the server. */
+  /** true when KHIRBY_SECRETS_KEY (or a legacy alias) is configured on the server. */
   secretsKeyConfigured: boolean;
   /** true when GOOGLE_MAIL_CLIENT_ID + SECRET are set on the server. */
   googleOAuthConfigured: boolean;

@@ -1,5 +1,5 @@
 # Vue SPA (nginx) + Nest API
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
 
 WORKDIR /app
 
@@ -30,7 +30,7 @@ RUN node scripts/vendor-plugins-for-build.mjs \
   && pnpm --filter api build \
   && pnpm --filter web build
 
-FROM node:22-alpine AS runner
+FROM node:24-alpine AS runner
 
 ARG APP_VERSION=dev
 ENV APP_VERSION=$APP_VERSION

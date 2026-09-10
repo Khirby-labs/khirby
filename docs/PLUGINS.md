@@ -217,9 +217,25 @@ duplicate templates inside `@khirby/plugin-mcp`.
 3. Files land in `plugins/<directory>/` (same folder as first-party plugins). Docker: `/app/plugins` bind-mounted to host `plugins/` or `${DATA_PATH}/plugins`. Override with `INSTANCE_PLUGINS_DIR`.
 4. Hot-load is append-only (`jiti` + `createPlugin` + optional `LazyModuleLoader`). Disable still only drops the in-memory context.
 
-Packages must use bare `@khirby/plugin-sdk` / `@khirby/plugin-host`. `exports["./web"]` is rejected — Settings via `getConfigSchema()` still works. Marketplace listing is a later ticket ([KBY-121](https://linear.app/finsly/issue/KBY-121)).
+Packages must use bare `@khirby/plugin-sdk` / `@khirby/plugin-host`. Optional
+`exports["./web"]` requires a prebuilt `dist/web/entry.js` on the volume
+([ADR-0043](adr/0043-volume-plugin-vue-web-hot-load.md)); without it install fails
+with `web_bundle_required`. Without `./web`, Settings via `getConfigSchema()` and
+`InstancePluginView` still work. Marketplace listing is a later ticket
+([KBY-121](https://linear.app/finsly/issue/KBY-121)).
+
+### Building volume Vue (`dist/web/entry.js`)
+
+1. Point `exports["./web"]` at `./dist/web/entry.js`.
+2. Bundle with Vite/Rollup: `format: 'es'`, externalize `vue`, `vue-router`,
+   `vue-i18n` (the SPA import map resolves them to host peers).
+3. Export `webEntry` (`PluginWebEntry`) whose `name` equals `CrmPlugin.name`.
+4. Ship the file under `dist/web/` on the volume; the API serves
+   `/api/plugins/<name>/web/*` and the SPA hot-loads it.
 
 Editing first-party sources under `plugins/` survives `pnpm dev`: vendor keeps existing dirs and fills only gaps ([ADR-0037](adr/0037-hybrid-plugin-vendor-keep-local-sources.md)). `KHIRBY_PLUGINS_WORKSPACE=1` skips npm vendor entirely.
+
+To **run** those checkout sources instead of a Marketplace unpack (`khirby__plugin-*`) of the same plugin, set `KHIRBY_PLUGINS_LOCAL=1` in `.env` and restart the API ([ADR-0045](adr/0045-local-checkout-plugins-preferred-over-marketplace.md)). Unset in production. Marketplace uninstall still removes the unpack, not the checkout.
 
 ---
 
@@ -242,7 +258,9 @@ pnpm --filter api test   # full API + plugin suite
 `@khirby/plugin-sdk` and `@khirby/plugin-host` are published to **npm** from this
 monorepo. First-party plugins live in
 [Khirby-labs/plugins](https://github.com/Khirby-labs/plugins) (local clone under
-`./plugins`). Community plugins are not published from this monorepo.
+`./plugins`). Bump that plugin's `package.json` and merge to `main` — CI
+publishes the new version ([`/publish-plugin`](../.claude/skills/publish-plugin/SKILL.md)).
+Community plugins are not published from this monorepo.
 Release host packages:
 
 ```bash
@@ -256,8 +274,12 @@ Authors install with `pnpm add @khirby/plugin-sdk @khirby/plugin-host`
 
 1. Build TypeScript for npm (`tsc`); ship `dist/` + `.vue` source if Vite should compile UI.
 2. `peerDependencies`: `@khirby/plugin-sdk`, `@khirby/plugin-host`, Nest/Vue as needed.
-3. Publish under `@khirby/*` (or your scope) with keyword `khirby-plugin`.
-4. Document events used, config keys, and required CRM version / host semver.
+3. **Marketplace tarball (ADR-0052):** bundle every other runtime dependency into
+   the published package. Unpack does **not** run `npm install` on the instance.
+   Manifest / image plugins (`pnpm sync:plugins`) still resolve through the host
+   lockfile — that path is not Marketplace.
+4. Publish under `@khirby/*` (or your scope) with keyword `khirby-plugin`.
+5. Document events used, config keys, and required CRM version / host semver.
 
 Public registry listing is still informal (README / npm search). Do not edit
 `app.module.ts` to register plugins — use the manifest.

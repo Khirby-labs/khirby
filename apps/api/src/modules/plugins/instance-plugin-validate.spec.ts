@@ -30,6 +30,17 @@ describe('assertInstancePluginShape', () => {
     ).not.toThrow();
   });
 
+  it('accepts nest-only plugins without frontend routes', () => {
+    expect(() =>
+      assertInstancePluginShape(
+        makePlugin({
+          name: 'crm_ai_compose',
+          getNestModule: () => class {},
+        }),
+      ),
+    ).not.toThrow();
+  });
+
   it('rejects frontend routes without getNestModule', () => {
     expect(() =>
       assertInstancePluginShape(

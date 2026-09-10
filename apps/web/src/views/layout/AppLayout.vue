@@ -4,20 +4,15 @@
 
     <div class="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <AppTopbar v-if="!isChatFocus" />
-      <main
-        :class="
-          cn(
-            'flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-base',
-            isChatFocus ? 'p-0' : 'p-6',
-          )
-        "
-      >
+      <main class="flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-base">
         <RouterView v-slot="{ Component }">
           <div
             class="min-h-0 min-w-0 flex-1 overflow-x-hidden"
             :class="isChatFocus ? 'overflow-hidden' : 'overflow-y-auto'"
           >
-            <component :is="Component" />
+            <div :class="isChatFocus ? 'h-full' : 'h-full p-6'">
+              <component :is="Component" />
+            </div>
           </div>
         </RouterView>
       </main>
@@ -36,7 +31,6 @@ import CommandPalette from '../../components/shell/CommandPalette.vue';
 import { usePluginsStore } from '../../stores/plugins.store';
 import { useUiStore } from '../../stores/ui.store';
 import { useRealtimeEvents } from '../../composables/useRealtimeEvents';
-import { cn } from '../../lib/utils';
 
 useRealtimeEvents();
 

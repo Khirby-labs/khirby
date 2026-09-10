@@ -23,6 +23,7 @@ const sessionUser: SessionUser = {
   email: 'admin@example.com',
   locale: null,
   permissions: [],
+  isSuperAdmin: false,
 };
 
 const meOk = () => http.get(api('/api/auth/me'), () => HttpResponse.json(sessionUser));
@@ -218,6 +219,44 @@ describe('auth.store', () => {
     expect(auth.hasPermission('agent', 'use')).toBe(true);
     expect(auth.hasPermission('agent', 'manage')).toBe(false);
     expect(auth.hasPermission('contacts', 'manage')).toBe(false);
+  });
+
+  it('isSuperAdmin follows the session flag', async () => {
+    server.use(
+      http.get(api('/api/auth/me'), () =>
+        HttpResponse.json({ ...sessionUser, isSuperAdmin: true }),
+      ),
+    );
+
+    const auth = useAuthStore();
+    expect(auth.isSuperAdmin).toBe(false);
+    await auth.checkSession();
+    expect(auth.isSuperAdmin).toBe(true);
+  });
+
+  it('re-fetches /auth/me when the cached user lacks isSuperAdmin (stale session)', async () => {
+    let calls = 0;
+    server.use(
+      http.get(api('/api/auth/me'), () => {
+        calls++;
+        return HttpResponse.json(sessionUser);
+      }),
+    );
+
+    const auth = useAuthStore();
+    // Stale Pinia/HMR payload from before /auth/me returned isSuperAdmin.
+    auth.user = {
+      id: 'u1',
+      email: 'admin@example.com',
+      locale: null,
+      permissions: [],
+    } as unknown as SessionUser;
+    auth.checked = true;
+
+    await auth.checkSession();
+
+    expect(calls).toBe(1);
+    expect(auth.user?.isSuperAdmin).toBe(false);
   });
 
   it('hasPermission is false before a session exists', () => {

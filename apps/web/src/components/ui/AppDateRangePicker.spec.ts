@@ -164,7 +164,10 @@ describe('AppDateRangePicker', () => {
   });
 
   it('clears to an empty range', async () => {
-    const view = mountPicker({ modelValue: { from: '2026-07-01', to: '2026-07-24' }, clearable: true });
+    const view = mountPicker({
+      modelValue: { from: '2026-07-01', to: '2026-07-24' },
+      clearable: true,
+    });
     await open(view);
 
     presetButton('Clear')!.click();

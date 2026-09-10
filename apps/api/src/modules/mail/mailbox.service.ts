@@ -123,7 +123,7 @@ export class MailboxService {
 
   async upsert(dto: UpsertMailboxDto): Promise<MailboxPublic> {
     if (dto.enabled && !isMailSecretsKeyConfigured()) {
-      throw AppException.badRequest('Cannot enable mailbox: MAIL_SECRETS_KEY is not configured.');
+      throw AppException.badRequest('Cannot enable mailbox: KHIRBY_SECRETS_KEY is not configured.');
     }
 
     const [existing] = await this.db.select().from(mailboxes).limit(1);
@@ -199,7 +199,7 @@ export class MailboxService {
 
   startGoogleOAuth(userId: string): { url: string } {
     if (!isMailSecretsKeyConfigured()) {
-      throw AppException.badRequest('MAIL_SECRETS_KEY is not configured.');
+      throw AppException.badRequest('KHIRBY_SECRETS_KEY is not configured.');
     }
     return { url: buildGoogleAuthUrl(userId) };
   }
@@ -372,7 +372,7 @@ export class MailboxService {
     smtpError?: string;
   }> {
     if (!isMailSecretsKeyConfigured()) {
-      throw AppException.badRequest('MAIL_SECRETS_KEY is not configured.');
+      throw AppException.badRequest('KHIRBY_SECRETS_KEY is not configured.');
     }
 
     const creds = await this.resolveCredentialsForTest();
@@ -393,7 +393,7 @@ export class MailboxService {
     dto: UpsertMailboxDto,
   ): Promise<{ imap: boolean; smtp: boolean; imapError?: string; smtpError?: string }> {
     if (!isMailSecretsKeyConfigured()) {
-      throw AppException.badRequest('MAIL_SECRETS_KEY is not configured.');
+      throw AppException.badRequest('KHIRBY_SECRETS_KEY is not configured.');
     }
 
     const [existing] = await this.db.select().from(mailboxes).limit(1);

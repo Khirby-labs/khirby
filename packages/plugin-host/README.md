@@ -1,7 +1,8 @@
 # @khirby/plugin-host
 
 Stable Nest surface for Khirby plugins: session/RBAC guards, `PluginEnabledGuard`,
-`DB_TOKEN`, `AppException`, and host service injection tokens.
+`DB_TOKEN`, `AppException`, host service injection tokens, and instance AES-256-GCM
+helpers (`encrypt` / `decrypt` keyed by `KHIRBY_SECRETS_KEY`, ADR-0046).
 
 Community plugins must import from this package and `@khirby/plugin-sdk` only — never
 from `apps/api` (ADR-0016).

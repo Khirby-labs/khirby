@@ -12,10 +12,7 @@ import {
 import { validateSubmissionDataAgainstSchema } from './validate-submission-data';
 import { AppException } from '../../core/errors/app-exception';
 // Relative import: nest build is plain tsc; bare '@khirby/types' would survive into dist.
-import {
-  resolveFormFieldLabel,
-  type LocaleCode,
-} from '../../../../../packages/types/src';
+import { resolveFormFieldLabel, type LocaleCode } from '../../../../../packages/types/src';
 
 type FormSchema = Array<{
   name: string;
