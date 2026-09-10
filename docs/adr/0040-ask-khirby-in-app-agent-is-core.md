@@ -23,11 +23,10 @@ surface (`AskKhirbyView`, history rail), gated by `agent:use`.
 `crm-plugin-ai-compose` provides `{ baseUrl, apiKey, model }`. No separate agent BYOK
 table or env vars. Missing/disabled AI Compose → SSE error `ai_compose_unavailable`.
 
-**Pokelo:** `PokeloToolsAdapter` injects `@Optional() POKELO_CONTEXT_SERVICE` (ADR-0022).
-When wired, the agent exposes `search_knowledge_base` and the system prompt instructs
-early doc lookup. The adapter calls `fetchContext` per tool invocation — it does **not**
-use AI Compose's multi-project router inside `completeChat`; the agent chooses queries
-each turn.
+**Pokelo:** `PokeloToolsAdapter` resolves `KNOWLEDGE_TOOLS` at call time (ADR-0050)
+and exposes the live Pokelo MCP tool catalog (`list_projects`, `search_documents`, …)
+with bound-project ACL. Enrichment for AI Compose remains `KNOWLEDGE_CONTEXT.fetchContext`
+(ADR-0047) — not an MCP tool loop inside mail/newsletter draft.
 
 **Instance plugins:** `PluginToolsAdapter` calls `INSTANCE_PLUGINS` (ADR-0038) for
 scaffold / read / write / install / remove — same host surface as MCP, not a second fs

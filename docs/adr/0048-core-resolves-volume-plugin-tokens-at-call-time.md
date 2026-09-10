@@ -1,6 +1,6 @@
 # 0048 — Core resolves volume-plugin host tokens at call time
 
-- **Status:** Accepted
+- **Status:** Accepted — `resolveLoadedProvider` lives on `@khirby/plugin-host`; Compose call-time resolve covered by [ADR-0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md)
 - **Date:** 2026-09-09
 - **Deciders:** Patryk
 - **Pokelo ADR id:** `376ddb72-b92e-4dd4-94fc-8e62d00b4de0` (Khirby / Bearly CRM project)
@@ -21,17 +21,20 @@ a configured API key while Ask Khirby emits `ai_compose_unavailable`.
 
 ## Decision
 
-Core consumers of tokens **provided by volume plugins** resolve them at **call
-time** through `ModuleRef` (and a container walk for lazy-loaded modules), not
-constructor inject. Image-provided tokens may still use constructor inject.
+Consumers of tokens **provided by volume plugins** resolve them at **call
+time** through `resolveLoadedProvider` on `@khirby/plugin-host` (ModuleRef +
+container walk), not constructor inject — including core Ask Khirby **and**
+sibling volume plugins such as AI Compose resolving `KNOWLEDGE_CONTEXT`.
+Image-provided tokens may still use constructor inject.
 
 ## Consequences
 
-**Easier:** Ask Khirby and `search_knowledge_base` see BYOK / RAG after a
+**Easier:** Ask Khirby and knowledge tools see BYOK / RAG after a
 Marketplace install without putting those plugins back in the image.
 
-**Harder:** a constructor `@Optional() @Inject(AI_COMPOSE_LLM)` in core is a
-bug waiting to look like “AI Compose is not configured”. Do not “fix” this by
+**Harder:** a constructor `@Optional() @Inject(AI_COMPOSE_LLM)` or
+`@Inject(KNOWLEDGE_CONTEXT)` when the provider may be a volume sibling is a
+bug waiting to look like “not configured”. Do not “fix” this by
 importing volume Nest modules in `PluginsModule.forRoot` — that reopens
 irreplaceable Fastify routes (ADR-0036).
 

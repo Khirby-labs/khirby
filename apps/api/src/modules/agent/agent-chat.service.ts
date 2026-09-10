@@ -105,7 +105,7 @@ export class AgentChatService {
       const history = await this.conversations.loadHistory(conversationId);
       const marketplaceToolDefs = this.marketplaceTools.definitions();
       const pluginToolDefs = this.pluginTools.definitions();
-      const pokeloToolDefs = this.pokeloTools.definitions();
+      const pokeloToolDefs = await this.pokeloTools.definitions();
       const tools = [
         ...this.crmTools.definitions(),
         ...this.mailTools.definitions(),
@@ -370,7 +370,6 @@ export class AgentChatService {
       this.marketplaceTools.definitions().map((d) => d.function.name),
     );
     const pluginNames = new Set(this.pluginTools.definitions().map((d) => d.function.name));
-    const pokeloNames = new Set(this.pokeloTools.definitions().map((d) => d.function.name));
     if (mailNames.has(name))
       return (uid: string, n: string, a: Record<string, unknown>) => this.mailTools.run(uid, n, a);
     if (marketplaceNames.has(name))
@@ -379,7 +378,7 @@ export class AgentChatService {
     if (pluginNames.has(name))
       return (uid: string, n: string, a: Record<string, unknown>) =>
         this.pluginTools.run(uid, n, a);
-    if (pokeloNames.has(name))
+    if (this.pokeloTools.ownsTool(name))
       return (uid: string, n: string, a: Record<string, unknown>) =>
         this.pokeloTools.run(uid, n, a);
     return (uid: string, n: string, a: Record<string, unknown>) => this.crmTools.run(uid, n, a);

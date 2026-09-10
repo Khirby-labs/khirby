@@ -2,12 +2,11 @@ import { HttpException, Inject, Injectable } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import {
   INSTANCE_PLUGINS,
-  KNOWLEDGE_CONTEXT,
-  POKELO_CONTEXT_SERVICE,
+  KNOWLEDGE_TOOLS,
   type InstancePluginsLike,
-  type KnowledgeContextLike,
-} from '../../../../../../packages/plugin-host/src/tokens';
-import { resolveLoadedProvider } from '../../plugins/resolve-loaded-provider';
+  type KnowledgeToolsLike,
+  resolveLoadedProvider,
+} from '../../../../../../packages/plugin-host/src';
 import { RbacService } from '../../../core/rbac/rbac.service';
 import type { LlmToolDef } from '../agent-llm.client';
 import type { ToolRunResult } from './crm-tools.adapter';
@@ -249,45 +248,62 @@ function formatToolError(err: unknown): string {
 
 @Injectable()
 export class PokeloToolsAdapter {
+  private cachedNames = new Set<string>();
+
   constructor(
     private readonly moduleRef: ModuleRef,
     private rbac: RbacService,
   ) {}
 
-  /** Volume plugins bind this token after core constructors (ADR-0048). */
-  private knowledge(): KnowledgeContextLike | null {
-    return (
-      resolveLoadedProvider<KnowledgeContextLike>(this.moduleRef, KNOWLEDGE_CONTEXT) ??
-      resolveLoadedProvider<KnowledgeContextLike>(this.moduleRef, POKELO_CONTEXT_SERVICE)
-    );
+  /** Volume plugins bind this token after core constructors (ADR-0048 / ADR-0050). */
+  private knowledgeTools(): KnowledgeToolsLike | null {
+    return resolveLoadedProvider<KnowledgeToolsLike>(this.moduleRef, KNOWLEDGE_TOOLS);
   }
 
-  definitions(): LlmToolDef[] {
-    if (!this.knowledge()) return [];
-    return [
-      fn(
-        'search_knowledge_base',
-        'Search the organization knowledge base for internal docs, runbooks, ADRs, and setup context. Call early and often for how-to, architecture, plugin, and process questions — before guessing.',
-        {
-          query: { type: 'string', description: 'Focused search query from the user question' },
+  ownsTool(name: string): boolean {
+    return this.cachedNames.has(name);
+  }
+
+  async definitions(): Promise<LlmToolDef[]> {
+    const tools = this.knowledgeTools();
+    if (!tools) {
+      this.cachedNames = new Set();
+      return [];
+    }
+    try {
+      const listed = await tools.listTools();
+      this.cachedNames = new Set(listed.map((t) => t.name));
+      return listed.map((t) => ({
+        type: 'function' as const,
+        function: {
+          name: t.name,
+          description: t.description,
+          parameters:
+            t.inputSchema && typeof t.inputSchema === 'object'
+              ? t.inputSchema
+              : { type: 'object', properties: {} },
         },
-        ['query'],
-      ),
-    ];
+      }));
+    } catch {
+      this.cachedNames = new Set();
+      return [];
+    }
   }
 
   async run(userId: string, name: string, args: Record<string, unknown>): Promise<ToolRunResult> {
-    const knowledge = this.knowledge();
-    if (!knowledge)
-      return { ok: false, code: 'unavailable', summary: 'Knowledge base not configured' };
+    const tools = this.knowledgeTools();
+    if (!tools) return { ok: false, code: 'unavailable', summary: 'Knowledge base not configured' };
     if (!(await this.rbac.hasPermission(userId, 'agent', 'use'))) {
       return { ok: false, code: 'forbidden', summary: 'Forbidden' };
     }
-    if (name !== 'search_knowledge_base') {
-      return { ok: false, code: 'unknown_tool', summary: 'Unknown tool' };
+
+    try {
+      const summary = await tools.callTool(name, args);
+      return { ok: true, summary: summary.trim() || 'OK' };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Tool failed';
+      return { ok: false, code: 'tool_error', summary: message.slice(0, 500) };
     }
-    const ctx = await knowledge.fetchContext(String(args.query ?? ''));
-    return { ok: true, summary: ctx.slice(0, 800) || 'No results' };
   }
 }
 

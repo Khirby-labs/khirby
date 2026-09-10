@@ -1,6 +1,6 @@
 # 0047 — Generic knowledge-context token (AI Compose does not know Pokelo)
 
-- **Status:** Accepted
+- **Status:** Accepted — Ask surface amended by [ADR-0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) (`KNOWLEDGE_TOOLS` MCP proxy)
 - **Date:** 2026-09-09
 - **Deciders:** Patryk
 - **Pokelo ADR id:** `816c41fe-a257-4bab-8c51-e18c769acc0c` (Bearly CRM / Khirby project)
@@ -21,11 +21,14 @@ of the boundary.
 
 ## Decision
 
-We add `KNOWLEDGE_CONTEXT` / `KnowledgeContextLike` to `@khirby/plugin-host` with a
-single method: `fetchContext(query: string): Promise<string>`. `crm-plugin-pokelo`
-registers the implementation on its `@Global()` module. AI Compose and Ask Khirby
-inject it with `@Optional()` and append snippets (or expose the search tool). They
-do not import Pokelo, list projects, or route.
+We add `KNOWLEDGE_CONTEXT` / `KnowledgeContextLike` to `@khirby/plugin-host` with
+`fetchContext(query, opts?)` (optional `projectIds` scope). `crm-plugin-pokelo`
+registers the implementation on its `@Global()` module. AI Compose resolves it at
+call time and appends snippets from `fetchContext(query)` only — it must not list
+projects or run an LLM router.
+
+Ask Khirby's tool surface for browsing/searching knowledge is defined in ADR-0050
+(`KNOWLEDGE_TOOLS` — full MCP proxy), not curated wrappers on this token.
 
 `POKELO_CONTEXT_SERVICE` remains a deprecated second provide of the same class until
 published plugins that still register the old token are bumped.
@@ -33,13 +36,14 @@ published plugins that still register the old token are bumped.
 ## Consequences
 
 **Easier:** AI Compose is only BYOK + draft/generate. Another knowledge plugin can
-implement the same token. Multi-project search stays where the credentials and MCP
-client already live.
+implement the same enrichment token. Multi-project search stays where the credentials
+and MCP client already live.
 
 **Harder:** a published Pokelo that only `provide`s `POKELO_CONTEXT_SERVICE` will not
 enrich a compose plugin that only injects `KNOWLEDGE_CONTEXT` until that Pokelo
 build is updated. Do not add Pokelo types or project routing back into
-`crm-plugin-ai-compose`. Do not add a second RAG client in Listmonk or Ask Khirby.
+`crm-plugin-ai-compose`. Do not add a second RAG client in Listmonk. Do not
+reintroduce an LLM project-router in AI Compose.
 
 ## Considered alternatives
 
@@ -55,4 +59,5 @@ build is updated. Do not add Pokelo types or project routing back into
 - ADR-0016 — plugins talk to the host, not to sibling plugins by name
 - ADR-0017 — AI Compose is the mail assistant / BYOK plugin
 - ADR-0022 — superseded Pokelo-named token + compose-side router
-- ADR-0040 — Ask Khirby consumes the same knowledge token
+- ADR-0040 — Ask Khirby consumes knowledge tokens
+- ADR-0050 — Ask proxies full Pokelo MCP via `KNOWLEDGE_TOOLS`

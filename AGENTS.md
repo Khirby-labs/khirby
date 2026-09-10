@@ -123,8 +123,8 @@ function makeChain(returnValue?: unknown) {
 | Vendor of `plugins/` | `predev` must **not** `rmSync` existing `plugins/<dir>` (ADR-0037). Keep local sources; npm-fill only missing dirs. `KHIRBY_PLUGINS_WORKSPACE=1` or `plugins/.git` = local-only vendor. Delete a dir to refresh from npm |
 | Checkout vs Marketplace at boot | `KHIRBY_PLUGINS_LOCAL=1` loads `plugins/crm-plugin-*` instead of `khirby__plugin-*` (ADR-0045). Default off. Not the same flag as `KHIRBY_PLUGINS_WORKSPACE`. |
 | Instance secrets | One `KHIRBY_SECRETS_KEY` (32-byte hex/base64) for mailbox + plugin ciphertext (ADR-0046). Do not add `FOO_SECRETS_KEY` per plugin — use `encrypt`/`decrypt` from `@khirby/plugin-host`. Legacy `MAIL_` / `AI_COMPOSE_` / `POKELO_SECRETS_KEY` stay decrypt aliases. |
-| Knowledge context | Optional RAG is `KNOWLEDGE_CONTEXT` (ADR-0047). AI Compose and Ask Khirby inject that token only — they must not import Pokelo or call `listBoundProjects`. Project routing lives in the knowledge plugin. |
-| Volume plugin tokens in core | `AI_COMPOSE_LLM` / `KNOWLEDGE_CONTEXT` from Marketplace plugins are bound after core constructors (ADR-0048). Resolve at call time via `resolveLoadedProvider` — do not constructor-`@Optional()` them in `apps/api`. |
+| Knowledge context | Optional RAG enrichment is `KNOWLEDGE_CONTEXT.fetchContext` (ADR-0047). Ask Khirby uses `KNOWLEDGE_TOOLS` for the full Pokelo MCP catalog (ADR-0050). AI Compose resolves knowledge at call time — do not constructor-`@Optional()` it. Project ACL lives in the knowledge plugin. |
+| Volume plugin tokens in core | `AI_COMPOSE_LLM` / `KNOWLEDGE_CONTEXT` / `KNOWLEDGE_TOOLS` from Marketplace plugins are bound after core constructors (ADR-0048). Resolve at call time via `resolveLoadedProvider` from `@khirby/plugin-host` — do not constructor-`@Optional()` them in `apps/api` or Compose. |
 | Ask Khirby tools + reasoning | Function tools + non-none effort go to `POST /responses` with `reasoning.effort` (ADR-0049). Do not force `reasoning_effort: none` on `/chat/completions` — that endpoint rejects the combo on reasoning models. |
 | First-party plugin npm | Bump `plugins/crm-plugin-*/package.json` then push plugins `main` — CI publishes that version only. Do not auto-patch every commit. Skill: `/publish-plugin`. |
 | Instance-plugin writes | Go through `INSTANCE_PLUGINS` (`scaffold` / `writeFile` / …) into `plugins/<dir>/`, not a sibling `instance-plugins/` tree and not a second fs helper in the MCP plugin (ADR-0038, ADR-0039) |
@@ -179,5 +179,6 @@ function makeChain(returnValue?: unknown) {
 - Do not write self-build packages to `instance-plugins/` — they belong in `plugins/` (ADR-0039)
 - Do not add a per-plugin `*_SECRETS_KEY` — encrypt at rest with `KHIRBY_SECRETS_KEY` via `@khirby/plugin-host` (ADR-0046)
 - Do not inject Pokelo into AI Compose — optional RAG is `KNOWLEDGE_CONTEXT` (ADR-0047)
-- Do not constructor-`@Optional()` `AI_COMPOSE_LLM` or `KNOWLEDGE_CONTEXT` in core — volume plugins bind those after boot; resolve at call time (ADR-0048)
+- Do not constructor-`@Optional()` `AI_COMPOSE_LLM`, `KNOWLEDGE_CONTEXT`, or `KNOWLEDGE_TOOLS` in core or Compose — volume plugins bind those after boot; resolve at call time (ADR-0048, ADR-0050)
+- Do not reintroduce curated Ask wrappers (`search_knowledge_base`) — proxy Pokelo MCP via `KNOWLEDGE_TOOLS` (ADR-0050)
 - Do not force `reasoning_effort: none` on Ask Khirby when the model rejects tools on `/chat/completions` — POST `/responses` with `reasoning.effort` (ADR-0049)

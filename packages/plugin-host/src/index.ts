@@ -50,6 +50,10 @@ export {
   type BoardStatusesServiceLike,
   KNOWLEDGE_CONTEXT,
   type KnowledgeContextLike,
+  type KnowledgeFetchOpts,
+  KNOWLEDGE_TOOLS,
+  type KnowledgeToolsLike,
+  type KnowledgeMcpToolDef,
   POKELO_CONTEXT_SERVICE,
   type PokeloContextServiceLike,
   type PokeloFetchOpts,
@@ -60,6 +64,7 @@ export {
   type InstancePluginScaffoldInput,
   PLUGIN_NAME_KEY,
 } from './tokens';
+export { resolveLoadedProvider } from './resolve-loaded-provider';
 export {
   loadVolumeNestModule,
   loadVolumeNestModuleFile,

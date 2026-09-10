@@ -169,7 +169,14 @@ describe('instance-plugins.loader', () => {
   it('does not load a first-party directory even if it has createPlugin', () => {
     const root = mkdtempSync(join(tmpdir(), 'instance-first-party-'));
     writePlugin(join(root, 'crm-plugin-mcp'), { name: 'crm_from_disk' });
-    expect(loadInstancePlugins(root, new Set())).toEqual([]);
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    delete process.env.KHIRBY_PLUGINS_LOCAL;
+    try {
+      expect(loadInstancePlugins(root, new Set())).toEqual([]);
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
   });
 
   it('preferLocalCheckoutPlugins reads 1/true/yes', () => {
@@ -281,7 +288,14 @@ describe('instance-plugins.loader', () => {
   });
 
   it('pluginVolumeRoot rejects first-party dirs', () => {
-    expect(() => pluginVolumeRoot('/tmp', 'crm-plugin-mcp')).toThrow('reserved_dir');
+    const prev = process.env.KHIRBY_PLUGINS_LOCAL;
+    delete process.env.KHIRBY_PLUGINS_LOCAL;
+    try {
+      expect(() => pluginVolumeRoot('/tmp', 'crm-plugin-mcp')).toThrow('reserved_dir');
+    } finally {
+      if (prev === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+      else process.env.KHIRBY_PLUGINS_LOCAL = prev;
+    }
   });
 
   it('isSafeRelPath rejects traversal', () => {

@@ -270,16 +270,45 @@ export interface BoardStatusesServiceLike {
 }
 
 /**
- * Optional firm-knowledge snippets for LLM prompts (ADR-0047).
+ * Optional firm-knowledge snippets for LLM prompts (ADR-0047 / ADR-0050).
  * A knowledge plugin (today: crm-plugin-pokelo) registers the implementation on a
- * `@Global()` module. Consumers — AI Compose, Ask Khirby — inject `@Optional()` and
- * must not know which plugin provided it.
+ * `@Global()` module. AI Compose resolves it at call time and appends
+ * `fetchContext(query)` — no project listing or LLM router. Ask Khirby uses
+ * {@link KNOWLEDGE_TOOLS} for the full MCP tool catalog instead.
  */
 export const KNOWLEDGE_CONTEXT = 'KNOWLEDGE_CONTEXT';
 
+/** Optional scope for {@link KnowledgeContextLike.fetchContext}. */
+export type KnowledgeFetchOpts = {
+  /** Restrict search to these bound source IDs (intersection with operator binding). */
+  projectIds?: string[];
+};
+
 export interface KnowledgeContextLike {
-  /** Snippets for the LLM system prompt; `''` if unconfigured, disabled, or error. */
-  fetchContext(query: string): Promise<string>;
+  /**
+   * Snippets for the LLM; `''` if unconfigured, disabled, or error.
+   * Omitting `opts.projectIds` searches every bound source.
+   */
+  fetchContext(query: string, opts?: KnowledgeFetchOpts): Promise<string>;
+  /** Operator-bound knowledge sources (internal / tests; Ask uses MCP `list_projects`). */
+  listBoundProjects?(): Promise<Array<{ id: string; name: string }>>;
+}
+
+/**
+ * Full knowledge MCP tool surface for Ask Khirby (ADR-0050).
+ * Proxies `tools/list` + `tools/call` from the knowledge plugin with bound-project ACL.
+ */
+export const KNOWLEDGE_TOOLS = 'KNOWLEDGE_TOOLS';
+
+export type KnowledgeMcpToolDef = {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+};
+
+export interface KnowledgeToolsLike {
+  listTools(): Promise<KnowledgeMcpToolDef[]>;
+  callTool(name: string, args: Record<string, unknown>): Promise<string>;
 }
 
 /**
@@ -293,15 +322,13 @@ export const POKELO_CONTEXT_SERVICE = 'POKELO_CONTEXT_SERVICE';
  * older compose builds that routed projects still typecheck against this token.
  */
 export interface PokeloContextServiceLike {
-  fetchContext(query: string, opts?: PokeloFetchOpts): Promise<string>;
+  fetchContext(query: string, opts?: KnowledgeFetchOpts): Promise<string>;
   listBoundProjects?(): Promise<Array<{ id: string; name: string }>>;
   listProjects?(): Promise<Array<{ id: string; name: string }>>;
 }
 
-/** @deprecated ADR-0047 — project scoping stays inside the knowledge plugin. */
-export type PokeloFetchOpts = {
-  projectIds?: string[];
-};
+/** @deprecated ADR-0047 — alias of {@link KnowledgeFetchOpts}. */
+export type PokeloFetchOpts = KnowledgeFetchOpts;
 
 /**
  * Instance-volume plugins (ADR-0036, ADR-0038). Provided by PluginsModule.

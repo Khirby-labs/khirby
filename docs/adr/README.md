@@ -56,6 +56,7 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0044](0044-control-plane-telemetry-and-marketplace-client.md) | Control Plane client: telemetry, marketplace catalog, npm install (partly supersedes 0030, 0032, 0034) | Accepted |
 | [0045](0045-local-checkout-plugins-preferred-over-marketplace.md) | `KHIRBY_PLUGINS_LOCAL` prefers `crm-plugin-*` checkouts over Marketplace unpacks | Accepted |
 | [0046](0046-one-instance-secrets-key.md) | One instance AES key (`KHIRBY_SECRETS_KEY`) for mailbox and plugin secrets | Accepted |
-| [0047](0047-knowledge-context-token.md) | Generic `KNOWLEDGE_CONTEXT` token; AI Compose does not know Pokelo | Accepted |
-| [0048](0048-core-resolves-volume-plugin-tokens-at-call-time.md) | Core resolves volume-plugin host tokens at call time, not constructor inject | Accepted |
+| [0047](0047-knowledge-context-token.md) | Generic `KNOWLEDGE_CONTEXT` token; AI Compose does not know Pokelo | Accepted — Ask MCP proxy in [0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) |
+| [0048](0048-core-resolves-volume-plugin-tokens-at-call-time.md) | Core resolves volume-plugin host tokens at call time, not constructor inject | Accepted — helper on plugin-host; Compose call-time in [0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) |
 | [0049](0049-ask-khirby-reasoning-uses-responses-api.md) | Ask Khirby: tools + reasoning use `/responses`, not `reasoning_effort: none` | Accepted |
+| [0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) | Ask Khirby proxies full Pokelo MCP tools; Compose keeps `fetchContext` on same client | Accepted |
