@@ -141,7 +141,7 @@
 
     <aside class="w-full max-w-sm shrink-0 space-y-4 lg:sticky lg:top-4">
       <VersionCard />
-      <ControlPlaneCard />
+      <ControlPlaneCard v-if="auth.isSuperAdmin" />
     </aside>
   </div>
 </template>

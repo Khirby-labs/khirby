@@ -136,6 +136,8 @@ export interface SessionUser {
   locale: string | null;
   /** Effective RBAC grants for this session; `[]` when the user has no roles. */
   permissions: RolePermission[];
+  /** True when the user holds a protected super-admin role. */
+  isSuperAdmin: boolean;
 }
 
 export interface LoginResponse {

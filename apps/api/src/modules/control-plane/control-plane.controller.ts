@@ -3,7 +3,7 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { IsEmail } from 'class-validator';
 import { SessionGuard } from '../../core/auth/session.guard';
 import { PermissionGuard } from '../../core/rbac/rbac.guard';
-import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { RequireSuperAdmin } from '../../core/rbac/require-permission.decorator';
 import { AppException } from '../../core/errors/app-exception';
 import { ControlPlaneClient } from './control-plane.client';
 import { InstallationIdentityService } from './installation-identity.service';
@@ -18,7 +18,7 @@ class RegisterControlPlaneDto {
 @ApiBearerAuth('session')
 @Controller('system/control-plane')
 @UseGuards(SessionGuard, PermissionGuard)
-@RequirePermission('integrations', 'manage')
+@RequireSuperAdmin()
 export class ControlPlaneController {
   constructor(
     private readonly client: ControlPlaneClient,

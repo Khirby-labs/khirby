@@ -45,7 +45,13 @@ async function mountSidebar(plugins: unknown[] = [], permissions: SessionUser['p
   store.plugins = plugins as never;
 
   const auth = useAuthStore();
-  auth.user = { id: 'u1', email: 'admin@example.com', locale: null, permissions };
+  auth.user = {
+    id: 'u1',
+    email: 'admin@example.com',
+    locale: null,
+    permissions,
+    isSuperAdmin: false,
+  };
 
   const router = makeRouter();
   await router.push('/contacts');
@@ -194,6 +200,7 @@ describe('AppSidebar — chat-focus rail', () => {
       email: 'admin@example.com',
       locale: null,
       permissions: [{ resource: 'agent', action: 'use' }],
+      isSuperAdmin: false,
     };
     const router = createRouter({
       history: createWebHistory(),

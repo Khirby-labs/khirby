@@ -14,17 +14,18 @@ export const useAuthStore = defineStore('auth', () => {
   const networkError = ref(false);
 
   const isAuthenticated = computed(() => !!user.value);
+  const isSuperAdmin = computed(() => user.value?.isSuperAdmin === true);
 
-  function sessionHasPermissions(u: SessionUser | null): u is SessionUser {
-    return u !== null && Array.isArray(u.permissions);
+  function sessionPayloadComplete(u: SessionUser | null): u is SessionUser {
+    return u !== null && Array.isArray(u.permissions) && typeof u.isSuperAdmin === 'boolean';
   }
 
   // Sprawdź aktywną sesję przy starcie aplikacji
   async function checkSession(): Promise<void> {
     // A tab left open across a deploy (or Vite HMR) may still hold a user row
-    // from before /auth/me started returning permissions — re-fetch until the
-    // payload is complete.
-    if (checked.value && sessionHasPermissions(user.value)) return;
+    // from before /auth/me started returning permissions / isSuperAdmin —
+    // re-fetch until the payload is complete.
+    if (checked.value && sessionPayloadComplete(user.value)) return;
     try {
       const data = await apiGet<SessionUser>('/api/auth/me');
       if (user.value?.id !== data.id) resetSessionState(pinia);
@@ -102,6 +103,7 @@ export const useAuthStore = defineStore('auth', () => {
     checked,
     networkError,
     isAuthenticated,
+    isSuperAdmin,
     checkSession,
     clearSession,
     login,

@@ -29,13 +29,25 @@ describe('session data isolation', () => {
         return HttpResponse.json({ items: [], total: 0, page: 1, pageSize: 20 });
       }),
     );
-    auth.user = { id: 'a', email: 'a@example.invalid', permissions: [], locale: null };
+    auth.user = {
+      id: 'a',
+      email: 'a@example.invalid',
+      permissions: [],
+      locale: null,
+      isSuperAdmin: false,
+    };
     await mail.listThreads({ contactId: 'contact-a' });
     await mail.onMailEvent({});
     expect(contactIds).toEqual(['contact-a', 'contact-a']);
 
     auth.clearSession();
-    auth.user = { id: 'b', email: 'b@example.invalid', permissions: [], locale: null };
+    auth.user = {
+      id: 'b',
+      email: 'b@example.invalid',
+      permissions: [],
+      locale: null,
+      isSuperAdmin: false,
+    };
     await mail.onMailEvent({});
     expect(contactIds).toEqual(['contact-a', 'contact-a']);
 
@@ -63,7 +75,13 @@ describe('session data isolation', () => {
     const pending = mail.listThreads();
     await started.promise;
     auth.clearSession();
-    auth.user = { id: 'b', email: 'b@example.invalid', permissions: [], locale: null };
+    auth.user = {
+      id: 'b',
+      email: 'b@example.invalid',
+      permissions: [],
+      locale: null,
+      isSuperAdmin: false,
+    };
     release.resolve();
     await pending;
     expect(mail.threads).toEqual([]);

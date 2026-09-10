@@ -29,7 +29,13 @@ async function mountAsk(permissions: { resource: string; action: string }[] = []
   setActivePinia(pinia);
 
   const auth = useAuthStore();
-  auth.user = { id: 'u1', email: 'admin@example.com', locale: null, permissions };
+  auth.user = {
+    id: 'u1',
+    email: 'admin@example.com',
+    locale: null,
+    permissions,
+    isSuperAdmin: false,
+  };
 
   server.use(http.get(api('/api/agent/conversations'), () => HttpResponse.json([])));
 
