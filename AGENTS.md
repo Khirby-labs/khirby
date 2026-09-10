@@ -103,7 +103,7 @@ function makeChain(returnValue?: unknown) {
 - Interface: `CrmPlugin` from `@khirby/plugin-sdk`
 - Host surface for Nest plugins: `@khirby/plugin-host` (guards, `DB_TOKEN`, `AppException`, service tokens) — never import `apps/api` from a plugin (ADR-0016)
 - Registration: list packages in root `plugins.manifest.json` only — then `pnpm sync:plugins && pnpm install` (writes `apps/api` deps + regenerates loaders). Never hand-edit plugin deps in `apps/api/package.json`.
-- The manifest says what is **in the image**; a row in the `plugins` table says what is **installed** (ADR-0032). Marketplace installs a plugin already in the image by writing that row — no manifest edit, no restart. Only an empty `plugins` table seeds the native set, on a first boot.
+- The public image ships an **empty** `plugins.manifest.json` (ADR-0044). A row in the `plugins` table says what is **installed**. Marketplace install is Control Plane catalog + npm unpack (`pacote`/`ssri`) + `installFromDirectory` hot-load — not “write a row for an in-image plugin”. An empty `plugins` table is a no-op (no native boot seed).
 - An `examples/*` fixture is declared with `"local": "<path>"` in the manifest; it resolves as a workspace link in every environment and is skipped by the vendor step (ADR-0035). Anything compiled into `apps/api/dist` imports `@khirby/plugin-host` **by relative path** — a bare specifier passes every gate and dies at boot in the image.
 - Events emitted: `contact.created`, `form.submitted`, …
 - Plugin config stored in DB (`plugins` table, `config` jsonb column)

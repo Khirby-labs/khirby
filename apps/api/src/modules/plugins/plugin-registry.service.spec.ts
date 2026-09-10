@@ -1,4 +1,4 @@
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import 'reflect-metadata';
@@ -1155,6 +1155,20 @@ export function createPlugin() {
       });
     });
 
+    it('clears HTTP registrar tokens on uninstall so a same-process reinstall can rebind', async () => {
+      const row = makeRow({ name: 'crm_hello', enabled: true });
+      const { db } = makeUninstallDb(row);
+      const unregisterPlugin = jest.fn();
+      const svc = makeService([makePlugin({ name: 'crm_hello' })], db);
+      Object.defineProperty(svc, 'pluginHttpRegistrar', {
+        get: () => ({ unregisterPlugin }),
+      });
+
+      await svc.uninstall('crm_hello');
+
+      expect(unregisterPlugin).toHaveBeenCalledWith('crm_hello');
+    });
+
     it('excludes marketplace demo plugins from findAll but not snapshot', async () => {
       const rows = [makeRow({ name: 'crm_hello' }), makeRow({ name: 'crm_webhook' })];
       const db: any = {
@@ -1170,6 +1184,76 @@ export function createPlugin() {
 
       expect(installed.map((p) => p.name)).toEqual(['crm_webhook']);
       expect(snapshot.installed.map((p) => p.name).sort()).toEqual(['crm_hello', 'crm_webhook']);
+    });
+  });
+
+  describe('upgradeFromDirectory / removeInstance', () => {
+    it('does not bump plugins.version when onMigrate fails', async () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      const volume = mkdtempSync(join(tmpdir(), 'instance-upgrade-'));
+      process.env.INSTANCE_PLUGINS_DIR = volume;
+      try {
+        const row = makeRow({ name: 'crm_upg', version: '1.0.0', enabled: true });
+        const updateSet = jest.fn(() => ({
+          where: () => ({ returning: () => makeChain([{ ...row, version: '2.0.0' }]) }),
+        }));
+        const db: any = {
+          $client: { unsafe: jest.fn() },
+          select: jest.fn(() => ({
+            from: () => ({ where: () => ({ limit: () => makeChain([row]) }) }),
+          })),
+          update: jest.fn(() => ({ set: updateSet })),
+        };
+        const plugin = makePlugin({ name: 'crm_upg', version: '2.0.0' });
+        const svc = makeService([plugin], db);
+        scaffoldInstancePlugin(volume, {
+          directory: 'crm-plugin-upg',
+          name: 'crm_upg',
+          displayName: 'Upg',
+          nest: false,
+        });
+        jest.spyOn(svc as any, 'activate').mockResolvedValue(false);
+        jest
+          .spyOn(svc as any, 'reloadFromDirectory')
+          .mockResolvedValue({ name: 'crm_upg', status: 'reloaded' });
+        jest.spyOn(svc, 'loadedNames').mockReturnValue(['crm_upg']);
+
+        await expect(svc.upgradeFromDirectory('crm-plugin-upg')).rejects.toThrow(
+          BadRequestException,
+        );
+        expect(updateSet).not.toHaveBeenCalled();
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('refuses to rmSync a first-party checkout when no plugins row exists', async () => {
+      const prevDir = process.env.INSTANCE_PLUGINS_DIR;
+      const prevLocal = process.env.KHIRBY_PLUGINS_LOCAL;
+      const volume = mkdtempSync(join(tmpdir(), 'instance-fp-'));
+      process.env.INSTANCE_PLUGINS_DIR = volume;
+      process.env.KHIRBY_PLUGINS_LOCAL = '1';
+      try {
+        const checkout = join(volume, 'crm-plugin-mcp');
+        mkdirSync(checkout);
+        writeFileSync(join(checkout, 'KEEP.txt'), 'checkout');
+        const db: any = {
+          $client: { unsafe: jest.fn() },
+          select: jest.fn(() => ({
+            from: () => ({ where: () => ({ limit: () => makeChain([]) }) }),
+          })),
+        };
+        const svc = makeService([], db);
+
+        await expect(svc.removeInstance('crm-plugin-mcp')).rejects.toThrow(BadRequestException);
+        expect(existsSync(join(checkout, 'KEEP.txt'))).toBe(true);
+      } finally {
+        if (prevDir === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prevDir;
+        if (prevLocal === undefined) delete process.env.KHIRBY_PLUGINS_LOCAL;
+        else process.env.KHIRBY_PLUGINS_LOCAL = prevLocal;
+      }
     });
   });
 });

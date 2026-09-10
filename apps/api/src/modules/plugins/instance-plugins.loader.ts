@@ -78,8 +78,8 @@ export function preferLocalCheckoutPlugins(env: NodeJS.ProcessEnv = process.env)
 /**
  * `loadPlugins()` runs during `AppModule` evaluation, before `ConfigModule.forRoot`.
  * Fill missing keys from repo-root `.env` so a local flag in `.env` is visible.
- * Empty or whitespace values in `process.env` (e.g. docker-compose `${VAR:-}`)
- * are treated as unset so `.env` can still win.
+ * A key already present on `env` — including an explicit empty string — is
+ * left alone (ADR-0051: `CONTROL_PLANE_URL=` is opt-out, not "unset").
  */
 export function applyRootEnvFile(
   start = process.cwd(),
@@ -96,8 +96,7 @@ export function applyRootEnvFile(
     if (eq <= 0) continue;
     const key = line.slice(0, eq).trim();
     if (!key) continue;
-    const existing = env[key];
-    if (existing !== undefined && String(existing).trim() !== '') continue;
+    if (Object.prototype.hasOwnProperty.call(env, key)) continue;
     let value = line.slice(eq + 1).trim();
     if (
       (value.startsWith('"') && value.endsWith('"')) ||

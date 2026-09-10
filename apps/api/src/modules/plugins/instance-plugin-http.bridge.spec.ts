@@ -1,7 +1,22 @@
 import 'reflect-metadata';
-import { Body, Controller, Get, Injectable, Module, Patch, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Injectable,
+  Module,
+  Patch,
+  Post,
+} from '@nestjs/common';
+import { IsString } from 'class-validator';
 import { Test } from '@nestjs/testing';
-import { RequirePluginEnabled, PLUGIN_REGISTRY } from '../../../../../packages/plugin-host/src';
+import {
+  PLUGIN_REGISTRY,
+  RBAC_SERVICE,
+  RequirePermission,
+  RequirePluginEnabled,
+} from '../../../../../packages/plugin-host/src';
 import { InstancePluginHttpBridge, pathFromRequestUrl } from './instance-plugin-http.bridge';
 
 @Injectable()
@@ -46,6 +61,23 @@ class DemoNestModule {}
 
 @Module({ controllers: [SettingsController] })
 class SettingsNestModule {}
+
+class CreateCampaignDto {
+  @IsString()
+  name!: string;
+}
+
+@Controller('plugins/listmonk')
+class CampaignsController {
+  @Post('campaigns')
+  @RequirePermission('newsletter', 'manage')
+  create(@Body() dto: CreateCampaignDto) {
+    return { created: dto.name, extra: (dto as unknown as Record<string, unknown>).evil ?? null };
+  }
+}
+
+@Module({ controllers: [CampaignsController] })
+class CampaignsNestModule {}
 
 describe('InstancePluginHttpBridge', () => {
   it('registers and dispatches GET handlers from a lazy-loaded module', async () => {
@@ -127,6 +159,71 @@ describe('InstancePluginHttpBridge', () => {
     await expect(bridge.dispatch('GET', 'plugins/demo-page')).rejects.toMatchObject({
       response: expect.objectContaining({ code: expect.any(String) }),
     });
+  });
+
+  it('enforces plugin @RequirePermission on the reflective dispatcher', async () => {
+    const registry = { isEnabled: jest.fn().mockReturnValue(true), findByName: jest.fn() };
+    const rbac = {
+      hasPermission: jest.fn().mockImplementation(async (_id: string, resource: string) => {
+        return resource === 'integrations';
+      }),
+      isSuperAdmin: jest.fn().mockResolvedValue(false),
+    };
+    const moduleRef = await Test.createTestingModule({
+      imports: [CampaignsNestModule],
+      providers: [
+        InstancePluginHttpBridge,
+        { provide: PLUGIN_REGISTRY, useValue: registry },
+        { provide: RBAC_SERVICE, useValue: rbac },
+      ],
+    }).compile();
+    await moduleRef.init();
+
+    const bridge = moduleRef.get(InstancePluginHttpBridge);
+    bridge.registerModuleRoutes(CampaignsNestModule, 'crm_listmonk');
+
+    const req = {
+      body: { name: 'Spring' },
+      query: {},
+      params: {},
+      headers: {},
+      session: { userId: 'u1' },
+    } as any;
+
+    await expect(bridge.dispatch('POST', 'plugins/listmonk/campaigns', req)).rejects.toBeInstanceOf(
+      ForbiddenException,
+    );
+    expect(rbac.hasPermission).toHaveBeenCalledWith('u1', 'newsletter', 'manage');
+  });
+
+  it('runs ValidationPipe whitelist on @Body() DTOs', async () => {
+    const registry = { isEnabled: jest.fn().mockReturnValue(true), findByName: jest.fn() };
+    const rbac = {
+      hasPermission: jest.fn().mockResolvedValue(true),
+      isSuperAdmin: jest.fn().mockResolvedValue(false),
+    };
+    const moduleRef = await Test.createTestingModule({
+      imports: [CampaignsNestModule],
+      providers: [
+        InstancePluginHttpBridge,
+        { provide: PLUGIN_REGISTRY, useValue: registry },
+        { provide: RBAC_SERVICE, useValue: rbac },
+      ],
+    }).compile();
+    await moduleRef.init();
+
+    const bridge = moduleRef.get(InstancePluginHttpBridge);
+    bridge.registerModuleRoutes(CampaignsNestModule, 'crm_listmonk');
+
+    await expect(
+      bridge.dispatch('POST', 'plugins/listmonk/campaigns', {
+        body: { name: 'Spring', evil: 'extra' },
+        query: {},
+        params: {},
+        headers: {},
+        session: { userId: 'u1' },
+      } as any),
+    ).resolves.toEqual({ created: 'Spring', extra: null });
   });
 
   it('pathFromRequestUrl strips /api and query', () => {

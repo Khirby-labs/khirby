@@ -303,7 +303,8 @@ export class MarketplaceService {
       if (one?.approvedAt) return one;
     }
     const versions = await this.controlPlane.getPluginVersions(slug);
-    if (!versions?.length) return null;
+    if (versions == null) throw AppException.upstreamFailed('controlPlane');
+    if (!versions.length) return null;
     const approved = versions.filter((v) => v.approvedAt);
     if (!approved.length) {
       throw AppException.notFound('plugin', slug);

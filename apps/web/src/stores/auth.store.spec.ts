@@ -244,12 +244,13 @@ describe('auth.store', () => {
     );
 
     const auth = useAuthStore();
+    // Stale Pinia/HMR payload from before /auth/me returned isSuperAdmin.
     auth.user = {
       id: 'u1',
       email: 'admin@example.com',
       locale: null,
       permissions: [],
-    } as SessionUser;
+    } as unknown as SessionUser;
     auth.checked = true;
 
     await auth.checkSession();

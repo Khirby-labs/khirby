@@ -294,10 +294,14 @@ describe('PokeloToolsAdapter', () => {
 
   it('surfaces callTool errors to the model', async () => {
     const tools = {
-      listTools: jest.fn().mockResolvedValue([
-        { name: 'get_document', description: 'Get doc', inputSchema: { type: 'object' } },
-      ]),
-      callTool: jest.fn().mockRejectedValue(new Error('Project x is not in the operator-bound Pokelo set')),
+      listTools: jest
+        .fn()
+        .mockResolvedValue([
+          { name: 'get_document', description: 'Get doc', inputSchema: { type: 'object' } },
+        ]),
+      callTool: jest
+        .fn()
+        .mockRejectedValue(new Error('Project x is not in the operator-bound Pokelo set')),
     };
     const moduleRef = await Test.createTestingModule({
       providers: [
@@ -316,5 +320,30 @@ describe('PokeloToolsAdapter', () => {
       code: 'tool_error',
       summary: 'Project x is not in the operator-bound Pokelo set',
     });
+  });
+
+  it('keeps a warm tool cache when a later listTools() fails', async () => {
+    const tools = {
+      listTools: jest
+        .fn()
+        .mockResolvedValueOnce([
+          { name: 'list_projects', description: 'List projects', inputSchema: { type: 'object' } },
+        ])
+        .mockRejectedValueOnce(new Error('timeout')),
+      callTool: jest.fn(),
+    };
+    const moduleRef = await Test.createTestingModule({
+      providers: [
+        PokeloToolsAdapter,
+        { provide: KNOWLEDGE_TOOLS, useValue: tools },
+        { provide: RbacService, useValue: rbac },
+      ],
+    }).compile();
+    adapter = moduleRef.get(PokeloToolsAdapter);
+
+    await adapter.definitions();
+    expect(adapter.ownsTool('list_projects')).toBe(true);
+    await expect(adapter.definitions()).resolves.toEqual([]);
+    expect(adapter.ownsTool('list_projects')).toBe(true);
   });
 });

@@ -231,6 +231,8 @@ export const router = createRouter({
 
 /** Nazwy tras dodanych dynamicznie — do usuwania przy disable pluginu */
 const registeredPluginRouteNames = new Set<string>();
+/** Bundle identity last bound to a named plugin route (url + ?v=). */
+const registeredPluginRouteBundles = new Map<string, string>();
 
 /** Parent layout route — trasy pluginów muszą być jego dziećmi (relative path). */
 const LAYOUT_ROUTE_NAME = 'app';
@@ -273,23 +275,29 @@ export function registerPluginRoutes(
 
       enabledRouteNames.add(route.name);
 
-      if (!router.hasRoute(route.name)) {
-        router.addRoute(LAYOUT_ROUTE_NAME, {
-          path: toLayoutChildPath(route.path),
-          name: route.name,
-          component,
-          // A plugin screen gets a tab title too: its declared key when the SPA
-          // knows it, otherwise the literal the plugin shipped (ADR-0011).
-          meta: { titleKey: route.navLabelKey, title: route.navLabel },
-          children: pluginChildRoutes[plugin.name] ?? [],
-        });
+      const bundleKey = `${plugin.webBundleUrl ?? ''}@${plugin.webBundleVersion ?? ''}`;
+      if (router.hasRoute(route.name)) {
+        if (registeredPluginRouteBundles.get(route.name) === bundleKey) continue;
+        router.removeRoute(route.name);
       }
+
+      router.addRoute(LAYOUT_ROUTE_NAME, {
+        path: toLayoutChildPath(route.path),
+        name: route.name,
+        component,
+        // A plugin screen gets a tab title too: its declared key when the SPA
+        // knows it, otherwise the literal the plugin shipped (ADR-0011).
+        meta: { titleKey: route.navLabelKey, title: route.navLabel },
+        children: pluginChildRoutes[plugin.name] ?? [],
+      });
+      registeredPluginRouteBundles.set(route.name, bundleKey);
     }
   }
 
   for (const name of registeredPluginRouteNames) {
     if (!enabledRouteNames.has(name) && router.hasRoute(name)) {
       router.removeRoute(name);
+      registeredPluginRouteBundles.delete(name);
     }
   }
 

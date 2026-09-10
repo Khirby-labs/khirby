@@ -276,14 +276,22 @@ describe('instance-plugins.loader', () => {
     }
   });
 
-  it('applyRootEnvFile fills missing keys and does not override', () => {
+  it('applyRootEnvFile fills missing keys and does not override set values, including empty', () => {
     const root = mkdtempSync(join(tmpdir(), 'instance-dotenv-'));
     writeFileSync(join(root, 'plugins.manifest.json'), '{"plugins":[]}');
     writeFileSync(join(root, 'pnpm-workspace.yaml'), 'packages: []\n');
-    writeFileSync(join(root, '.env'), 'KHIRBY_PLUGINS_LOCAL=1\nOTHER_FLAG=from-file\n');
-    const env: NodeJS.ProcessEnv = { OTHER_FLAG: 'already', KHIRBY_PLUGINS_LOCAL: '' };
+    writeFileSync(
+      join(root, '.env'),
+      'KHIRBY_PLUGINS_LOCAL=1\nOTHER_FLAG=from-file\nCONTROL_PLANE_URL=https://ctrl.bearly.pro\n',
+    );
+    const env: NodeJS.ProcessEnv = {
+      OTHER_FLAG: 'already',
+      KHIRBY_PLUGINS_LOCAL: '',
+      CONTROL_PLANE_URL: '',
+    };
     applyRootEnvFile(root, env);
-    expect(env.KHIRBY_PLUGINS_LOCAL).toBe('1');
+    expect(env.KHIRBY_PLUGINS_LOCAL).toBe('');
+    expect(env.CONTROL_PLANE_URL).toBe('');
     expect(env.OTHER_FLAG).toBe('already');
   });
 

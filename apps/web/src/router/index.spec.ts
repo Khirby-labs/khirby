@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setActivePinia, createPinia } from 'pinia';
 import { router, registerPluginRoutes } from './index';
@@ -182,5 +182,37 @@ describe('router guard (beforeEach)', () => {
     await router.push('/login?hot=1');
 
     expect(router.hasRoute('plugin-hot-web')).toBe(true);
+  });
+
+  it('replaces a volume plugin route when webBundleVersion changes', () => {
+    const plugin = (version: string) => ({
+      id: 'p-hot',
+      name: 'crm_hot_web',
+      displayName: 'Hot Web',
+      description: null,
+      version: '0.1.0',
+      enabled: true,
+      config: {},
+      installedAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+      webBundleUrl: '/api/plugins/crm_hot_web/web/entry.js',
+      webBundleVersion: version,
+      frontendRoutes: [
+        {
+          path: '/plugins/hot-web-bust',
+          name: 'plugin-hot-web-bust',
+          navLabel: 'Hot Web',
+          navIcon: 'plugins',
+        },
+      ],
+    });
+
+    registerPluginRoutes([plugin('1')]);
+    expect(router.hasRoute('plugin-hot-web-bust')).toBe(true);
+    const remove = vi.spyOn(router, 'removeRoute');
+    registerPluginRoutes([plugin('2')]);
+    expect(remove).toHaveBeenCalledWith('plugin-hot-web-bust');
+    expect(router.hasRoute('plugin-hot-web-bust')).toBe(true);
+    remove.mockRestore();
   });
 });

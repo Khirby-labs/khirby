@@ -22,4 +22,33 @@ describe('resolveLoadedProvider', () => {
     }).compile();
     expect(resolveLoadedProvider(moduleRef, 'TEST_TOKEN')).toBeNull();
   });
+
+  it('prefers the last container module that provides the token', () => {
+    const first = { id: 1 };
+    const second = { id: 2 };
+    const moduleRef = {
+      get: () => first,
+      container: {
+        getModules: () =>
+          new Map([
+            [
+              'old',
+              {
+                hasProvider: () => true,
+                getProviderByKey: () => ({ instance: first }),
+              },
+            ],
+            [
+              'new',
+              {
+                hasProvider: () => true,
+                getProviderByKey: () => ({ instance: second }),
+              },
+            ],
+          ]),
+      },
+    };
+
+    expect(resolveLoadedProvider(moduleRef as never, 'TEST_TOKEN')).toBe(second);
+  });
 });

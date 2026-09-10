@@ -114,7 +114,7 @@ export class ControlPlaneClient {
     const path = `/v1/marketplace/plugins${qs ? `?${qs}` : ''}`;
     const data = await this.request('GET', path, { soft: true });
     if (data == null) return null;
-    return this.parse(z.array(MarketplacePluginSchema), data, 'listPlugins');
+    return this.parse(z.array(MarketplacePluginSchema), data, 'listPlugins', { soft: true });
   }
 
   async getPlugin(slug: string): Promise<MarketplacePlugin | null> {
@@ -148,10 +148,23 @@ export class ControlPlaneClient {
     return this.parse(MarketplacePluginVersionSchema, data, 'getPluginVersion');
   }
 
-  private parse<T>(schema: z.ZodType<T>, data: unknown, label: string): T {
+  private parse<T>(schema: z.ZodType<T>, data: unknown, label: string): T;
+  private parse<T>(
+    schema: z.ZodType<T>,
+    data: unknown,
+    label: string,
+    opts: { soft: true },
+  ): T | null;
+  private parse<T>(
+    schema: z.ZodType<T>,
+    data: unknown,
+    label: string,
+    opts?: { soft?: boolean },
+  ): T | null {
     const result = schema.safeParse(data);
     if (!result.success) {
       this.logger.warn(`Control Plane ${label} response failed validation`);
+      if (opts?.soft) return null;
       throw AppException.upstreamFailed('controlPlane');
     }
     return result.data;

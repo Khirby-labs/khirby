@@ -110,6 +110,16 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     }
   }
 
+  /** Drop HTTP handlers and free the Nest module token so a same-process reinstall can rebind. */
+  private unbindPluginHttp(name: string): void {
+    const registrar = this.pluginHttpRegistrar;
+    if (registrar && typeof registrar.unregisterPlugin === 'function') {
+      registrar.unregisterPlugin(name);
+      return;
+    }
+    this.instanceBridge?.unregisterPlugin(name);
+  }
+
   /**
    * Boot no longer installs anything: a row in `plugins` IS the installation
    * (ADR-0032), so a plugin present in the image without a row stays "available"
@@ -645,6 +655,12 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     const plugin = this.registeredPlugins.find((p) => p.name === name);
     if (!plugin) throw AppException.notFound('plugin', name);
 
+    const ok = await this.activate(plugin, { ...row, version: plugin.version });
+    if (!ok) {
+      this.contexts.delete(name);
+      throw AppException.badRequest(`Plugin ${name} migration failed`);
+    }
+
     const [updated] = await this.db
       .update(plugins)
       .set({
@@ -657,7 +673,6 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       .returning();
 
     const current = updated ?? { ...row, version: plugin.version };
-    await this.activate(plugin, current);
     this.logger.log(`Plugin upgraded from marketplace: ${name} → v${plugin.version}`);
     return this.enrichRow(current);
   }
@@ -694,7 +709,7 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       removeInstanceManifest(volumeDir, localDir);
     }
 
-    this.instanceBridge?.unregisterPlugin(name);
+    this.unbindPluginHttp(name);
 
     await this.db.delete(plugins).where(eq(plugins.name, name));
     this.logger.log(`Plugin uninstalled: ${name}`);
@@ -725,6 +740,11 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       await this.uninstall(name);
       this.logger.log(`Instance plugin removed from volume: ${resolved} (${name})`);
       return { name };
+    }
+    if (FIRST_PARTY_PLUGIN_DIRS.includes(resolved)) {
+      throw AppException.badRequest(`Reserved plugin directory: ${resolved}`, {
+        reason: 'reserved_dir',
+      });
     }
     if (existsSync(absDir)) {
       rmSync(absDir, { recursive: true, force: true });
@@ -797,7 +817,7 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     if (idx >= 0) this.registeredPlugins[idx] = plugin;
     else this.registeredPlugins.push(plugin);
 
-    this.instanceBridge?.unregisterPlugin(name);
+    this.unbindPluginHttp(name);
 
     const nestModule = plugin.getNestModule?.();
     if (nestModule && this.lazyModuleLoader) {
@@ -923,7 +943,7 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     } catch (err) {
       const idx = this.registeredPlugins.lastIndexOf(plugin);
       if (idx >= 0) this.registeredPlugins.splice(idx, 1);
-      this.instanceBridge?.unregisterPlugin(name);
+      this.unbindPluginHttp(name);
       throw err;
     }
   }

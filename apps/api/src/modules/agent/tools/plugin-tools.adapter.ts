@@ -267,7 +267,6 @@ export class PokeloToolsAdapter {
   async definitions(): Promise<LlmToolDef[]> {
     const tools = this.knowledgeTools();
     if (!tools) {
-      this.cachedNames = new Set();
       return [];
     }
     try {
@@ -285,7 +284,8 @@ export class PokeloToolsAdapter {
         },
       }));
     } catch {
-      this.cachedNames = new Set();
+      // Keep a warm cache so a concurrent failed listTools() does not reroute
+      // an in-flight Ask loop's Pokelo calls into crmTools unknown_tool.
       return [];
     }
   }

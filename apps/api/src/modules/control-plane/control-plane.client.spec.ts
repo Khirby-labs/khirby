@@ -142,4 +142,24 @@ describe('ControlPlaneClient', () => {
       client.register({ installationId: INSTALLATION_ID, email: 'admin@example.com' }),
     ).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
+
+  it('listPlugins returns null when a 200 body fails the catalog schema', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse([
+        {
+          slug: 'a',
+          name: 'A',
+          description: null,
+          packageName: '@khirby/plugin-a',
+          publisherName: null,
+          verified: true,
+          repositoryUrl: null,
+          latestVersion: '1.0.0',
+          permissions: null,
+        },
+      ]),
+    );
+    const client = makeClient({ CONTROL_PLANE_URL: 'https://cp.example.com' });
+    await expect(client.listPlugins()).resolves.toBeNull();
+  });
 });

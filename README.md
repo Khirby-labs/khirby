@@ -12,7 +12,7 @@ Self-hosted, single-tenant CRM — NestJS API, Vue 3 SPA, PostgreSQL, Redis, plu
 ## Quick start
 
 ```bash
-pnpm install           # first-party plugins come from npm (plugins.manifest.json)
+pnpm install           # workspace; first-party plugins install from Marketplace
 cp .env.example .env   # SESSION_SECRET (≥32), ADMIN_EMAIL, ADMIN_PASSWORD
 pnpm start:db          # Postgres + Redis (docker compose)
 pnpm migrate
@@ -71,7 +71,7 @@ docker/           Dockerfiles, nginx, Swarm/Compose
 docs/             Internal ADRs, journal, design system (not the public site)
 ```
 
-First-party plugins install from **npm** via [`plugins.manifest.json`](./plugins.manifest.json) (`pnpm sync:plugins`). Docker builds do not copy a host `plugins/` tree — sources are vendored from `node_modules` for Nest compile. Vendor is **hybrid** (ADR-0037): existing `plugins/<dir>` is kept; npm fills only the gaps. Plugin authors can clone [Khirby-labs/plugins](https://github.com/Khirby-labs/plugins) with `./scripts/checkout-plugins.sh` and set `KHIRBY_PLUGINS_WORKSPACE=1` for local-only (no npm vendor). Set `KHIRBY_PLUGINS_LOCAL=1` so boot loads those `crm-plugin-*` checkouts instead of Marketplace `khirby__plugin-*` unpacks (ADR-0045).
+First-party plugins install from **npm via Marketplace** (Control Plane catalog + integrity-checked unpack onto `plugins/`, ADR-0044). `plugins.manifest.json` ships **empty** in the public image — do not list first-party packages there for production. Docker builds do not copy a host `plugins/` tree. Vendor is **hybrid** (ADR-0037): existing `plugins/<dir>` is kept; npm fills only the gaps when a package *is* listed (examples / local). Plugin authors can clone [Khirby-labs/plugins](https://github.com/Khirby-labs/plugins) with `./scripts/checkout-plugins.sh` and set `KHIRBY_PLUGINS_WORKSPACE=1` for local-only (no npm vendor). Set `KHIRBY_PLUGINS_LOCAL=1` so boot loads those `crm-plugin-*` checkouts instead of Marketplace `khirby__plugin-*` unpacks (ADR-0045).
 
 Published from this repo (npm):
 
@@ -86,7 +86,7 @@ Implement `CrmPlugin` from `@khirby/plugin-sdk`; Nest plugins use `@khirby/plugi
 
 Public guide: [Create a plugin](https://khirby.com/docs/plugins/create) · [Install a plugin](https://khirby.com/docs/plugins/install)
 
-List packages in `plugins.manifest.json` (with a semver `version`; set `"web": true` when the package exports `./web`). Then `pnpm sync:plugins && pnpm install` — do not hand-edit plugin deps in `package.json`.
+Operators install from **Settings → Marketplace** (Control Plane + npm). `plugins.manifest.json` is the image bake list and stays empty for the public image (ADR-0044). Local examples may still use `"local": "<path>"` then `pnpm sync:plugins && pnpm install` — do not hand-edit plugin deps in `package.json`.
 
 ## Docs
 

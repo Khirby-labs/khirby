@@ -139,17 +139,35 @@ export class PluginPackageInstaller {
             { code: 'package_dir_conflict' },
           );
         }
-        rmSync(absDir, { recursive: true, force: true });
       }
-      renameSync(staging, absDir);
-      moved = true;
 
-      this.logger.log(`Extracted ${spec} → plugins/${dirName}`);
-      if (hydrateWebBundleFromSiblingCheckout(absDir, incomingName, volumeDir)) {
+      if (hydrateWebBundleFromSiblingCheckout(staging, incomingName, volumeDir)) {
         this.logger.log(
           `Hydrated dist/web for ${incomingName} from a local plugins/ checkout (npm tarball had none)`,
         );
       }
+      assertWebBundlePresent(staging);
+
+      let backup: string | null = null;
+      if (existsSync(absDir)) {
+        backup = join(volumeDir, `.prev-${dirName}-${process.pid}-${Date.now()}`);
+        renameSync(absDir, backup);
+      }
+      try {
+        renameSync(staging, absDir);
+        moved = true;
+      } catch (swapErr) {
+        if (backup && existsSync(backup) && !existsSync(absDir)) {
+          renameSync(backup, absDir);
+          backup = null;
+        }
+        throw swapErr;
+      }
+      if (backup && existsSync(backup)) {
+        rmSync(backup, { recursive: true, force: true });
+      }
+
+      this.logger.log(`Extracted ${spec} → plugins/${dirName}`);
       return {
         directory: dirName,
         absDir,

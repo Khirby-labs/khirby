@@ -1,4 +1,9 @@
-import { ConflictException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  ConflictException,
+  NotFoundException,
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -523,6 +528,34 @@ describe('MarketplaceService.install', () => {
     });
 
     await expect(svc.install('a')).rejects.toThrow(NotFoundException);
+    expect(extract).not.toHaveBeenCalled();
+  });
+
+  it('returns upstreamFailed when Control Plane version list soft-fails', async () => {
+    const extract = jest.fn();
+    const getPlugin = jest.fn().mockResolvedValue({
+      slug: 'a',
+      name: 'A',
+      description: null,
+      packageName: '@khirby/plugin-a',
+      publisherName: 'Khirby',
+      verified: true,
+      repositoryUrl: null,
+      latestVersion: '1.0.0',
+      permissions: null,
+    });
+
+    const svc = makeService({
+      registry: makeRegistry({ loaded: [] }),
+      cp: makeCp({
+        getPlugin,
+        getPluginVersion: jest.fn().mockResolvedValue(null),
+        getPluginVersions: jest.fn().mockResolvedValue(null),
+      }),
+      installer: makeInstaller({ extract }),
+    });
+
+    await expect(svc.install('a')).rejects.toThrow(ServiceUnavailableException);
     expect(extract).not.toHaveBeenCalled();
   });
 });

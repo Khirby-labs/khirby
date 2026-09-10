@@ -234,22 +234,35 @@ describe('PluginPackageInstaller.extract', () => {
     ).rejects.toThrow(BadRequestException);
   });
 
-  it('refuses overwrite when target dir has a different package.json name', async () => {
+  it('leaves the live package in place when the staged tarball is missing dist/web/entry.js', async () => {
     const target = join(volume, 'khirby__plugin-demo');
     mkdirSync(target, { recursive: true });
-    writeFileSync(join(target, 'package.json'), JSON.stringify({ name: '@other/plugin-demo' }));
+    writeFileSync(join(target, 'package.json'), JSON.stringify({ name: '@khirby/plugin-demo' }));
+    writeFileSync(join(target, 'KEEP.txt'), 'old');
+
+    extract.mockImplementation(async (_spec: string, dest: string) => {
+      writeFileSync(
+        join(dest, 'package.json'),
+        JSON.stringify({
+          name: '@khirby/plugin-demo',
+          version: '2.0.0',
+          exports: { './web': './dist/web/entry.js' },
+        }),
+      );
+    });
 
     const installer = new PluginPackageInstaller();
     await expect(
       installer.extract({
         packageName: '@khirby/plugin-demo',
-        version: '1.0.0',
+        version: '2.0.0',
         checksum: 'sha512-deadbeef',
       }),
     ).rejects.toThrow(BadRequestException);
-    expect(existsSync(join(target, 'package.json'))).toBe(true);
+
+    expect(existsSync(join(target, 'KEEP.txt'))).toBe(true);
     expect(JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')).name).toBe(
-      '@other/plugin-demo',
+      '@khirby/plugin-demo',
     );
   });
 });
