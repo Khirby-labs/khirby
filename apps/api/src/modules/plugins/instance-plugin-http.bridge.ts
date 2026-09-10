@@ -366,7 +366,11 @@ export function matchPath(pattern: string, path: string): Record<string, string>
     const part = a[i]!;
     const value = b[i]!;
     if (part.startsWith(':') && part.length > 1) {
-      params[part.slice(1)] = decodeURIComponent(value);
+      try {
+        params[part.slice(1)] = decodeURIComponent(value);
+      } catch {
+        return null;
+      }
     } else if (part !== value) {
       return null;
     }

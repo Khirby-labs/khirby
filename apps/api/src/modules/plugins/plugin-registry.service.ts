@@ -838,6 +838,40 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     return { name, status: 'reloaded' };
   }
 
+  /**
+   * After Marketplace rolls the volume files back, re-jiti the previous
+   * package and rebuild its in-memory context. `upgradeFromDirectory` deletes
+   * the context when `activate()` of the new version fails; reload alone would
+   * leave event handlers dead until API restart.
+   */
+  async restoreAfterFailedUpgrade(
+    localDir: string,
+    opts?: { allowReservedScaffoldDirs?: boolean },
+  ): Promise<{ name: string; status: 'restored' | 'not_loaded' }> {
+    const reloaded = await this.reloadFromDirectory(localDir, opts);
+    if (reloaded.status === 'not_loaded') {
+      return { name: reloaded.name, status: 'not_loaded' };
+    }
+
+    const plugin = this.registeredPlugins.find((p) => p.name === reloaded.name);
+    if (!plugin) return { name: reloaded.name, status: 'not_loaded' };
+
+    const row = await this.findByName(reloaded.name);
+    if (!row) return { name: reloaded.name, status: 'not_loaded' };
+
+    const ok = await this.activate(plugin, row);
+    if (!ok) {
+      this.contexts.delete(reloaded.name);
+      this.logger.warn(
+        `Plugin ${reloaded.name}: files restored after a failed upgrade, but re-activate failed`,
+      );
+      return { name: reloaded.name, status: 'not_loaded' };
+    }
+
+    this.logger.log(`Plugin ${reloaded.name}: restored previous runtime after failed upgrade`);
+    return { name: reloaded.name, status: 'restored' };
+  }
+
   readFile(directory: string, path: string): { directory: string; path: string; content: string } {
     try {
       const local = this.resolveExistingDir(directory);

@@ -69,6 +69,7 @@ function makeRegistry(options: {
       (options as { upgradeFromDirectory?: jest.Mock }).upgradeFromDirectory ??
       jest.fn().mockResolvedValue({ name: 'crm_a', version: '1.2.0' }),
     reloadFromDirectory: jest.fn().mockResolvedValue({ name: 'crm_a', status: 'reloaded' }),
+    restoreAfterFailedUpgrade: jest.fn().mockResolvedValue({ name: 'crm_a', status: 'restored' }),
     findAll: options.findAll ?? jest.fn().mockResolvedValue([]),
     findByName: options.findByName ?? jest.fn().mockResolvedValue(null),
     instanceDir: () => '/tmp/khirby-no-plugin-volume',
@@ -760,7 +761,7 @@ describe('MarketplaceService.update', () => {
     expect(rollback).not.toHaveBeenCalled();
   });
 
-  it('rolls back files and reloads the previous package when upgradeFromDirectory throws', async () => {
+  it('rolls back files and restores the previous runtime when upgradeFromDirectory throws', async () => {
     const commit = jest.fn();
     const rollback = jest.fn();
     const extract = jest.fn().mockResolvedValue({
@@ -770,13 +771,15 @@ describe('MarketplaceService.update', () => {
       commit,
       rollback,
     });
-    const reloadFromDirectory = jest.fn().mockResolvedValue({ name: 'crm_a', status: 'reloaded' });
+    const restoreAfterFailedUpgrade = jest
+      .fn()
+      .mockResolvedValue({ name: 'crm_a', status: 'restored' });
     const svc = makeService({
       registry: {
         ...makeRegistry({ loaded: ['crm_a'] }),
         findByName: jest.fn().mockResolvedValue(installedRow('crm_a', { version: '1.1.0' })),
         upgradeFromDirectory: jest.fn().mockRejectedValue(new Error('migration failed')),
-        reloadFromDirectory,
+        restoreAfterFailedUpgrade,
       },
       cp: makeCp({
         getPlugin: jest.fn().mockResolvedValue(pluginCard),
@@ -788,7 +791,7 @@ describe('MarketplaceService.update', () => {
     await expect(svc.update('a')).rejects.toThrow('migration failed');
     expect(rollback).toHaveBeenCalled();
     expect(commit).not.toHaveBeenCalled();
-    expect(reloadFromDirectory).toHaveBeenCalledWith('plugin-a', {
+    expect(restoreAfterFailedUpgrade).toHaveBeenCalledWith('plugin-a', {
       allowReservedScaffoldDirs: true,
     });
   });

@@ -314,7 +314,7 @@ export class MarketplaceService {
 
   private async restoreRuntimeAfterFailedUpgrade(extracted: PackageInstallResult): Promise<void> {
     try {
-      await this.registry.reloadFromDirectory(extracted.directory, {
+      await this.registry.restoreAfterFailedUpgrade(extracted.directory, {
         allowReservedScaffoldDirs: true,
       });
     } catch {

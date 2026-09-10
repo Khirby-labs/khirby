@@ -277,5 +277,6 @@ describe('matchPath', () => {
     expect(matchPath('plugins/foo/items/:id', 'plugins/foo/items/123')).toEqual({ id: '123' });
     expect(matchPath('plugins/foo/items/:id', 'plugins/foo/items')).toBeNull();
     expect(matchPath('plugins/foo/settings', 'plugins/foo/settings')).toEqual({});
+    expect(matchPath('plugins/foo/items/:id', 'plugins/foo/items/%E0%A4%A')).toBeNull();
   });
 });

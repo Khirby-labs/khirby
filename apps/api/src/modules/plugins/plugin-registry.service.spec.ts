@@ -1228,6 +1228,37 @@ export function createPlugin() {
       }
     });
 
+    it('re-activates the previous plugin after a failed upgrade wiped its context', async () => {
+      const onInit = jest.fn();
+      const onMigrate = jest.fn().mockResolvedValue(undefined);
+      const plugin = makePlugin({ name: 'crm_upg', onInit, onMigrate });
+      const row = makeRow({ name: 'crm_upg', version: '1.1.0', enabled: true });
+      const db: any = {
+        $client: { unsafe: jest.fn() },
+        select: jest.fn(() => ({
+          from: () => ({ where: () => ({ limit: () => makeChain([row]) }) }),
+        })),
+      };
+      const svc = makeService([plugin], db);
+
+      await (svc as any).activate(plugin, row);
+      expect(svc.isEnabled('crm_upg')).toBe(true);
+
+      (svc as any).contexts.delete('crm_upg');
+      expect(svc.isEnabled('crm_upg')).toBe(false);
+
+      jest
+        .spyOn(svc as any, 'reloadFromDirectory')
+        .mockResolvedValue({ name: 'crm_upg', status: 'reloaded' });
+
+      const result = await svc.restoreAfterFailedUpgrade('crm-plugin-upg');
+
+      expect(result).toEqual({ name: 'crm_upg', status: 'restored' });
+      expect(svc.isEnabled('crm_upg')).toBe(true);
+      expect(onInit).toHaveBeenCalledTimes(2);
+      expect(onMigrate).toHaveBeenCalledTimes(2);
+    });
+
     it('refuses to rmSync a first-party checkout when no plugins row exists', async () => {
       const prevDir = process.env.INSTANCE_PLUGINS_DIR;
       const prevLocal = process.env.KHIRBY_PLUGINS_LOCAL;
