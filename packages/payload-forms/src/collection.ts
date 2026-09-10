@@ -1,14 +1,14 @@
-import type { CollectionConfig } from 'payload'
+import type { CollectionConfig } from 'payload';
 
 export type CrmFormsCollectionOptions = {
-  slug?: string
-  adminGroup?: string
-}
+  slug?: string;
+  adminGroup?: string;
+};
 
 export function createCrmFormsCollection(
   options: CrmFormsCollectionOptions = {},
 ): CollectionConfig {
-  const slug = options.slug ?? 'crm-forms'
+  const slug = options.slug ?? 'crm-forms';
 
   return {
     slug,
@@ -55,5 +55,5 @@ export function createCrmFormsCollection(
         },
       },
     ],
-  }
+  };
 }

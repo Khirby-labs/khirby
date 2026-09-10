@@ -1,5 +1,4 @@
-import type { FormFieldType } from './types.js'
-;
+import type { FormFieldType } from './types.js';
 
 type FieldValueType<T extends string> = T extends 'number'
   ? number

@@ -21,8 +21,12 @@ if (r.status === 0) {
   }
   const marker = { ts: Date.now(), head, durationMs: Date.now() - t0 };
   writeFileSync(new URL('../.verify-ok.json', import.meta.url), JSON.stringify(marker) + '\n');
-  console.log('\n[verify] GREEN — marker written (.claude/.verify-ok.json). Safe to finish the turn.');
+  console.log(
+    '\n[verify] GREEN — marker written (.claude/.verify-ok.json). Safe to finish the turn.',
+  );
 } else {
-  console.log('\n[verify] RED — no marker written. Fix the failures and re-run; do not report success.');
+  console.log(
+    '\n[verify] RED — no marker written. Fix the failures and re-run; do not report success.',
+  );
 }
 process.exit(r.status ?? 1);

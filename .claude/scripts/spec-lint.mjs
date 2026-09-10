@@ -23,9 +23,13 @@ if (!hasAcHeading && checklistItems < 2) {
 }
 
 if (gaps.length) {
-  console.log('[spec-lint] SPEC GATE FAILED — do not start implementing. Ask on the issue instead of guessing:');
+  console.log(
+    '[spec-lint] SPEC GATE FAILED — do not start implementing. Ask on the issue instead of guessing:',
+  );
   for (const g of gaps) console.log(`  - ${g}`);
   process.exit(1);
 }
-console.log('[spec-lint] structure ok — now judge semantics: are the criteria measurable and complete?');
+console.log(
+  '[spec-lint] structure ok — now judge semantics: are the criteria measurable and complete?',
+);
 process.exit(0);

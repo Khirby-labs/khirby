@@ -14,7 +14,14 @@ if (!file || !existsSync(file)) {
 const text = readFileSync(file, 'utf8');
 const gaps = [];
 
-const REQUIRED = ['## Understanding', '## AC map', '## Edge cases', '## Memory hits', '## Steps', '## Findings ledger'];
+const REQUIRED = [
+  '## Understanding',
+  '## AC map',
+  '## Edge cases',
+  '## Memory hits',
+  '## Steps',
+  '## Findings ledger',
+];
 const sections = {};
 for (const name of REQUIRED) {
   const re = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*$`, 'm');

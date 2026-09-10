@@ -25,7 +25,11 @@ function escapeString(value: string): string {
   return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
-export function generateFormModule(form: PublicForm, token: string, exportName?: string): {
+export function generateFormModule(
+  form: PublicForm,
+  token: string,
+  exportName?: string,
+): {
   code: string;
   exportName: string;
   typeName: string;

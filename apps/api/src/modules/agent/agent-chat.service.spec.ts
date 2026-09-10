@@ -52,7 +52,10 @@ describe('AgentChatService', () => {
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
-        { provide: PokeloToolsAdapter, useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();
@@ -99,7 +102,10 @@ describe('AgentChatService', () => {
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
-        { provide: PokeloToolsAdapter, useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
       ],
     }).compile();
     const unbound = moduleRef.get(AgentChatService);
@@ -237,7 +243,10 @@ describe('AgentChatService', () => {
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
-        { provide: PokeloToolsAdapter, useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();
@@ -319,7 +328,10 @@ describe('AgentChatService', () => {
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
-        { provide: PokeloToolsAdapter, useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();
@@ -406,7 +418,10 @@ describe('AgentChatService', () => {
             run: pluginRun,
           },
         },
-        { provide: PokeloToolsAdapter, useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();
@@ -453,7 +468,10 @@ describe('AgentChatService', () => {
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
-        { provide: PokeloToolsAdapter, useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();
@@ -518,7 +536,10 @@ describe('AgentChatService', () => {
         { provide: MailToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: MarketplaceToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
         { provide: PluginToolsAdapter, useValue: { definitions: () => [], run: jest.fn() } },
-        { provide: PokeloToolsAdapter, useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() } },
+        {
+          provide: PokeloToolsAdapter,
+          useValue: { definitions: async () => [], ownsTool: () => false, run: jest.fn() },
+        },
         { provide: AI_COMPOSE_LLM, useValue: llmProvider },
       ],
     }).compile();

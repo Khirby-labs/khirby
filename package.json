@@ -37,7 +37,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "sync:plugins": "node scripts/sync-plugins.mjs",
-    "verify": "pnpm typecheck && pnpm lint && pnpm lint:design && pnpm lint:i18n && pnpm test && pnpm test:web && pnpm test:forms-client && pnpm test:forms-ui",
+    "verify": "pnpm typecheck && pnpm lint && pnpm lint:design && pnpm lint:i18n && pnpm format:check && pnpm test && pnpm test:web && pnpm test:forms-client && pnpm test:forms-ui",
     "docker:up": "docker compose -f docker/docker-compose.yml up --build",
     "docker:down": "docker compose -f docker/docker-compose.yml down",
     "docker:logs": "docker compose -f docker/docker-compose.yml logs -f",

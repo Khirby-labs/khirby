@@ -39,8 +39,11 @@ export function priorityLabel(priority: string): string {
 
 export function priorityBadgeClass(priority: string): string {
   switch (priority) {
-    case 'high': return 'badge-high';
-    case 'medium': return 'badge-medium';
-    default: return 'badge-low';
+    case 'high':
+      return 'badge-high';
+    case 'medium':
+      return 'badge-medium';
+    default:
+      return 'badge-low';
   }
 }

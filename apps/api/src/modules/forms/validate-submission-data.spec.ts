@@ -1,5 +1,8 @@
 import { BadRequestException } from '@nestjs/common';
-import { assertEmailPresent, validateSubmissionDataAgainstSchema } from './validate-submission-data';
+import {
+  assertEmailPresent,
+  validateSubmissionDataAgainstSchema,
+} from './validate-submission-data';
 
 describe('validateSubmissionDataAgainstSchema', () => {
   const schema = [
@@ -34,15 +37,13 @@ describe('validateSubmissionDataAgainstSchema', () => {
   });
 
   it('rejects missing required fields', () => {
-    expect(() =>
-      validateSubmissionDataAgainstSchema(schema, { name: 'Ada' }),
-    ).toThrow(/required/i);
+    expect(() => validateSubmissionDataAgainstSchema(schema, { name: 'Ada' })).toThrow(/required/i);
   });
 
   it('rejects invalid email', () => {
-    expect(() =>
-      validateSubmissionDataAgainstSchema(schema, { email: 'not-an-email' }),
-    ).toThrow(/invalid email/i);
+    expect(() => validateSubmissionDataAgainstSchema(schema, { email: 'not-an-email' })).toThrow(
+      /invalid email/i,
+    );
   });
 
   it('accepts any body when schema is empty', () => {

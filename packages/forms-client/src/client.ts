@@ -1,8 +1,5 @@
 import { CrmFormsError, FormValidationError } from './errors.js';
-import {
-  assertEmailPresent,
-  validateSubmissionDataAgainstSchema,
-} from './validate.js';
+import { assertEmailPresent, validateSubmissionDataAgainstSchema } from './validate.js';
 import type {
   ClientOptions,
   FormFieldDefinition,
@@ -64,11 +61,7 @@ export function createClient(options: ClientOptions): FormsClient {
   const defaultLocale = options.locale;
   const formCache = new Map<string, PublicForm>();
 
-  async function fetchForm(
-    token: string,
-    useCache: boolean,
-    locale?: string,
-  ): Promise<PublicForm> {
+  async function fetchForm(token: string, useCache: boolean, locale?: string): Promise<PublicForm> {
     const resolvedLocale = locale ?? defaultLocale;
     const key = formCacheKey(token, resolvedLocale);
     if (useCache && formCache.has(key)) {
@@ -102,14 +95,11 @@ export function createClient(options: ClientOptions): FormsClient {
       }
     }
 
-    const res = await fetchFn(
-      `${baseUrl}/api/public/forms/${encodeURIComponent(token)}/submit`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      },
-    );
+    const res = await fetchFn(`${baseUrl}/api/public/forms/${encodeURIComponent(token)}/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
     if (!res.ok) throw await parseErrorResponse(res);
     return (await res.json()) as SubmitFormResult;
   }

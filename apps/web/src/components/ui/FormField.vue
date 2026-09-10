@@ -3,7 +3,8 @@
     <label v-if="label" :for="fieldId" class="crm-label mb-0">
       {{ label
       }}<span v-if="required" class="text-text-ghost">
-        <span aria-hidden="true">*</span><span class="sr-only">{{ t('common.form.required') }}</span>
+        <span aria-hidden="true">*</span
+        ><span class="sr-only">{{ t('common.form.required') }}</span>
       </span>
     </label>
     <slot :field-id="fieldId" :error-id="error ? errorId : undefined" :invalid="!!error" />

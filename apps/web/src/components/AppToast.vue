@@ -9,9 +9,11 @@
           v-for="toast in toastStore.toasts"
           :key="toast.id"
           class="pointer-events-auto px-4 py-2 rounded-md text-sm shadow-lg border max-w-sm"
-          :class="toast.variant === 'success'
-            ? 'bg-success/10 border-success/40 text-success'
-            : 'bg-danger/10 border-danger/40 text-danger'"
+          :class="
+            toast.variant === 'success'
+              ? 'bg-success/10 border-success/40 text-success'
+              : 'bg-danger/10 border-danger/40 text-danger'
+          "
         >
           {{ toast.message }}
         </div>

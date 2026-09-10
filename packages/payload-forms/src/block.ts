@@ -1,19 +1,19 @@
-import type { Block } from 'payload'
+import type { Block } from 'payload';
 
 export type CrmFormBlockOptions = {
   /**
    * Relationship collection slug (must match the plugin collection).
    * @default 'crm-forms'
    */
-  formsCollectionSlug?: string
-}
+  formsCollectionSlug?: string;
+};
 
 /**
  * Layout block for inserting a Khirby form into a page.
  * Add to your Pages (or Products) `blocks` array alongside CTA / Content / Media.
  */
 export function createCrmFormBlock(options: CrmFormBlockOptions = {}): Block {
-  const formsCollectionSlug = options.formsCollectionSlug ?? 'crm-forms'
+  const formsCollectionSlug = options.formsCollectionSlug ?? 'crm-forms';
 
   return {
     slug: 'crmForm',
@@ -59,8 +59,8 @@ export function createCrmFormBlock(options: CrmFormBlockOptions = {}): Block {
         },
       },
     ],
-  }
+  };
 }
 
 /** Default block bound to `crm-forms`. */
-export const CrmFormBlock = createCrmFormBlock()
+export const CrmFormBlock = createCrmFormBlock();

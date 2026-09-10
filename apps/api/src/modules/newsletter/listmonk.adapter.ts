@@ -42,9 +42,7 @@ export class ListmonkAdapter {
 
       if (!response.ok) {
         const text = await response.text().catch(() => '');
-        this.logger.warn(
-          `listmonk addSubscriber failed [${response.status}]: ${text}`,
-        );
+        this.logger.warn(`listmonk addSubscriber failed [${response.status}]: ${text}`);
       }
     } catch (err) {
       this.logger.warn(`listmonk addSubscriber error: ${(err as Error).message}`);

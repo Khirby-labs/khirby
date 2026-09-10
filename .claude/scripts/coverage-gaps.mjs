@@ -18,11 +18,15 @@ const base = args.includes('--base') ? args[args.indexOf('--base') + 1] : 'HEAD'
 
 if (args.includes('--run')) {
   console.log('[coverage-gaps] running api tests with coverage (this takes a while)...');
-  spawnSync('pnpm', ['--filter', 'api', 'exec', 'jest', '--coverage', '--coverageReporters=json', '--silent'], {
-    cwd: root,
-    stdio: 'inherit',
-    shell: true,
-  });
+  spawnSync(
+    'pnpm',
+    ['--filter', 'api', 'exec', 'jest', '--coverage', '--coverageReporters=json', '--silent'],
+    {
+      cwd: root,
+      stdio: 'inherit',
+      shell: true,
+    },
+  );
 }
 
 const covFile = join(root, 'apps/api/coverage/coverage-final.json');
@@ -72,6 +76,8 @@ for (const [abs, data] of Object.entries(coverage)) {
   }
 }
 if (!any) {
-  console.log('[coverage-gaps] all statements in diff-touched api files are covered (or none are in coverage scope).');
+  console.log(
+    '[coverage-gaps] all statements in diff-touched api files are covered (or none are in coverage scope).',
+  );
 }
 process.exit(0);
