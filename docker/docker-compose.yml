@@ -24,6 +24,8 @@ services:
       MAIL_SECRETS_KEY: ${MAIL_SECRETS_KEY:-}
       AI_COMPOSE_SECRETS_KEY: ${AI_COMPOSE_SECRETS_KEY:-}
       POKELO_SECRETS_KEY: ${POKELO_SECRETS_KEY:-}
+      CONTROL_PLANE_URL: ${CONTROL_PLANE_URL-https://ctrl.bearly.pro}
+      DISABLE_TELEMETRY: ${DISABLE_TELEMETRY:-}
       # Prefer plugins/crm-plugin-* checkouts over Marketplace unpacks (ADR-0045).
       KHIRBY_PLUGINS_LOCAL: ${KHIRBY_PLUGINS_LOCAL:-}
     networks:

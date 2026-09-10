@@ -122,6 +122,7 @@ function makeChain(returnValue?: unknown) {
 | Plugin imports in `app.module.ts` | Use path `../../../plugins/...` relative to `src/` |
 | Vendor of `plugins/` | `predev` must **not** `rmSync` existing `plugins/<dir>` (ADR-0037). Keep local sources; npm-fill only missing dirs. `KHIRBY_PLUGINS_WORKSPACE=1` or `plugins/.git` = local-only vendor. Delete a dir to refresh from npm |
 | Checkout vs Marketplace at boot | `KHIRBY_PLUGINS_LOCAL=1` loads `plugins/crm-plugin-*` instead of `khirby__plugin-*` (ADR-0045). Default off. Not the same flag as `KHIRBY_PLUGINS_WORKSPACE`. |
+| Control Plane URL | Unset `CONTROL_PLANE_URL` defaults to `https://ctrl.bearly.pro` (ADR-0051). Explicit empty disables outbound CP. Telemetry opt-out is `DISABLE_TELEMETRY`, not an unset URL. |
 | Instance secrets | One `KHIRBY_SECRETS_KEY` (32-byte hex/base64) for mailbox + plugin ciphertext (ADR-0046). Do not add `FOO_SECRETS_KEY` per plugin — use `encrypt`/`decrypt` from `@khirby/plugin-host`. Legacy `MAIL_` / `AI_COMPOSE_` / `POKELO_SECRETS_KEY` stay decrypt aliases. |
 | Knowledge context | Optional RAG enrichment is `KNOWLEDGE_CONTEXT.fetchContext` (ADR-0047). Ask Khirby uses `KNOWLEDGE_TOOLS` for the full Pokelo MCP catalog (ADR-0050). AI Compose resolves knowledge at call time — do not constructor-`@Optional()` it. Project ACL lives in the knowledge plugin. |
 | Volume plugin tokens in core | `AI_COMPOSE_LLM` / `KNOWLEDGE_CONTEXT` / `KNOWLEDGE_TOOLS` from Marketplace plugins are bound after core constructors (ADR-0048). Resolve at call time via `resolveLoadedProvider` from `@khirby/plugin-host` — do not constructor-`@Optional()` them in `apps/api` or Compose. |
@@ -182,3 +183,4 @@ function makeChain(returnValue?: unknown) {
 - Do not constructor-`@Optional()` `AI_COMPOSE_LLM`, `KNOWLEDGE_CONTEXT`, or `KNOWLEDGE_TOOLS` in core or Compose — volume plugins bind those after boot; resolve at call time (ADR-0048, ADR-0050)
 - Do not reintroduce curated Ask wrappers (`search_knowledge_base`) — proxy Pokelo MCP via `KNOWLEDGE_TOOLS` (ADR-0050)
 - Do not force `reasoning_effort: none` on Ask Khirby when the model rejects tools on `/chat/completions` — POST `/responses` with `reasoning.effort` (ADR-0049)
+- Do not treat unset `CONTROL_PLANE_URL` as "no Control Plane" — it defaults to `https://ctrl.bearly.pro`; explicit empty disables outbound CP (ADR-0051)

@@ -22,15 +22,22 @@ import { z } from 'zod';
 export const CONTROL_PLANE_FETCH_TIMEOUT_MS = 10_000;
 export const CONTROL_PLANE_RETRY_BACKOFF_MS = 500;
 
+/** Production Control Plane (telemetry + marketplace). Trailing slash is stripped. */
+export const DEFAULT_CONTROL_PLANE_URL = 'https://ctrl.bearly.pro';
+
 @Injectable()
 export class ControlPlaneClient {
   private readonly logger = new Logger(ControlPlaneClient.name);
 
   constructor(private readonly config: ConfigService) {}
 
-  /** Trimmed base URL without trailing slash, or empty when unset. */
+  /**
+   * Trimmed base URL without trailing slash. Unset env falls back to
+   * {@link DEFAULT_CONTROL_PLANE_URL}; an explicit empty value disables outbound
+   * Control Plane calls (ADR-0051).
+   */
   baseUrl(): string {
-    const raw = (this.config.get<string>('CONTROL_PLANE_URL') ?? '').trim();
+    const raw = (this.config.get<string>('CONTROL_PLANE_URL') ?? DEFAULT_CONTROL_PLANE_URL).trim();
     if (!raw) return '';
     this.assertValidUrl(raw);
     return raw.replace(/\/+$/, '');

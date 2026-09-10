@@ -1,5 +1,9 @@
 import { BadRequestException, ServiceUnavailableException } from '@nestjs/common';
-import { CONTROL_PLANE_RETRY_BACKOFF_MS, ControlPlaneClient } from './control-plane.client';
+import {
+  CONTROL_PLANE_RETRY_BACKOFF_MS,
+  ControlPlaneClient,
+  DEFAULT_CONTROL_PLANE_URL,
+} from './control-plane.client';
 import type { HeartbeatPayload } from './contracts';
 
 function makeConfig(env: Record<string, string | undefined> = {}) {
@@ -74,14 +78,20 @@ describe('ControlPlaneClient', () => {
     expect(() => client.baseUrl()).toThrow(BadRequestException);
   });
 
+  it('defaults to ctrl.bearly.pro when CONTROL_PLANE_URL is unset', () => {
+    const client = makeClient({});
+    expect(client.baseUrl()).toBe(DEFAULT_CONTROL_PLANE_URL);
+    expect(client.isConfigured()).toBe(true);
+  });
+
   it('heartbeat returns null when URL is empty (soft fail)', async () => {
     const client = makeClient({ CONTROL_PLANE_URL: '' });
     await expect(client.heartbeat(HEARTBEAT_PAYLOAD)).resolves.toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
-  it('listPlugins returns null when URL is unset', async () => {
-    const client = makeClient({});
+  it('listPlugins returns null when URL is explicitly empty', async () => {
+    const client = makeClient({ CONTROL_PLANE_URL: '' });
     await expect(client.listPlugins()).resolves.toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });

@@ -53,10 +53,11 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0041](0041-contact-custom-fields.md) | Contact custom fields (`metadata.custom` + `jsonb_set`) and JSON CSV import | Accepted |
 | [0042](0042-update-checks-use-github-releases.md) | Update checks use GitHub Releases (baked `APP_VERSION`), not Docker Hub | Accepted |
 | [0043](0043-volume-plugin-vue-web-hot-load.md) | Volume plugin Vue web hot-load via `dist/web/entry.js` (supersedes 0036 `./web` ban) | Accepted |
-| [0044](0044-control-plane-telemetry-and-marketplace-client.md) | Control Plane client: telemetry, marketplace catalog, npm install (partly supersedes 0030, 0032, 0034) | Accepted |
+| [0044](0044-control-plane-telemetry-and-marketplace-client.md) | Control Plane client: telemetry, marketplace catalog, npm install (partly supersedes 0030, 0032, 0034) | Accepted — default URL amended by [0051](0051-control-plane-url-defaults-to-ctrl-bearly-pro.md) |
 | [0045](0045-local-checkout-plugins-preferred-over-marketplace.md) | `KHIRBY_PLUGINS_LOCAL` prefers `crm-plugin-*` checkouts over Marketplace unpacks | Accepted |
 | [0046](0046-one-instance-secrets-key.md) | One instance AES key (`KHIRBY_SECRETS_KEY`) for mailbox and plugin secrets | Accepted |
 | [0047](0047-knowledge-context-token.md) | Generic `KNOWLEDGE_CONTEXT` token; AI Compose does not know Pokelo | Accepted — Ask MCP proxy in [0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) |
 | [0048](0048-core-resolves-volume-plugin-tokens-at-call-time.md) | Core resolves volume-plugin host tokens at call time, not constructor inject | Accepted — helper on plugin-host; Compose call-time in [0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) |
 | [0049](0049-ask-khirby-reasoning-uses-responses-api.md) | Ask Khirby: tools + reasoning use `/responses`, not `reasoning_effort: none` | Accepted |
 | [0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) | Ask Khirby proxies full Pokelo MCP tools; Compose keeps `fetchContext` on same client | Accepted |
+| [0051](0051-control-plane-url-defaults-to-ctrl-bearly-pro.md) | Unset `CONTROL_PLANE_URL` defaults to `https://ctrl.bearly.pro` (amends 0044) | Accepted |

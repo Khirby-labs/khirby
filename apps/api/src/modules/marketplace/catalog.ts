@@ -7,8 +7,9 @@
  * every test, and then be missing in production. As a module it compiles into
  * `dist` with the rest of the code.
  *
- * Live entries come from the Control Plane when `CONTROL_PLANE_URL` is set
- * (MarketplaceCatalogService). This module keeps the shared shape + empty fallback.
+ * Live entries come from the Control Plane (default `https://ctrl.bearly.pro`,
+ * override or empty `CONTROL_PLANE_URL` — ADR-0051). This module keeps the
+ * shared shape + empty fallback used when the client is unconfigured.
  */
 
 /**
