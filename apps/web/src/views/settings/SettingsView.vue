@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
+  <div class="flex w-full flex-col gap-6 lg:flex-row lg:items-start lg:gap-8">
     <div class="max-w-lg min-w-0 flex-1 space-y-6">
       <div class="crm-panel p-5 space-y-3">
         <h3 class="text-sm font-medium text-text-secondary">
