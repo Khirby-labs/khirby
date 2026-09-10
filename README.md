@@ -3,7 +3,7 @@
 Self-hosted, single-tenant CRM — NestJS API, Vue 3 SPA, PostgreSQL, Redis, plugin host.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
-[![Node 22+](https://img.shields.io/badge/Node-22%2B-green.svg)](https://nodejs.org/)
+[![Node 24+](https://img.shields.io/badge/Node-24%2B-green.svg)](https://nodejs.org/)
 [![pnpm 11](https://img.shields.io/badge/pnpm-11-blue.svg)](https://pnpm.io/)
 [![Docker Hub](https://img.shields.io/badge/Docker-bearlypro%2Fkhirby-blue.svg)](https://hub.docker.com/r/bearlypro/khirby)
 
@@ -32,7 +32,7 @@ Production image: **`bearlypro/khirby:latest`** — [self-hosted guide](https://
 | Monorepo | pnpm workspaces |
 | Tests | Jest (API) + Vitest (web) |
 
-Requires **Node 22+** and **pnpm 11** (`packageManager` in root `package.json`).
+Requires **Node 24+** and **pnpm 11** (`packageManager` in root `package.json`).
 
 ## Environment
 
