@@ -7,7 +7,7 @@ import {
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { MarketplaceService } from './marketplace.service';
+import { MarketplaceService, pickCompatiblePluginVersion } from './marketplace.service';
 import { CATALOG_FORMAT_VERSION, CatalogDocument, CatalogEntry } from './catalog';
 import { appendInstanceManifest } from '../plugins/instance-plugins.loader';
 
@@ -65,6 +65,10 @@ function makeRegistry(options: {
     installFromDirectory:
       options.installFromDirectory ??
       jest.fn().mockResolvedValue({ name: 'crm_a', status: 'installed' }),
+    upgradeFromDirectory:
+      (options as { upgradeFromDirectory?: jest.Mock }).upgradeFromDirectory ??
+      jest.fn().mockResolvedValue({ name: 'crm_a', version: '1.2.0' }),
+    reloadFromDirectory: jest.fn().mockResolvedValue({ name: 'crm_a', status: 'reloaded' }),
     findAll: options.findAll ?? jest.fn().mockResolvedValue([]),
     findByName: options.findByName ?? jest.fn().mockResolvedValue(null),
     instanceDir: () => '/tmp/khirby-no-plugin-volume',
@@ -88,9 +92,15 @@ function makeInstaller(overrides: Record<string, unknown> = {}) {
       directory: 'plugin-a',
       absDir: '/tmp/plugins/plugin-a',
       packageName: '@khirby/plugin-a',
+      commit: jest.fn(),
+      rollback: jest.fn(),
     }),
     ...overrides,
   } as any;
+}
+
+function makeConfig(appVersion = '1.2.0') {
+  return { get: jest.fn((key: string) => (key === 'APP_VERSION' ? appVersion : undefined)) } as any;
 }
 
 function makeIdentity() {
@@ -118,6 +128,7 @@ function makeService(parts: {
   registry?: ReturnType<typeof makeRegistry>;
   cp?: ReturnType<typeof makeCp>;
   installer?: ReturnType<typeof makeInstaller>;
+  appVersion?: string;
 }) {
   return new MarketplaceService(
     makeCatalog(parts.catalog ?? catalogWith([])),
@@ -125,6 +136,7 @@ function makeService(parts: {
     parts.cp ?? makeCp(),
     parts.installer ?? makeInstaller(),
     makeIdentity(),
+    makeConfig(parts.appVersion),
   );
 }
 
@@ -331,6 +343,7 @@ describe('MarketplaceService.list', () => {
       makeCp(),
       makeInstaller(),
       makeIdentity(),
+      makeConfig(),
     );
 
     expect((await svc.list())[0].status).toBe('available');
@@ -411,10 +424,14 @@ describe('MarketplaceService.install', () => {
     const findAll = jest
       .fn()
       .mockResolvedValue([{ name: 'crm_a', enabled: true, version: '1.0.0' }]);
+    const commit = jest.fn();
+    const rollback = jest.fn();
     const extract = jest.fn().mockResolvedValue({
       directory: 'plugin-a',
       absDir: '/tmp/khirby-no-such-plugin-dir',
       packageName: '@khirby/plugin-a',
+      commit,
+      rollback,
     });
     const getPlugin = jest.fn().mockResolvedValue({
       slug: 'a',
@@ -447,6 +464,8 @@ describe('MarketplaceService.install', () => {
       allowReservedScaffoldDirs: true,
     });
     expect(result).toEqual(expect.objectContaining({ name: 'crm_a' }));
+    expect(commit).toHaveBeenCalled();
+    expect(rollback).not.toHaveBeenCalled();
   });
 
   it('refuses an unknown slug without asking the installer', async () => {
@@ -558,6 +577,248 @@ describe('MarketplaceService.install', () => {
     await expect(svc.install('a')).rejects.toThrow(ServiceUnavailableException);
     expect(extract).not.toHaveBeenCalled();
   });
+
+  it('installs the newest approved version compatible with APP_VERSION, not CP latestVersion', async () => {
+    const compatible = {
+      ...versionMeta,
+      version: '1.5.0',
+      minimumProductVersion: '1.2.0',
+      publishedAt: '2026-02-01T00:00:00.000Z',
+      approvedAt: '2026-02-02T00:00:00.000Z',
+    };
+    const tooNew = {
+      ...versionMeta,
+      version: '2.0.0',
+      minimumProductVersion: '1.3.0',
+      publishedAt: '2026-03-01T00:00:00.000Z',
+      approvedAt: '2026-03-02T00:00:00.000Z',
+    };
+    const extract = jest.fn().mockResolvedValue({
+      directory: 'plugin-a',
+      absDir: '/tmp/khirby-no-such-plugin-dir',
+      packageName: '@khirby/plugin-a',
+      commit: jest.fn(),
+      rollback: jest.fn(),
+    });
+    const getPlugin = jest.fn().mockResolvedValue({
+      slug: 'a',
+      name: 'A',
+      description: null,
+      packageName: '@khirby/plugin-a',
+      publisherName: 'Khirby',
+      verified: true,
+      repositoryUrl: null,
+      latestVersion: '2.0.0',
+      permissions: null,
+    });
+
+    const svc = makeService({
+      appVersion: '1.2.0',
+      registry: makeRegistry({
+        loaded: [],
+        installFromDirectory: jest.fn().mockResolvedValue({ name: 'crm_a', status: 'installed' }),
+        findAll: jest.fn().mockResolvedValue([{ name: 'crm_a', enabled: true, version: '1.5.0' }]),
+      }),
+      cp: makeCp({
+        getPlugin,
+        getPluginVersion: jest.fn().mockResolvedValue(tooNew),
+        getPluginVersions: jest.fn().mockResolvedValue([compatible, tooNew]),
+      }),
+      installer: makeInstaller({ extract }),
+    });
+
+    await svc.install('a');
+    expect(extract).toHaveBeenCalledWith({
+      packageName: '@khirby/plugin-a',
+      version: '1.5.0',
+      checksum: 'sha512-abc',
+    });
+  });
+
+  it('refuses install when every approved version needs a newer Khirby', async () => {
+    const extract = jest.fn();
+    const tooNew = {
+      ...versionMeta,
+      version: '2.0.0',
+      minimumProductVersion: '1.3.0',
+    };
+    const svc = makeService({
+      appVersion: '1.2.0',
+      registry: makeRegistry({ loaded: [] }),
+      cp: makeCp({
+        getPlugin: jest.fn().mockResolvedValue({
+          slug: 'a',
+          name: 'A',
+          description: null,
+          packageName: '@khirby/plugin-a',
+          publisherName: 'Khirby',
+          verified: true,
+          repositoryUrl: null,
+          latestVersion: '2.0.0',
+          permissions: null,
+        }),
+        getPluginVersion: jest.fn().mockResolvedValue(tooNew),
+        getPluginVersions: jest.fn().mockResolvedValue([tooNew]),
+      }),
+      installer: makeInstaller({ extract }),
+    });
+
+    await expect(svc.install('a')).rejects.toThrow(BadRequestException);
+    expect(extract).not.toHaveBeenCalled();
+  });
+
+  it('rolls back the unpack when installFromDirectory throws', async () => {
+    const commit = jest.fn();
+    const rollback = jest.fn();
+    const extract = jest.fn().mockResolvedValue({
+      directory: 'plugin-a',
+      absDir: '/tmp/khirby-no-such-plugin-dir',
+      packageName: '@khirby/plugin-a',
+      commit,
+      rollback,
+    });
+    const svc = makeService({
+      registry: makeRegistry({
+        loaded: [],
+        installFromDirectory: jest.fn().mockRejectedValue(new Error('hot-load failed')),
+      }),
+      cp: makeCp({
+        getPlugin: jest.fn().mockResolvedValue({
+          slug: 'a',
+          name: 'A',
+          description: null,
+          packageName: '@khirby/plugin-a',
+          publisherName: 'Khirby',
+          verified: true,
+          repositoryUrl: null,
+          latestVersion: '1.0.0',
+          permissions: null,
+        }),
+        getPluginVersion: jest.fn().mockResolvedValue(versionMeta),
+      }),
+      installer: makeInstaller({ extract }),
+    });
+
+    await expect(svc.install('a')).rejects.toThrow('hot-load failed');
+    expect(rollback).toHaveBeenCalled();
+    expect(commit).not.toHaveBeenCalled();
+  });
+});
+
+describe('MarketplaceService.update', () => {
+  const pluginCard = {
+    slug: 'a',
+    name: 'A',
+    description: null,
+    packageName: '@khirby/plugin-a',
+    publisherName: 'Khirby',
+    verified: true,
+    repositoryUrl: null,
+    latestVersion: '1.2.0',
+    permissions: null,
+  };
+  const versionMeta = {
+    version: '1.2.0',
+    packageName: '@khirby/plugin-a',
+    checksum: 'sha512-abc',
+    minimumProductVersion: null,
+    manifest: { id: 'crm_a' },
+    permissions: null,
+    publishedAt: '2026-01-01T00:00:00.000Z',
+    approvedAt: '2026-01-02T00:00:00.000Z',
+  };
+
+  it('commits the swap after upgradeFromDirectory succeeds', async () => {
+    const commit = jest.fn();
+    const rollback = jest.fn();
+    const extract = jest.fn().mockResolvedValue({
+      directory: 'plugin-a',
+      absDir: '/tmp/plugins/plugin-a',
+      packageName: '@khirby/plugin-a',
+      commit,
+      rollback,
+    });
+    const upgradeFromDirectory = jest.fn().mockResolvedValue({ name: 'crm_a', version: '1.2.0' });
+    const svc = makeService({
+      registry: {
+        ...makeRegistry({ loaded: ['crm_a'] }),
+        findByName: jest.fn().mockResolvedValue(installedRow('crm_a')),
+        upgradeFromDirectory,
+      },
+      cp: makeCp({
+        getPlugin: jest.fn().mockResolvedValue(pluginCard),
+        getPluginVersion: jest.fn().mockResolvedValue(versionMeta),
+      }),
+      installer: makeInstaller({ extract }),
+    });
+
+    await svc.update('a');
+    expect(upgradeFromDirectory).toHaveBeenCalledWith('plugin-a', '@khirby/plugin-a', {
+      allowReservedScaffoldDirs: true,
+    });
+    expect(commit).toHaveBeenCalled();
+    expect(rollback).not.toHaveBeenCalled();
+  });
+
+  it('rolls back files and reloads the previous package when upgradeFromDirectory throws', async () => {
+    const commit = jest.fn();
+    const rollback = jest.fn();
+    const extract = jest.fn().mockResolvedValue({
+      directory: 'plugin-a',
+      absDir: '/tmp/plugins/plugin-a',
+      packageName: '@khirby/plugin-a',
+      commit,
+      rollback,
+    });
+    const reloadFromDirectory = jest.fn().mockResolvedValue({ name: 'crm_a', status: 'reloaded' });
+    const svc = makeService({
+      registry: {
+        ...makeRegistry({ loaded: ['crm_a'] }),
+        findByName: jest.fn().mockResolvedValue(installedRow('crm_a', { version: '1.1.0' })),
+        upgradeFromDirectory: jest.fn().mockRejectedValue(new Error('migration failed')),
+        reloadFromDirectory,
+      },
+      cp: makeCp({
+        getPlugin: jest.fn().mockResolvedValue(pluginCard),
+        getPluginVersion: jest.fn().mockResolvedValue(versionMeta),
+      }),
+      installer: makeInstaller({ extract }),
+    });
+
+    await expect(svc.update('a')).rejects.toThrow('migration failed');
+    expect(rollback).toHaveBeenCalled();
+    expect(commit).not.toHaveBeenCalled();
+    expect(reloadFromDirectory).toHaveBeenCalledWith('plugin-a', {
+      allowReservedScaffoldDirs: true,
+    });
+  });
+});
+
+describe('pickCompatiblePluginVersion', () => {
+  const v15 = {
+    version: '1.5.0',
+    packageName: '@khirby/plugin-a',
+    checksum: 'sha512-a',
+    minimumProductVersion: '1.2.0',
+    manifest: null,
+    permissions: null,
+    publishedAt: '2026-02-01T00:00:00.000Z',
+    approvedAt: '2026-02-02T00:00:00.000Z',
+  };
+  const v20 = {
+    version: '2.0.0',
+    packageName: '@khirby/plugin-a',
+    checksum: 'sha512-b',
+    minimumProductVersion: '1.3.0',
+    manifest: null,
+    permissions: null,
+    publishedAt: '2026-03-01T00:00:00.000Z',
+    approvedAt: '2026-03-02T00:00:00.000Z',
+  };
+
+  it('skips a newer latest that requires a higher product version', () => {
+    expect(pickCompatiblePluginVersion([v15, v20], '1.2.0', '2.0.0')?.version).toBe('1.5.0');
+  });
 });
 
 describe('MarketplaceService.submit', () => {
@@ -576,6 +837,7 @@ describe('MarketplaceService.submit', () => {
       makeCp({ submitPlugin }),
       makeInstaller(),
       identity,
+      makeConfig(),
     );
 
     const result = await svc.submit({
@@ -600,6 +862,7 @@ describe('MarketplaceService.submit', () => {
       makeCp({ isConfigured: () => false }),
       makeInstaller(),
       makeIdentity(),
+      makeConfig(),
     );
 
     await expect(svc.submit({ slug: 'x', name: 'X', packageName: '@x/y' })).rejects.toThrow(

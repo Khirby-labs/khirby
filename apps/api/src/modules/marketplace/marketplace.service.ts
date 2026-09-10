@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AppException } from '../../core/errors/app-exception';
@@ -12,8 +13,12 @@ import { InstallationIdentityService } from '../control-plane/installation-ident
 import { PluginRegistryService } from '../plugins/plugin-registry.service';
 import { CatalogEntry, derivePluginNameFromPackage } from './catalog';
 import { findMarketplaceLocalDirForPlugin } from '../plugins/instance-plugins.loader';
-import { MarketplaceCatalogService } from './marketplace-catalog.service';
-import { assertWebBundlePresent, PluginPackageInstaller } from './plugin-package.installer';
+import { isSemverish, MarketplaceCatalogService } from './marketplace-catalog.service';
+import {
+  assertWebBundlePresent,
+  type PackageInstallResult,
+  PluginPackageInstaller,
+} from './plugin-package.installer';
 // Relative, not '@khirby/types': `nest build` is plain tsc and the bare specifier
 // would not survive into the build output (INCIDENTS 2026-07-24).
 import type { MarketplaceCategory, MarketplacePlugin } from '../../../../../packages/types/src';
@@ -38,6 +43,44 @@ export function isMarketplaceUpdateAvailable(
   const b = semver.coerce(latest.trim());
   if (!a || !b) return false;
   return semver.gt(b, a);
+}
+
+/**
+ * Whether this Khirby build may install a plugin version.
+ * Empty / `dev` APP_VERSION does not filter (same rule as catalog `compatibleWith`).
+ */
+export function isCompatibleWithProduct(
+  minimumProductVersion: string | null | undefined,
+  appVersion: string,
+): boolean {
+  if (!minimumProductVersion?.trim()) return true;
+  if (!isSemverish(appVersion)) return true;
+  const semver = loadSemver();
+  const min = semver.coerce(minimumProductVersion.trim());
+  const app = semver.coerce(appVersion.trim());
+  if (!min || !app) return true;
+  return semver.gte(app, min);
+}
+
+/** Approved versions whose `minimumProductVersion` is satisfied by this build. */
+export function pickCompatiblePluginVersion(
+  versions: MarketplacePluginVersion[],
+  appVersion: string,
+  latestHint?: string | null,
+): MarketplacePluginVersion | null {
+  const compatible = versions.filter(
+    (v) => v.approvedAt && isCompatibleWithProduct(v.minimumProductVersion, appVersion),
+  );
+  if (!compatible.length) return null;
+  if (latestHint) {
+    const hinted = compatible.find((v) => v.version === latestHint);
+    if (hinted) return hinted;
+  }
+  return compatible.slice().sort((a, b) => {
+    const byDate = String(b.publishedAt ?? '').localeCompare(String(a.publishedAt ?? ''));
+    if (byDate) return byDate;
+    return b.version.localeCompare(a.version, undefined, { numeric: true });
+  })[0]!;
 }
 
 /**
@@ -75,6 +118,7 @@ export class MarketplaceService {
     private readonly controlPlane: ControlPlaneClient,
     private readonly installer: PluginPackageInstaller,
     private readonly identity: InstallationIdentityService,
+    private readonly config: ConfigService,
   ) {}
 
   /**
@@ -193,21 +237,27 @@ export class MarketplaceService {
       checksum: version.checksum,
     });
 
-    assertWebBundlePresent(extracted.absDir);
+    try {
+      assertWebBundlePresent(extracted.absDir);
 
-    const result = await this.registry.installFromDirectory(
-      extracted.directory,
-      extracted.packageName,
-      { allowReservedScaffoldDirs: true },
-    );
+      const result = await this.registry.installFromDirectory(
+        extracted.directory,
+        extracted.packageName,
+        { allowReservedScaffoldDirs: true },
+      );
+      extracted.commit();
 
-    const all = await this.registry.findAll();
-    const installed = all.find((p) => p.name === result.name);
-    if (installed) return installed;
+      const all = await this.registry.findAll();
+      const installed = all.find((p) => p.name === result.name);
+      if (installed) return installed;
 
-    const row = await this.registry.findByName(result.name);
-    if (!row) throw AppException.notFound('plugin', result.name);
-    return row;
+      const row = await this.registry.findByName(result.name);
+      if (!row) throw AppException.notFound('plugin', result.name);
+      return row;
+    } catch (err) {
+      extracted.rollback();
+      throw err;
+    }
   }
 
   /**
@@ -231,11 +281,20 @@ export class MarketplaceService {
       checksum: version.checksum,
     });
 
-    assertWebBundlePresent(extracted.absDir);
-
-    return this.registry.upgradeFromDirectory(extracted.directory, extracted.packageName, {
-      allowReservedScaffoldDirs: true,
-    });
+    try {
+      assertWebBundlePresent(extracted.absDir);
+      const result = await this.registry.upgradeFromDirectory(
+        extracted.directory,
+        extracted.packageName,
+        { allowReservedScaffoldDirs: true },
+      );
+      extracted.commit();
+      return result;
+    } catch (err) {
+      extracted.rollback();
+      await this.restoreRuntimeAfterFailedUpgrade(extracted);
+      throw err;
+    }
   }
 
   async submit(body: Omit<SubmitPlugin, 'installationId'>): Promise<SubmitPluginResponse> {
@@ -251,6 +310,20 @@ export class MarketplaceService {
     });
     if (!result) throw AppException.upstreamFailed('controlPlane');
     return result;
+  }
+
+  private async restoreRuntimeAfterFailedUpgrade(extracted: PackageInstallResult): Promise<void> {
+    try {
+      await this.registry.reloadFromDirectory(extracted.directory, {
+        allowReservedScaffoldDirs: true,
+      });
+    } catch {
+      // Files already restored; in-process reload is best-effort until restart.
+    }
+  }
+
+  private appVersion(): string {
+    return (this.config.get<string>('APP_VERSION') ?? '').trim();
   }
 
   private async resolveInstallTarget(slugOrName: string): Promise<{
@@ -298,9 +371,12 @@ export class MarketplaceService {
     slug: string,
     latestVersion: string | null,
   ): Promise<MarketplacePluginVersion | null> {
+    const appVersion = this.appVersion();
     if (latestVersion) {
       const one = await this.controlPlane.getPluginVersion(slug, latestVersion);
-      if (one?.approvedAt) return one;
+      if (one?.approvedAt && isCompatibleWithProduct(one.minimumProductVersion, appVersion)) {
+        return one;
+      }
     }
     const versions = await this.controlPlane.getPluginVersions(slug);
     if (versions == null) throw AppException.upstreamFailed('controlPlane');
@@ -309,11 +385,13 @@ export class MarketplaceService {
     if (!approved.length) {
       throw AppException.notFound('plugin', slug);
     }
-    return approved.slice().sort((a, b) => {
-      const byDate = String(b.publishedAt ?? '').localeCompare(String(a.publishedAt ?? ''));
-      if (byDate) return byDate;
-      return b.version.localeCompare(a.version, undefined, { numeric: true });
-    })[0]!;
+    const picked = pickCompatiblePluginVersion(approved, appVersion, latestVersion);
+    if (!picked) {
+      throw AppException.badRequest('No plugin version compatible with this Khirby release', {
+        code: 'incompatible_plugin',
+      });
+    }
+    return picked;
   }
 
   private card(

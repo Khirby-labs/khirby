@@ -1,6 +1,6 @@
 # 0044 — Control Plane client: telemetry, marketplace catalog, npm install
 
-- **Status:** Accepted — default URL amended by [0051](0051-control-plane-url-defaults-to-ctrl-bearly-pro.md)
+- **Status:** Accepted — default URL amended by [0051](0051-control-plane-url-defaults-to-ctrl-bearly-pro.md); Marketplace tarball contract amended by [0052](0052-marketplace-plugins-are-self-contained-tarballs.md)
 - **Date:** 2026-09-09
 - **Deciders:** Patryk
 

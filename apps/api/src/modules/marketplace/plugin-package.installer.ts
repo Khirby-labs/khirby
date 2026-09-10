@@ -33,6 +33,16 @@ export type PackageInstallResult = {
   directory: string;
   absDir: string;
   packageName: string;
+  /**
+   * Drop the previous-package backup. Call only after registry
+   * install/upgrade (activate + DB) succeeded.
+   */
+  commit: () => void;
+  /**
+   * Restore the previous package (or delete a first-install tree).
+   * Call when registry install/upgrade throws after the swap.
+   */
+  rollback: () => void;
 };
 
 /** npm package name (optional @scope/) — rejects URLs and path segments. */
@@ -163,16 +173,15 @@ export class PluginPackageInstaller {
         }
         throw swapErr;
       }
-      if (backup && existsSync(backup)) {
-        rmSync(backup, { recursive: true, force: true });
-      }
 
       this.logger.log(`Extracted ${spec} → plugins/${dirName}`);
-      return {
+      return makeSwapHandle({
         directory: dirName,
         absDir,
         packageName: incomingName,
-      };
+        volumeDir,
+        backup,
+      });
     } catch (err) {
       if (err instanceof HttpException) throw err;
       this.logger.warn(
@@ -185,6 +194,48 @@ export class PluginPackageInstaller {
       }
     }
   }
+}
+
+function makeSwapHandle(input: {
+  directory: string;
+  absDir: string;
+  packageName: string;
+  volumeDir: string;
+  backup: string | null;
+}): PackageInstallResult {
+  let settled = false;
+  const { directory, absDir, packageName, volumeDir, backup } = input;
+
+  return {
+    directory,
+    absDir,
+    packageName,
+    commit: () => {
+      if (settled) return;
+      settled = true;
+      if (backup && existsSync(backup)) {
+        rmSync(backup, { recursive: true, force: true });
+      }
+    },
+    rollback: () => {
+      if (settled) return;
+      settled = true;
+      if (backup && existsSync(backup)) {
+        const failed = join(volumeDir, `.failed-${directory}-${process.pid}-${Date.now()}`);
+        if (existsSync(absDir)) {
+          renameSync(absDir, failed);
+        }
+        renameSync(backup, absDir);
+        if (existsSync(failed)) {
+          rmSync(failed, { recursive: true, force: true });
+        }
+        return;
+      }
+      if (existsSync(absDir)) {
+        rmSync(absDir, { recursive: true, force: true });
+      }
+    },
+  };
 }
 
 function readPackageJson(dir: string): Record<string, unknown> {

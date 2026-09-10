@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync, readFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  writeFileSync,
+  rmSync,
+  existsSync,
+  readFileSync,
+  readdirSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { BadRequestException } from '@nestjs/common';
@@ -220,6 +228,7 @@ describe('PluginPackageInstaller.extract', () => {
     expect(result.directory).toBe('khirby__plugin-demo');
     expect(result.packageName).toBe('@khirby/plugin-demo');
     expect(existsSync(join(volume, 'khirby__plugin-demo', 'package.json'))).toBe(true);
+    result.commit();
   });
 
   it('rejects on integrity mismatch when checkData returns false', async () => {
@@ -264,5 +273,69 @@ describe('PluginPackageInstaller.extract', () => {
     expect(JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')).name).toBe(
       '@khirby/plugin-demo',
     );
+  });
+
+  it('keeps a backup until commit, and rollback restores the previous package', async () => {
+    const target = join(volume, 'khirby__plugin-demo');
+    mkdirSync(target, { recursive: true });
+    writeFileSync(
+      join(target, 'package.json'),
+      JSON.stringify({ name: '@khirby/plugin-demo', version: '1.1.0' }),
+    );
+    writeFileSync(join(target, 'KEEP.txt'), 'old');
+
+    extract.mockImplementation(async (_spec: string, dest: string) => {
+      writeFileSync(
+        join(dest, 'package.json'),
+        JSON.stringify({ name: '@khirby/plugin-demo', version: '1.2.0' }),
+      );
+      writeFileSync(join(dest, 'NEW.txt'), 'new');
+    });
+
+    const installer = new PluginPackageInstaller();
+    const handle = await installer.extract({
+      packageName: '@khirby/plugin-demo',
+      version: '1.2.0',
+      checksum: 'sha512-deadbeef',
+    });
+
+    expect(existsSync(join(target, 'NEW.txt'))).toBe(true);
+    expect(existsSync(join(target, 'KEEP.txt'))).toBe(false);
+    const backups = readdirSync(volume).filter((n) => n.startsWith('.prev-'));
+    expect(backups).toHaveLength(1);
+
+    handle.rollback();
+
+    expect(existsSync(join(target, 'KEEP.txt'))).toBe(true);
+    expect(existsSync(join(target, 'NEW.txt'))).toBe(false);
+    expect(JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')).version).toBe('1.1.0');
+    expect(readdirSync(volume).filter((n) => n.startsWith('.prev-'))).toHaveLength(0);
+  });
+
+  it('commit deletes the previous-package backup after a successful swap', async () => {
+    const target = join(volume, 'khirby__plugin-demo');
+    mkdirSync(target, { recursive: true });
+    writeFileSync(
+      join(target, 'package.json'),
+      JSON.stringify({ name: '@khirby/plugin-demo', version: '1.1.0' }),
+    );
+
+    extract.mockImplementation(async (_spec: string, dest: string) => {
+      writeFileSync(
+        join(dest, 'package.json'),
+        JSON.stringify({ name: '@khirby/plugin-demo', version: '1.2.0' }),
+      );
+    });
+
+    const installer = new PluginPackageInstaller();
+    const handle = await installer.extract({
+      packageName: '@khirby/plugin-demo',
+      version: '1.2.0',
+      checksum: 'sha512-deadbeef',
+    });
+    handle.commit();
+
+    expect(JSON.parse(readFileSync(join(target, 'package.json'), 'utf8')).version).toBe('1.2.0');
+    expect(readdirSync(volume).filter((n) => n.startsWith('.prev-'))).toHaveLength(0);
   });
 });

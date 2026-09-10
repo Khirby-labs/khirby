@@ -274,8 +274,12 @@ Authors install with `pnpm add @khirby/plugin-sdk @khirby/plugin-host`
 
 1. Build TypeScript for npm (`tsc`); ship `dist/` + `.vue` source if Vite should compile UI.
 2. `peerDependencies`: `@khirby/plugin-sdk`, `@khirby/plugin-host`, Nest/Vue as needed.
-3. Publish under `@khirby/*` (or your scope) with keyword `khirby-plugin`.
-4. Document events used, config keys, and required CRM version / host semver.
+3. **Marketplace tarball (ADR-0052):** bundle every other runtime dependency into
+   the published package. Unpack does **not** run `npm install` on the instance.
+   Manifest / image plugins (`pnpm sync:plugins`) still resolve through the host
+   lockfile — that path is not Marketplace.
+4. Publish under `@khirby/*` (or your scope) with keyword `khirby-plugin`.
+5. Document events used, config keys, and required CRM version / host semver.
 
 Public registry listing is still informal (README / npm search). Do not edit
 `app.module.ts` to register plugins — use the manifest.

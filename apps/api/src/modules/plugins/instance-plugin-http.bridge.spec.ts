@@ -6,6 +6,7 @@ import {
   Get,
   Injectable,
   Module,
+  Param,
   Patch,
   Post,
 } from '@nestjs/common';
@@ -17,7 +18,11 @@ import {
   RequirePermission,
   RequirePluginEnabled,
 } from '../../../../../packages/plugin-host/src';
-import { InstancePluginHttpBridge, pathFromRequestUrl } from './instance-plugin-http.bridge';
+import {
+  InstancePluginHttpBridge,
+  matchPath,
+  pathFromRequestUrl,
+} from './instance-plugin-http.bridge';
 
 @Injectable()
 class StatsService {
@@ -78,6 +83,22 @@ class CampaignsController {
 
 @Module({ controllers: [CampaignsController] })
 class CampaignsNestModule {}
+
+@Controller('plugins/demo-items')
+class ItemsController {
+  @Get('meta')
+  meta() {
+    return { meta: true };
+  }
+
+  @Get(':id')
+  one(@Param('id') id: string) {
+    return { id };
+  }
+}
+
+@Module({ controllers: [ItemsController] })
+class ItemsNestModule {}
 
 describe('InstancePluginHttpBridge', () => {
   it('registers and dispatches GET handlers from a lazy-loaded module', async () => {
@@ -231,5 +252,30 @@ describe('InstancePluginHttpBridge', () => {
       'plugins/ai-compose/settings',
     );
     expect(pathFromRequestUrl('/plugins/mcp/token')).toBe('plugins/mcp/token');
+  });
+
+  it('dispatches @Get(":id") and prefers a static sibling over the param', async () => {
+    const registry = { isEnabled: jest.fn().mockReturnValue(true), findByName: jest.fn() };
+    const moduleRef = await Test.createTestingModule({
+      imports: [ItemsNestModule],
+      providers: [InstancePluginHttpBridge, { provide: PLUGIN_REGISTRY, useValue: registry }],
+    }).compile();
+    await moduleRef.init();
+
+    const bridge = moduleRef.get(InstancePluginHttpBridge);
+    bridge.registerModuleRoutes(ItemsNestModule, 'crm_demo_items');
+
+    await expect(bridge.dispatch('GET', 'plugins/demo-items/123')).resolves.toEqual({ id: '123' });
+    await expect(bridge.dispatch('GET', 'plugins/demo-items/meta')).resolves.toEqual({
+      meta: true,
+    });
+  });
+});
+
+describe('matchPath', () => {
+  it('captures :id segments and rejects length mismatches', () => {
+    expect(matchPath('plugins/foo/items/:id', 'plugins/foo/items/123')).toEqual({ id: '123' });
+    expect(matchPath('plugins/foo/items/:id', 'plugins/foo/items')).toBeNull();
+    expect(matchPath('plugins/foo/settings', 'plugins/foo/settings')).toEqual({});
   });
 });

@@ -801,9 +801,14 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
    */
   async reloadFromDirectory(
     localDir: string,
+    opts?: { allowReservedScaffoldDirs?: boolean },
   ): Promise<{ name: string; status: 'reloaded' | 'not_loaded' }> {
-    const resolved = this.resolveExistingDir(localDir);
-    const absDir = pluginVolumeRoot(this.instanceDir(), resolved);
+    const resolved = opts?.allowReservedScaffoldDirs
+      ? this.resolveDirAllowingReserved(localDir)
+      : this.resolveExistingDir(localDir);
+    const absDir = pluginVolumeRoot(this.instanceDir(), resolved, {
+      allowReservedScaffoldDirs: opts?.allowReservedScaffoldDirs,
+    });
     if (!existsSync(join(absDir, 'package.json'))) {
       throw AppException.notFound('plugin', resolved);
     }

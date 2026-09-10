@@ -51,6 +51,12 @@ type RouteEntry = {
   handler: (ctx: DispatchContext) => Promise<unknown>;
 };
 
+type StoredRoute = {
+  method: string;
+  pattern: string;
+  entry: RouteEntry;
+};
+
 const METHOD_NAME: Record<number, string> = {
   [RequestMethod.GET]: 'GET',
   [RequestMethod.POST]: 'POST',
@@ -70,7 +76,7 @@ const volumeValidationPipe = new ValidationPipe({
 /** Fastify 5 forbids route() after listen — hot-loaded plugins register here instead. */
 @Injectable()
 export class InstancePluginHttpBridge {
-  private readonly routes = new Map<string, RouteEntry>();
+  private routes: StoredRoute[] = [];
   private readonly container: NestContainer;
   private readonly scanner = new MetadataScanner();
 
@@ -106,14 +112,20 @@ export class InstancePluginHttpBridge {
 
         const methodPath = Reflect.getMetadata(PATH_METADATA, handlerRef);
         const fullPath = joinRoutePath(controllerPath, methodPath);
-        const key = routeKey(verb, fullPath);
+        const pattern = normalizePath(fullPath);
         const ctrlType = metatype as Type<unknown>;
 
-        this.routes.set(key, {
-          pluginName,
-          metatype: ctrlType,
-          methodName,
-          handler: (ctx) => invokeControllerMethod(instance, ctrlType, methodName, ctx, this.rbac),
+        this.routes = this.routes.filter((r) => !(r.method === verb && r.pattern === pattern));
+        this.routes.push({
+          method: verb,
+          pattern,
+          entry: {
+            pluginName,
+            metatype: ctrlType,
+            methodName,
+            handler: (ctx) =>
+              invokeControllerMethod(instance, ctrlType, methodName, ctx, this.rbac),
+          },
         });
         paths.push(`${verb} /api/${fullPath}`);
       }
@@ -127,8 +139,9 @@ export class InstancePluginHttpBridge {
   }
 
   async dispatch(method: string, path: string, req?: FastifyRequest): Promise<unknown> {
-    const entry = this.routes.get(routeKey(method, path));
-    if (!entry) throw new NotFoundException();
+    const matched = findMatchingRoute(this.routes, method, path);
+    if (!matched) throw new NotFoundException();
+    const { entry, params: pathParams } = matched;
 
     if (entry.pluginName) {
       const registry = this.registry();
@@ -145,7 +158,7 @@ export class InstancePluginHttpBridge {
     const ctx: DispatchContext = {
       body: req?.body,
       query: (req?.query ?? {}) as Record<string, unknown>,
-      params: (req?.params ?? {}) as Record<string, string>,
+      params: { ...((req?.params ?? {}) as Record<string, string>), ...pathParams },
       headers: (req?.headers ?? {}) as Record<string, unknown>,
       raw: req as FastifyRequest,
     };
@@ -157,9 +170,7 @@ export class InstancePluginHttpBridge {
   }
 
   unregisterPlugin(pluginName: string): void {
-    for (const [key, entry] of this.routes.entries()) {
-      if (entry.pluginName === pluginName) this.routes.delete(key);
-    }
+    this.routes = this.routes.filter((r) => r.entry.pluginName !== pluginName);
   }
 
   private findLoadedModule(moduleType: Type<unknown>): Module | undefined {
@@ -342,8 +353,50 @@ function isValidatableMetatype(metatype?: Type<unknown>): metatype is Type<unkno
   return !['String', 'Boolean', 'Number', 'Array', 'Object'].includes(metatype.name);
 }
 
-function routeKey(method: string, path: string): string {
-  return `${method.toUpperCase()}:${normalizePath(path)}`;
+/**
+ * Match a registered Nest path (possibly with `:id` segments) against a request path.
+ * Static segments must equal; `:name` captures the corresponding request segment.
+ */
+export function matchPath(pattern: string, path: string): Record<string, string> | null {
+  const a = normalizePath(pattern).split('/').filter(Boolean);
+  const b = normalizePath(path).split('/').filter(Boolean);
+  if (a.length !== b.length) return null;
+  const params: Record<string, string> = {};
+  for (let i = 0; i < a.length; i++) {
+    const part = a[i]!;
+    const value = b[i]!;
+    if (part.startsWith(':') && part.length > 1) {
+      params[part.slice(1)] = decodeURIComponent(value);
+    } else if (part !== value) {
+      return null;
+    }
+  }
+  return params;
+}
+
+function findMatchingRoute(
+  routes: StoredRoute[],
+  method: string,
+  path: string,
+): { entry: RouteEntry; params: Record<string, string> } | null {
+  const verb = method.toUpperCase();
+  const normalized = normalizePath(path);
+
+  const exact = routes.find((r) => r.method === verb && r.pattern === normalized);
+  if (exact) return { entry: exact.entry, params: {} };
+
+  const parametric: Array<{ entry: RouteEntry; params: Record<string, string>; statics: number }> =
+    [];
+  for (const r of routes) {
+    if (r.method !== verb || !r.pattern.includes(':')) continue;
+    const params = matchPath(r.pattern, normalized);
+    if (!params) continue;
+    const statics = r.pattern.split('/').filter((p) => p && !p.startsWith(':')).length;
+    parametric.push({ entry: r.entry, params, statics });
+  }
+  if (!parametric.length) return null;
+  parametric.sort((a, b) => b.statics - a.statics);
+  return { entry: parametric[0]!.entry, params: parametric[0]!.params };
 }
 
 function normalizePath(path: string): string {
