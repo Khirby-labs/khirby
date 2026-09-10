@@ -15,6 +15,8 @@ name: Publish npm packages
 #   payload-forms@0.1.0    — payload-forms only
 #
 # Required secret: NPM_TOKEN
+# Publish with the npm CLI (not `pnpm publish`): pnpm 11 tries OIDC first, and a
+# 404 trusted-publisher exchange then falls through to OTP on NODE_AUTH_TOKEN.
 
 on:
   push:
@@ -26,6 +28,20 @@ on:
       - 'forms-client@*'
       - 'forms-ui@*'
       - 'payload-forms@*'
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package (or set) to publish from the current branch
+        type: choice
+        default: plugin-host
+        options:
+          - plugin-host
+          - plugin-sdk
+          - khirby-plugins
+          - forms-client
+          - forms-ui
+          - payload-forms
+          - khirby-forms
 
 jobs:
   publish:
@@ -33,7 +49,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
 
     steps:
       - name: Checkout
@@ -55,51 +70,90 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build plugin-sdk
-        if: startsWith(github.ref_name, 'khirby-plugins@') || startsWith(github.ref_name, 'plugin-sdk@') || startsWith(github.ref_name, 'plugin-host@')
+        if: >-
+          startsWith(github.ref_name, 'khirby-plugins@') ||
+          startsWith(github.ref_name, 'plugin-sdk@') ||
+          startsWith(github.ref_name, 'plugin-host@') ||
+          (github.event_name == 'workflow_dispatch' && contains(fromJSON('["plugin-host","plugin-sdk","khirby-plugins"]'), github.event.inputs.package))
         run: pnpm --filter @khirby/plugin-sdk build
 
       - name: Build plugin-host
-        if: startsWith(github.ref_name, 'khirby-plugins@') || startsWith(github.ref_name, 'plugin-host@')
+        if: >-
+          startsWith(github.ref_name, 'khirby-plugins@') ||
+          startsWith(github.ref_name, 'plugin-host@') ||
+          (github.event_name == 'workflow_dispatch' && contains(fromJSON('["plugin-host","khirby-plugins"]'), github.event.inputs.package))
         run: pnpm --filter @khirby/plugin-host build
 
       - name: Build forms-client
-        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'forms-client@') || startsWith(github.ref_name, 'forms-ui@') || startsWith(github.ref_name, 'payload-forms@')
+        if: >-
+          startsWith(github.ref_name, 'khirby-forms@') ||
+          startsWith(github.ref_name, 'forms-client@') ||
+          startsWith(github.ref_name, 'forms-ui@') ||
+          startsWith(github.ref_name, 'payload-forms@') ||
+          (github.event_name == 'workflow_dispatch' && contains(fromJSON('["forms-client","forms-ui","payload-forms","khirby-forms"]'), github.event.inputs.package))
         run: pnpm --filter @khirby/forms-client build
 
       - name: Build forms-ui
-        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'forms-ui@') || startsWith(github.ref_name, 'payload-forms@')
+        if: >-
+          startsWith(github.ref_name, 'khirby-forms@') ||
+          startsWith(github.ref_name, 'forms-ui@') ||
+          startsWith(github.ref_name, 'payload-forms@') ||
+          (github.event_name == 'workflow_dispatch' && contains(fromJSON('["forms-ui","payload-forms","khirby-forms"]'), github.event.inputs.package))
         run: pnpm --filter @khirby/forms-ui build
 
       - name: Build payload-forms
-        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'payload-forms@')
+        if: >-
+          startsWith(github.ref_name, 'khirby-forms@') ||
+          startsWith(github.ref_name, 'payload-forms@') ||
+          (github.event_name == 'workflow_dispatch' && contains(fromJSON('["payload-forms","khirby-forms"]'), github.event.inputs.package))
         run: pnpm --filter @khirby/payload-forms build
 
       - name: Publish plugin-sdk
-        if: startsWith(github.ref_name, 'khirby-plugins@') || startsWith(github.ref_name, 'plugin-sdk@')
-        run: pnpm --filter @khirby/plugin-sdk publish --access public --no-git-checks
+        if: >-
+          startsWith(github.ref_name, 'khirby-plugins@') ||
+          startsWith(github.ref_name, 'plugin-sdk@') ||
+          (github.event_name == 'workflow_dispatch' && contains(fromJSON('["plugin-sdk","khirby-plugins"]'), github.event.inputs.package))
+        working-directory: packages/plugin-sdk
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish plugin-host
-        if: startsWith(github.ref_name, 'khirby-plugins@') || startsWith(github.ref_name, 'plugin-host@')
-        run: pnpm --filter @khirby/plugin-host publish --access public --no-git-checks
+        if: >-
+          startsWith(github.ref_name, 'khirby-plugins@') ||
+          startsWith(github.ref_name, 'plugin-host@') ||
+          (github.event_name == 'workflow_dispatch' && contains(fromJSON('["plugin-host","khirby-plugins"]'), github.event.inputs.package))
+        working-directory: packages/plugin-host
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish forms-client
-        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'forms-client@')
-        run: pnpm --filter @khirby/forms-client publish --access public --no-git-checks
+        if: >-
+          startsWith(github.ref_name, 'khirby-forms@') ||
+          startsWith(github.ref_name, 'forms-client@') ||
+          (github.event_name == 'workflow_dispatch' && contains(fromJSON('["forms-client","khirby-forms"]'), github.event.inputs.package))
+        working-directory: packages/forms-client
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish forms-ui
-        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'forms-ui@')
-        run: pnpm --filter @khirby/forms-ui publish --access public --no-git-checks
+        if: >-
+          startsWith(github.ref_name, 'khirby-forms@') ||
+          startsWith(github.ref_name, 'forms-ui@') ||
+          (github.event_name == 'workflow_dispatch' && contains(fromJSON('["forms-ui","khirby-forms"]'), github.event.inputs.package))
+        working-directory: packages/forms-ui
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish payload-forms
-        if: startsWith(github.ref_name, 'khirby-forms@') || startsWith(github.ref_name, 'payload-forms@')
-        run: pnpm --filter @khirby/payload-forms publish --access public --no-git-checks
+        if: >-
+          startsWith(github.ref_name, 'khirby-forms@') ||
+          startsWith(github.ref_name, 'payload-forms@') ||
+          (github.event_name == 'workflow_dispatch' && contains(fromJSON('["payload-forms","khirby-forms"]'), github.event.inputs.package))
+        working-directory: packages/payload-forms
+        run: npm publish --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
