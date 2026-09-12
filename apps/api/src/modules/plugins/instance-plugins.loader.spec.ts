@@ -136,6 +136,44 @@ describe('instance-plugins.loader', () => {
     expect(() => loadPluginFromDir(dir)).toThrow(/createPlugin/);
   });
 
+  it('loadPluginFromDir remaps published relative plugin-host imports', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'instance-rel-host-'));
+    mkdirSync(join(dir, 'src'), { recursive: true });
+    writeFileSync(
+      join(dir, 'package.json'),
+      JSON.stringify({
+        name: '@khirby/plugin-ai-compose',
+        version: '1.3.0',
+        main: 'src/index.ts',
+      }),
+    );
+    writeFileSync(
+      join(dir, 'src/ai-compose.module.ts'),
+      `import { Module } from '@nestjs/common';
+import { AI_COMPOSE_LLM } from '../../../packages/plugin-host/src';
+@Module({ providers: [{ provide: AI_COMPOSE_LLM, useValue: 'llm' }] })
+export class AiComposeModule {}
+`,
+    );
+    writeFileSync(
+      join(dir, 'src/index.ts'),
+      `import { AiComposeModule } from './ai-compose.module';
+import type { CrmPlugin } from '@khirby/plugin-sdk';
+export function createPlugin(): CrmPlugin {
+  return {
+    name: 'crm_ai_compose',
+    displayName: 'AI Compose',
+    version: '1.3.0',
+    getNestModule() { return AiComposeModule; },
+  };
+}
+`,
+    );
+    const plugin = loadPluginFromDir(dir);
+    expect(plugin.name).toBe('crm_ai_compose');
+    expect(typeof plugin.getNestModule).toBe('function');
+  });
+
   it('packageDeclaresWeb reads exports["./web"]', () => {
     expect(
       packageDeclaresWeb({ exports: { '.': './src/index.ts', './web': './src/web.ts' } }),
