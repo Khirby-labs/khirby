@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import html from '../../index.html?raw';
 import shim from '../../public/khirby-peers/khirby-web-api.js?raw';
+import vueShim from '../../public/khirby-peers/vue.js?raw';
+import useConfirmShim from '../../public/khirby-peers/web-ui-useConfirm.js?raw';
 import { apiGet } from '../api/client';
 import { installKhirbyPeers } from './host-peers';
 
@@ -36,5 +38,15 @@ describe('host peers (ADR-0043)', () => {
     expect(shim).toContain('window.__KHIRBY__.webApi');
     expect(shim).toContain('export const apiGet');
     expect(shim).toContain('export const apiPut');
+  });
+
+  it('vue shim re-exports compiler helpers volume SFC bundles import', () => {
+    expect(vueShim).toContain('export const withModifiers');
+    expect(vueShim).toContain('export const createElementVNode');
+    expect(vueShim).toContain('export const openBlock');
+  });
+
+  it('useConfirm shim exports the named binding Listmonk imports', () => {
+    expect(useConfirmShim).toContain('export const useConfirm');
   });
 });

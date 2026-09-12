@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { useAuthStore } from '../stores/auth.store';
 import { usePluginsStore } from '../stores/plugins.store';
 import { pluginComponentMap, pluginChildRoutes } from '../plugins/plugin-registry';
+import { rewriteVolumeWebBareImports } from '../plugins/volume-web-imports';
 
 const staticRoutes: RouteRecordRaw[] = [
   {
@@ -307,6 +308,30 @@ export function registerPluginRoutes(
   }
 }
 
+/**
+ * Fetch a volume `dist/web/entry.js` and rewrite host peer specifiers to
+ * `/khirby-peers/*.js` before `import()`. Native `import(url)` of an `/api/`
+ * module does not use the document import map, so `@khirby/web-api` throws
+ * even when `index.html` lists it.
+ */
+async function importVolumeWebModule(url: string): Promise<{
+  webEntry?: { component?: unknown };
+  default?: { component?: unknown } | unknown;
+}> {
+  if (url.startsWith('data:') || url.startsWith('blob:')) {
+    return import(/* @vite-ignore */ url);
+  }
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) {
+    throw new Error(`Failed to load plugin web bundle (${res.status})`);
+  }
+  const rewritten = rewriteVolumeWebBareImports(await res.text(), window.location.origin);
+  const blobUrl = URL.createObjectURL(new Blob([rewritten], { type: 'application/javascript' }));
+  // Keep the blob URL: Chromium can still fetch the module graph after
+  // `import()` resolves, and revoke() then throws a specifier error again.
+  return import(/* @vite-ignore */ blobUrl);
+}
+
 /** Dynamic-import a volume plugin's prebuilt `webEntry` / default export. */
 export async function loadVolumeWebComponent(
   webBundleUrl: string,
@@ -314,10 +339,7 @@ export async function loadVolumeWebComponent(
 ): Promise<unknown> {
   const bust = webBundleVersion ? `?v=${encodeURIComponent(webBundleVersion)}` : '';
   const url = `${webBundleUrl}${bust}`;
-  const mod = (await import(/* @vite-ignore */ url)) as {
-    webEntry?: { component?: unknown };
-    default?: { component?: unknown } | unknown;
-  };
+  const mod = await importVolumeWebModule(url);
   const entry = mod.webEntry ?? mod.default;
   if (entry && typeof entry === 'object' && 'component' in entry) {
     const c = (entry as { component: unknown }).component;
