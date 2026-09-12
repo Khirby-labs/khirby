@@ -40,7 +40,7 @@ Do **not** publish `plugins/khirby__plugin-*` (Marketplace unpacks).
 7. Watch **Publish npm packages** on `Khirby-labs/plugins`. Secret: `NPM_TOKEN`.
 8. Control Plane does not scrape npm on the public catalog. Open the plugin in
    CP admin (or `POST /v1/admin/plugins/:id/sync`) so `latestVersion` becomes the
-    CRM Marketplace then shows Update (catalog cache up to 60 s).
+   new semver. CRM Marketplace then shows Update (catalog cache up to 15 min).
 
 Do not `npm publish` by hand unless CI is down. Do not tag like `plugin-sdk@…`.
 

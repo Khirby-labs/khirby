@@ -10,9 +10,9 @@ import {
   derivePluginNameFromPackage,
 } from './catalog';
 
-/** One minute: short enough that a CP admin sync shows Update, long enough that
- * opening Marketplace is not a live Control Plane round-trip every time. */
-export const CATALOG_CACHE_TTL_MS = 60 * 1000;
+/** Fifteen minutes: the catalog changes on release cadence, not per request.
+ * `list()` reuses this cache; install/update call `invalidate()` for a live refetch. */
+export const CATALOG_CACHE_TTL_MS = 15 * 60 * 1000;
 
 /**
  * One minute. Without a negative cache, a remote that is down would repay the
