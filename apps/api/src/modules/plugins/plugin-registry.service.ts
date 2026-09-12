@@ -551,7 +551,7 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     try {
       // Reserved names apply to scaffold only — Marketplace may install packages
       // that reuse former native `crm_*` identifiers on an empty image.
-      const plugin = loadPluginFromDir(absPackageDir);
+      const plugin = loadPluginFromDir(absPackageDir, { bypassCache: true });
       return { name: plugin.name };
     } catch (err) {
       const message =

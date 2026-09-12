@@ -10,7 +10,8 @@ import {
   derivePluginNameFromPackage,
 } from './catalog';
 
-/** Fifteen minutes: the catalog changes on release cadence, not per request. */
+/** Fifteen minutes: the catalog changes on release cadence, not per request.
+ * `list()` reuses this cache; install/update call `invalidate()` for a live refetch. */
 export const CATALOG_CACHE_TTL_MS = 15 * 60 * 1000;
 
 /**
@@ -36,33 +37,51 @@ export class MarketplaceCatalogService {
   private readonly logger = new Logger(MarketplaceCatalogService.name);
   private cached: { document: CatalogDocument; expiresAt: number } | null = null;
   private failedUntil = 0;
+  /** One in-flight uncached fetch so concurrent list() calls share the CP round-trip. */
+  private inflight: Promise<CatalogDocument | null> | null = null;
 
   constructor(
     private readonly config: ConfigService,
     private readonly controlPlane: ControlPlaneClient,
   ) {}
 
+  /** Drop the success (and failure) cache so the next load hits Control Plane. */
+  invalidate(): void {
+    this.cached = null;
+    this.failedUntil = 0;
+  }
+
   async load(search?: string, opts?: { fresh?: boolean }): Promise<CatalogDocument> {
     if (!this.controlPlane.isConfigured()) return LOCAL_CATALOG;
 
     const now = Date.now();
-    // Search and Marketplace list bypass the success cache so a just-synced
-    // Control Plane version is visible (Update badge). Other callers may reuse.
+    // Search and `{ fresh: true }` (install/update) bypass the success cache.
+    // Marketplace list reuses it — installed status still comes from the DB snapshot.
     if (!search && !opts?.fresh && this.cached && now < this.cached.expiresAt) {
       return this.cached.document;
     }
-    if (now < this.failedUntil) return LOCAL_CATALOG;
+    if (!opts?.fresh && now < this.failedUntil) return LOCAL_CATALOG;
 
-    const document = await this.fetchFromControlPlane(search);
-    if (!document) {
-      this.failedUntil = now + CATALOG_FAILURE_TTL_MS;
-      return LOCAL_CATALOG;
+    if (!search && !opts?.fresh && this.inflight) {
+      const document = await this.inflight;
+      return document ?? LOCAL_CATALOG;
     }
 
-    if (!search) {
-      this.cached = { document, expiresAt: now + CATALOG_CACHE_TTL_MS };
+    const pending = this.fetchFromControlPlane(search);
+    if (!search) this.inflight = pending;
+    try {
+      const document = await pending;
+      if (!document) {
+        this.failedUntil = Date.now() + CATALOG_FAILURE_TTL_MS;
+        return LOCAL_CATALOG;
+      }
+      if (!search) {
+        this.cached = { document, expiresAt: Date.now() + CATALOG_CACHE_TTL_MS };
+      }
+      return document;
+    } finally {
+      if (this.inflight === pending) this.inflight = null;
     }
-    return document;
   }
 
   private async fetchFromControlPlane(search?: string): Promise<CatalogDocument | null> {

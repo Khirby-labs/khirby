@@ -12,7 +12,7 @@ import { CATALOG_FORMAT_VERSION, CatalogDocument, CatalogEntry } from './catalog
 import { appendInstanceManifest } from '../plugins/instance-plugins.loader';
 
 function makeCatalog(document: CatalogDocument) {
-  return { load: jest.fn().mockResolvedValue(document) } as any;
+  return { load: jest.fn().mockResolvedValue(document), invalidate: jest.fn() } as any;
 }
 
 function entry(
@@ -126,13 +126,14 @@ function installedRow(name: string, overrides: Record<string, unknown> = {}) {
 
 function makeService(parts: {
   catalog?: CatalogDocument;
+  catalogMock?: ReturnType<typeof makeCatalog>;
   registry?: ReturnType<typeof makeRegistry>;
   cp?: ReturnType<typeof makeCp>;
   installer?: ReturnType<typeof makeInstaller>;
   appVersion?: string;
 }) {
   return new MarketplaceService(
-    makeCatalog(parts.catalog ?? catalogWith([])),
+    parts.catalogMock ?? makeCatalog(parts.catalog ?? catalogWith([])),
     parts.registry ?? makeRegistry({ loaded: [] }),
     parts.cp ?? makeCp(),
     parts.installer ?? makeInstaller(),
@@ -356,6 +357,22 @@ describe('MarketplaceService.list', () => {
 
     expect((await svc.list())[0].status).toBe('installed');
     expect(catalog.load).toHaveBeenCalledTimes(2);
+    expect(catalog.load).toHaveBeenCalledWith();
+  });
+
+  it('does not force a fresh Control Plane fetch on list', async () => {
+    const catalog = makeCatalog(catalogWith([{ name: 'crm_a', slug: 'a' }]));
+    const svc = new MarketplaceService(
+      catalog,
+      makeRegistry({ loaded: [] }),
+      makeCp(),
+      makeInstaller(),
+      makeIdentity(),
+      makeConfig(),
+    );
+    await svc.list();
+    expect(catalog.load).toHaveBeenCalledWith();
+    expect(catalog.load).not.toHaveBeenCalledWith(undefined, { fresh: true });
   });
 });
 
@@ -446,7 +463,9 @@ describe('MarketplaceService.install', () => {
       permissions: null,
     });
 
+    const catalog = makeCatalog(catalogWith([]));
     const svc = makeService({
+      catalogMock: catalog,
       registry: makeRegistry({ loaded: [], installFromDirectory, findAll }),
       cp: makeCp({
         getPlugin,
@@ -467,6 +486,7 @@ describe('MarketplaceService.install', () => {
     expect(result).toEqual(expect.objectContaining({ name: 'crm_a' }));
     expect(commit).toHaveBeenCalled();
     expect(rollback).not.toHaveBeenCalled();
+    expect(catalog.invalidate).toHaveBeenCalled();
   });
 
   it('refuses an unknown slug without asking the installer', async () => {
@@ -740,7 +760,9 @@ describe('MarketplaceService.update', () => {
       rollback,
     });
     const upgradeFromDirectory = jest.fn().mockResolvedValue({ name: 'crm_a', version: '1.2.0' });
+    const catalog = makeCatalog(catalogWith([]));
     const svc = makeService({
+      catalogMock: catalog,
       registry: {
         ...makeRegistry({ loaded: ['crm_a'] }),
         findByName: jest.fn().mockResolvedValue(installedRow('crm_a')),
@@ -759,6 +781,7 @@ describe('MarketplaceService.update', () => {
     });
     expect(commit).toHaveBeenCalled();
     expect(rollback).not.toHaveBeenCalled();
+    expect(catalog.invalidate).toHaveBeenCalled();
   });
 
   it('rolls back files and restores the previous runtime when upgradeFromDirectory throws', async () => {
