@@ -136,6 +136,7 @@ function makeChain(returnValue?: unknown) {
 | pnpm workspace | Always run `pnpm install` from repo root, never from a sub-package directly |
 | Session in tests | Mock `req.session = { userId: 'test-id' }` — no JWT mocking needed |
 | `/api/` prefix | All backend routes have `api/` global prefix — frontend calls `/api/contacts` not `/contacts` |
+| nginx `/api/*.js` | Prefix `location /api/` loses to regex `location ~* \.(js|css|…)$`, so `GET /api/plugins/:name/web/entry.js` 404s in the web container (SPA `import()` of `webBundleUrl`). Use `location ^~ /api/` in `docker/nginx.conf` and `nginx.bundle.conf` |
 | Fastify vs Express | HTTP adapter is Fastify — use `FastifyRequest` not `express.Request`, use `app.register()` not `app.use()` for plugins |
 | Fastify session | `req.session.regenerate()` and `req.session.destroy()` are async — await them directly (no callback) |
 | Swagger | Only enabled when `NODE_ENV !== 'production'` — available at `/api/docs` in dev |
