@@ -30,7 +30,9 @@ Nest hot-load and the rest of 0036 remain.
 Easier: volume plugins can ship Vue without an image rebuild.
 
 Harder: plugin authors must externalize `vue` / `vue-router` / `vue-i18n` to the
-host import map. Common `@khirby/web-ui/*` paths (`AppTable`, `AppModal`,
+host import map. The SPA nginx must use `location ^~ /api/` so
+`GET /api/plugins/:name/web/entry.js` is not stolen by the static `*.js`
+cache regex. Common `@khirby/web-ui/*` paths (`AppTable`, `AppModal`,
 `AppSelect`, `AppDatePicker`, `useConfirm`) are exposed via
 `window.__KHIRBY__.webUi` and `/khirby-peers/web-ui-*.js` shims; other web-ui
 exports are not on the map yet — stay on InstancePluginView or add a shim.
