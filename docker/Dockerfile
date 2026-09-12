@@ -55,6 +55,8 @@ RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/drizzle ./drizzle
+COPY --from=builder /app/packages/plugin-sdk ./packages/plugin-sdk
+COPY --from=builder /app/packages/plugin-host ./packages/plugin-host
 COPY --from=builder /app/apps/web/dist /usr/share/nginx/html
 COPY docker/nginx.bundle.conf /etc/nginx/http.d/default.conf
 COPY docker/configure-proxy.sh /configure-proxy.sh

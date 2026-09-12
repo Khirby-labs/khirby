@@ -45,6 +45,10 @@ RUN pnpm install --frozen-lockfile --prod
 
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 COPY --from=builder /app/drizzle ./drizzle
+# Marketplace volume plugins import @khirby/plugin-host via the monorepo relative
+# path (or as a peer). The install step above only materialised package.json.
+COPY --from=builder /app/packages/plugin-sdk ./packages/plugin-sdk
+COPY --from=builder /app/packages/plugin-host ./packages/plugin-host
 
 WORKDIR /app/apps/api
 EXPOSE 3000

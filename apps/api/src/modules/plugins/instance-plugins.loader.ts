@@ -9,6 +9,7 @@ import {
 } from '../../../../../packages/plugin-host/src/volume-nest';
 import { type InstancePluginScaffoldInput, writeScaffold } from './instance-plugin-scaffold';
 import { assertInstancePluginShape } from './instance-plugin-validate';
+import { ensureVolumePluginModuleResolution, hostJitiAlias } from './volume-plugin-resolve';
 
 /** Sidecar inside `plugins/` — not the repo-root image manifest. */
 export const INSTANCE_MANIFEST = 'instance.manifest.json';
@@ -158,6 +159,10 @@ export function appendInstanceManifest(dir: string, packageName: string, localDi
   if (existing >= 0) manifest.plugins[existing] = entry;
   else manifest.plugins.push(entry);
   writeFileSync(join(dir, INSTANCE_MANIFEST), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+}
+
+export function instanceManifestHasEntry(dir: string, localDir: string): boolean {
+  return readManifest(dir).plugins.some((p) => p.local === localDir);
 }
 
 export function removeInstanceManifest(dir: string, localDir: string): void {
@@ -325,7 +330,12 @@ export function loadPluginFromDir(absDir: string): CrmPlugin {
   }
   const entry = resolvePackageEntry(absDir);
   purgeInstancePluginLoadCache(absDir);
-  const jiti = createJiti(pkgPath, { moduleCache: false, fsCache: false });
+  ensureVolumePluginModuleResolution();
+  const jiti = createJiti(pkgPath, {
+    moduleCache: false,
+    fsCache: false,
+    alias: hostJitiAlias(),
+  });
   const loaded = jiti(entry) as {
     createPlugin?: () => CrmPlugin;
     default?: { createPlugin?: () => CrmPlugin };

@@ -23,6 +23,7 @@ import {
   FIRST_PARTY_PLUGIN_DIRS,
   preferLocalCheckoutPlugins,
   hasWebEntryBundle,
+  instanceManifestHasEntry,
   isSafeLocalSegment,
   isSafeRelPath,
   listInstancePluginFiles,
@@ -555,6 +556,10 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     } catch (err) {
       const message =
         err instanceof Error ? err.message || err.name || 'Plugin validation failed' : String(err);
+      if (!(err instanceof HttpException)) {
+        const detail = err instanceof Error ? (err.stack ?? err.message) : String(err);
+        this.logger.error(`Plugin validation failed for ${absPackageDir}: ${detail}`);
+      }
       const errName = (err as Error).name;
       if (errName === 'web_bundle_required' || message === 'web_bundle_required') {
         throw AppException.badRequest(
@@ -604,24 +609,36 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     });
     const { name } = this.validate(absDir);
     const pkgName = packageName?.trim() || readPackageName(absDir);
+    const hadManifestEntry = instanceManifestHasEntry(this.instanceDir(), resolved);
     this.appendManifest(pkgName, resolved);
 
-    if (!this.loadedNames().includes(name)) {
-      await this.hotLoad(absDir);
-      return { name, status: 'installed' };
-    }
+    try {
+      if (!this.loadedNames().includes(name)) {
+        await this.hotLoad(absDir);
+        return { name, status: 'installed' };
+      }
 
-    const row = await this.findByName(name);
-    if (!row) {
-      await this.install(name);
-      return { name, status: 'installed' };
+      const row = await this.findByName(name);
+      if (!row) {
+        await this.install(name);
+        return { name, status: 'installed' };
+      }
+      if (!row.enabled) {
+        await this.enable(name);
+        return { name, status: 're-enabled' };
+      }
+      await this.reloadFromDirectory(resolved);
+      return { name, status: 'already_active' };
+    } catch (err) {
+      if (!hadManifestEntry) {
+        try {
+          removeInstanceManifest(this.instanceDir(), resolved);
+        } catch {
+          // Directory rollback is the caller's job; dropping a ghost row is best-effort.
+        }
+      }
+      throw err;
     }
-    if (!row.enabled) {
-      await this.enable(name);
-      return { name, status: 're-enabled' };
-    }
-    await this.reloadFromDirectory(resolved);
-    return { name, status: 'already_active' };
   }
 
   /**

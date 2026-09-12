@@ -1,10 +1,17 @@
-import { mkdtempSync, mkdirSync, writeFileSync, symlinkSync, existsSync } from 'node:fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  writeFileSync,
+  symlinkSync,
+  existsSync,
+  readFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import 'reflect-metadata';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Logger, NotFoundException } from '@nestjs/common';
 import { PluginRegistryService, NATIVE_PLUGIN_NAMES } from './plugin-registry.service';
-import { findRepoRoot, scaffoldInstancePlugin } from './instance-plugins.loader';
+import { findRepoRoot, INSTANCE_MANIFEST, scaffoldInstancePlugin } from './instance-plugins.loader';
 import { CrmPlugin, CrmEvent } from '@khirby/plugin-sdk';
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -932,6 +939,70 @@ export function createPlugin() {
         const result = await svc.installFromDirectory('crm-plugin-retry');
         expect(result.status).toBe('installed');
         expect(svc.loadedNames()).toContain('crm_retry');
+      } finally {
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('logs the load error when validate() maps a failed jiti to 400', () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      const volume = mkdtempSync(join(tmpdir(), 'instance-validate-log-'));
+      process.env.INSTANCE_PLUGINS_DIR = volume;
+      const spy = jest.spyOn(Logger.prototype, 'error').mockImplementation();
+      try {
+        const { db } = makeInstallDb();
+        const svc = makeService([], db);
+        const dir = join(volume, 'broken-plugin');
+        mkdirSync(join(dir, 'src'), { recursive: true });
+        writeFileSync(
+          join(dir, 'package.json'),
+          JSON.stringify({ name: 'broken-plugin', version: '0.1.0', main: './src/index.ts' }),
+        );
+        writeFileSync(join(dir, 'src/index.ts'), 'export const nope = 1;\n');
+        expect(() => svc.validate(dir)).toThrow(BadRequestException);
+        expect(spy).toHaveBeenCalledWith(
+          expect.stringContaining(`Plugin validation failed for ${dir}`),
+        );
+      } finally {
+        spy.mockRestore();
+        if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
+        else process.env.INSTANCE_PLUGINS_DIR = prev;
+      }
+    });
+
+    it('drops a new instance.manifest.json entry when hotLoad fails after validate', async () => {
+      const prev = process.env.INSTANCE_PLUGINS_DIR;
+      const volume = mkdtempSync(join(tmpdir(), 'instance-ghost-manifest-'));
+      process.env.INSTANCE_PLUGINS_DIR = volume;
+      try {
+        const { db } = makeInstallDb();
+        const svc = makeService([], db);
+        jest.spyOn(svc, 'hotLoad').mockRejectedValue(new Error('hot-load exploded'));
+        const dir = join(volume, 'ghost-plugin');
+        mkdirSync(join(dir, 'src'), { recursive: true });
+        writeFileSync(
+          join(dir, 'package.json'),
+          JSON.stringify({
+            name: '@khirby/plugin-ghost',
+            version: '0.1.0',
+            main: './src/index.ts',
+          }),
+        );
+        writeFileSync(
+          join(dir, 'src/index.ts'),
+          `export function createPlugin() {
+  return { name: 'crm_ghost', displayName: 'Ghost', version: '0.1.0' };
+}
+`,
+        );
+        await expect(
+          svc.installFromDirectory('ghost-plugin', '@khirby/plugin-ghost'),
+        ).rejects.toThrow('hot-load exploded');
+        const manifest = JSON.parse(readFileSync(join(volume, INSTANCE_MANIFEST), 'utf8')) as {
+          plugins: Array<{ local: string }>;
+        };
+        expect(manifest.plugins).toEqual([]);
       } finally {
         if (prev === undefined) delete process.env.INSTANCE_PLUGINS_DIR;
         else process.env.INSTANCE_PLUGINS_DIR = prev;
