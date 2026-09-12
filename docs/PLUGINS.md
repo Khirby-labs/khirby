@@ -228,7 +228,8 @@ with `web_bundle_required`. Without `./web`, Settings via `getConfigSchema()` an
 
 1. Point `exports["./web"]` at `./dist/web/entry.js`.
 2. Bundle with Vite/Rollup: `format: 'es'`, externalize `vue`, `vue-router`,
-   `vue-i18n` (the SPA import map resolves them to host peers).
+   `vue-i18n`, `@khirby/web-api`, `@khirby/web-ui/*` (the SPA import map
+   resolves them to host peers).
 3. Export `webEntry` (`PluginWebEntry`) whose `name` equals `CrmPlugin.name`.
 4. Ship the file under `dist/web/` on the volume; the API serves
    `/api/plugins/<name>/web/*` and the SPA hot-loads it.

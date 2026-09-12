@@ -137,6 +137,7 @@ function makeChain(returnValue?: unknown) {
 | Session in tests | Mock `req.session = { userId: 'test-id' }` — no JWT mocking needed |
 | `/api/` prefix | All backend routes have `api/` global prefix — frontend calls `/api/contacts` not `/contacts` |
 | nginx `/api/*.js` | Prefix `location /api/` loses to regex `location ~* \.(js|css|…)$`, so `GET /api/plugins/:name/web/entry.js` 404s in the web container (SPA `import()` of `webBundleUrl`). Use `location ^~ /api/` in `docker/nginx.conf` and `nginx.bundle.conf` |
+| volume Vue `@khirby/web-api` | Plugin `vite.web.config.ts` externalizes `@khirby/web-api`, but the browser needs it on the SPA import map. Missing map → `Failed to resolve module specifier "@khirby/web-api"`. Keep `/khirby-peers/khirby-web-api.js` + `"@khirby/web-api"` in `apps/web/index.html` and `window.__KHIRBY__.webApi` |
 | Fastify vs Express | HTTP adapter is Fastify — use `FastifyRequest` not `express.Request`, use `app.register()` not `app.use()` for plugins |
 | Fastify session | `req.session.regenerate()` and `req.session.destroy()` are async — await them directly (no callback) |
 | Swagger | Only enabled when `NODE_ENV !== 'production'` — available at `/api/docs` in dev |
