@@ -11,6 +11,17 @@ import { type InstancePluginScaffoldInput, writeScaffold } from './instance-plug
 import { assertInstancePluginShape } from './instance-plugin-validate';
 import { ensureVolumePluginModuleResolution, hostJitiAlias } from './volume-plugin-resolve';
 
+type VolumeJiti = ReturnType<typeof createJiti>;
+let volumeJiti: VolumeJiti | undefined;
+
+function volumePluginJiti(): VolumeJiti {
+  if (!volumeJiti) {
+    ensureVolumePluginModuleResolution();
+    volumeJiti = createJiti(__filename, { alias: hostJitiAlias() });
+  }
+  return volumeJiti;
+}
+
 /** Sidecar inside `plugins/` — not the repo-root image manifest. */
 export const INSTANCE_MANIFEST = 'instance.manifest.json';
 export const MAX_INSTANCE_FILES = 24;
@@ -318,7 +329,7 @@ export function resolvePackageEntry(absDir: string): string {
   return entry;
 }
 
-export function loadPluginFromDir(absDir: string): CrmPlugin {
+export function loadPluginFromDir(absDir: string, opts?: { bypassCache?: boolean }): CrmPlugin {
   const pkgPath = join(absDir, 'package.json');
   const pkg = JSON.parse(readFileSync(pkgPath, 'utf8')) as Record<string, unknown>;
   // ./web is allowed when dist/web/entry.js is on disk (SPA hot-load, ADR-0043).
@@ -329,13 +340,10 @@ export function loadPluginFromDir(absDir: string): CrmPlugin {
     throw err;
   }
   const entry = resolvePackageEntry(absDir);
-  purgeInstancePluginLoadCache(absDir);
-  ensureVolumePluginModuleResolution();
-  const jiti = createJiti(pkgPath, {
-    moduleCache: false,
-    fsCache: false,
-    alias: hostJitiAlias(),
-  });
+  // Boot reuses jiti + Node require.cache. Authoring / validate after a write
+  // must drop that cache or displayName and handlers stay stale.
+  if (opts?.bypassCache) purgeInstancePluginLoadCache(absDir);
+  const jiti = volumePluginJiti();
   const loaded = jiti(entry) as {
     createPlugin?: () => CrmPlugin;
     default?: { createPlugin?: () => CrmPlugin };
@@ -368,7 +376,11 @@ export function loadPluginFromDir(absDir: string): CrmPlugin {
 function attachVolumeNestModule(plugin: CrmPlugin, absDir: string): void {
   const nestFile = resolveVolumeNestModuleFile(absDir);
   if (!nestFile) return;
-  plugin.getNestModule = () => loadVolumeNestModuleFile(nestFile);
+  let nest: unknown;
+  plugin.getNestModule = () => {
+    nest ??= loadVolumeNestModuleFile(nestFile);
+    return nest;
+  };
 }
 
 /** Drop Node/jiti/ts-node cache for a volume plugin so the next load sees disk. */

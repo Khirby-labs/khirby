@@ -175,4 +175,33 @@ describe('MarketplaceCatalogService — caching', () => {
     expect(listPlugins).toHaveBeenCalledTimes(2);
     expect(doc.entries).toHaveLength(1);
   });
+
+  it('drops the success cache on invalidate', async () => {
+    const listPlugins = jest.fn().mockResolvedValue([cpPlugin()]);
+    const svc = new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins }));
+
+    await svc.load();
+    svc.invalidate();
+    await svc.load();
+    expect(listPlugins).toHaveBeenCalledTimes(2);
+  });
+
+  it('shares one Control Plane fetch across concurrent load() calls', async () => {
+    let resolveList!: (value: unknown) => void;
+    const listPlugins = jest.fn(
+      () =>
+        new Promise((resolve) => {
+          resolveList = resolve;
+        }),
+    );
+    const svc = new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins }));
+
+    const first = svc.load();
+    const second = svc.load();
+    expect(listPlugins).toHaveBeenCalledTimes(1);
+    resolveList([cpPlugin()]);
+    expect((await first).entries).toHaveLength(1);
+    expect((await second).entries).toHaveLength(1);
+    expect(listPlugins).toHaveBeenCalledTimes(1);
+  });
 });

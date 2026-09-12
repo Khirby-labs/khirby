@@ -108,7 +108,8 @@ export function marketplaceUnpackVersion(
 
 /**
  * Turns the catalog document plus live installation state into the cards the SPA
- * renders. Status is resolved on EVERY request, never cached.
+ * renders. Installation status is resolved on EVERY request from the DB snapshot.
+ * The catalog document itself is cached (see MarketplaceCatalogService).
  */
 @Injectable()
 export class MarketplaceService {
@@ -131,7 +132,7 @@ export class MarketplaceService {
    */
   async list(): Promise<MarketplacePlugin[]> {
     const [document, { installed: installedRows }] = await Promise.all([
-      this.catalog.load(undefined, { fresh: true }),
+      this.catalog.load(),
       this.registry.snapshot(),
     ]);
 
@@ -246,6 +247,7 @@ export class MarketplaceService {
         { allowReservedScaffoldDirs: true },
       );
       extracted.commit();
+      this.catalog.invalidate();
 
       const all = await this.registry.findAll();
       const installed = all.find((p) => p.name === result.name);
@@ -289,6 +291,7 @@ export class MarketplaceService {
         { allowReservedScaffoldDirs: true },
       );
       extracted.commit();
+      this.catalog.invalidate();
       return result;
     } catch (err) {
       extracted.rollback();

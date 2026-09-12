@@ -20,14 +20,6 @@ function pickNestModule(loaded: Record<string, unknown>): unknown {
   return fallback;
 }
 
-function purgeResolved(cache: NodeJS.Require['cache'], resolved: string): void {
-  for (const key of Object.keys(cache)) {
-    if (key === resolved || key.startsWith(`${resolved}.`) || key.includes(`${resolved}?`)) {
-      delete cache[key];
-    }
-  }
-}
-
 function ensureTsNode(nativeRequire: NodeJS.Require): void {
   nativeRequire('reflect-metadata');
   if (tsNodeReady) return;
@@ -72,7 +64,6 @@ export function loadVolumeNestModuleFile(nestFile: string): unknown {
   const nativeRequire = createRequire(pkgJson);
   ensureTsNode(nativeRequire);
   const resolved = nativeRequire.resolve(nestFile);
-  purgeResolved(nativeRequire.cache, resolved);
   const loaded = nativeRequire(resolved) as Record<string, unknown>;
   const nest = pickNestModule(loaded);
   if (!nest) {

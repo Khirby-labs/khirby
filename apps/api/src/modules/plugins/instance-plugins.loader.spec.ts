@@ -174,6 +174,21 @@ export function createPlugin(): CrmPlugin {
     expect(typeof plugin.getNestModule).toBe('function');
   });
 
+  it('loadPluginFromDir reloads from disk when bypassCache is set', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'instance-jiti-cache-'));
+    writePlugin(dir, { name: 'crm_cached' });
+    expect(loadPluginFromDir(dir).name).toBe('crm_cached');
+    expect(loadPluginFromDir(dir).name).toBe('crm_cached');
+    writeFileSync(
+      join(dir, 'src/index.ts'),
+      `export function createPlugin() {
+  return { name: 'crm_fresh', displayName: 'Fresh', version: '0.1.0' };
+}
+`,
+    );
+    expect(loadPluginFromDir(dir, { bypassCache: true }).name).toBe('crm_fresh');
+  });
+
   it('packageDeclaresWeb reads exports["./web"]', () => {
     expect(
       packageDeclaresWeb({ exports: { '.': './src/index.ts', './web': './src/web.ts' } }),
