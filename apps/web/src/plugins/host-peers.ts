@@ -1,6 +1,7 @@
 import * as Vue from 'vue';
 import * as VueRouter from 'vue-router';
 import * as VueI18n from 'vue-i18n';
+import * as webApi from '../api/client';
 import AppTable from '../components/AppTable.vue';
 import AppModal from '../components/AppModal.vue';
 import AppSelect from '../components/ui/AppSelect.vue';
@@ -15,11 +16,14 @@ export type KhirbyWebUi = {
   useConfirm: typeof useConfirm;
 };
 
+export type KhirbyWebApi = typeof webApi;
+
 export type KhirbyPeers = {
   Vue: typeof Vue;
   VueRouter: typeof VueRouter;
   VueI18n: typeof VueI18n;
   webUi: KhirbyWebUi;
+  webApi: KhirbyWebApi;
 };
 
 declare global {
@@ -30,7 +34,7 @@ declare global {
 }
 
 /**
- * Expose the running SPA's Vue peers + common web-ui components on
+ * Expose the running SPA's Vue peers, web-ui components, and API client on
  * `window.__KHIRBY__` so import-map shims under `/khirby-peers/` can re-export
  * them to hot-loaded plugin ESM.
  * Must run before any plugin `import()` of `/api/plugins/.../web/entry.js`.
@@ -41,5 +45,6 @@ export function installKhirbyPeers(): void {
     VueRouter,
     VueI18n,
     webUi: { AppTable, AppModal, AppSelect, AppDatePicker, useConfirm },
+    webApi,
   };
 }
