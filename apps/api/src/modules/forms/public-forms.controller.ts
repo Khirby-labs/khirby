@@ -22,6 +22,7 @@ import { SubmissionSource } from '../../core/database/schema';
 import { AppException } from '../../core/errors/app-exception';
 import { InquiryService } from '../inquiry/inquiry.service';
 import { PluginRegistryService } from '../plugins/plugin-registry.service';
+import { assertPublicAdaptiveOpening } from '../inquiry/adaptive-intake-guards';
 // Relative import: nest build is plain tsc; bare '@khirby/types' would survive into dist.
 import { isLocaleCode, type LocaleCode } from '../../../../../packages/types/src';
 
@@ -134,7 +135,8 @@ export class PublicFormsController {
   }
 
   @Post(':token/adaptive/plan')
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  /** LLM-backed — keep tighter than plain submit so bots cannot burn tokens. */
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   async planAdaptive(@Param('token') token: string, @Body() body: Record<string, unknown>) {
     if (body['_hp']) return { questions: [] as string[] };
 
@@ -147,9 +149,7 @@ export class PublicFormsController {
     }
 
     const opening = String(body['opening'] ?? body['content'] ?? '').trim();
-    if (!opening) {
-      throw AppException.badRequest('opening (or content) is required.');
-    }
+    assertPublicAdaptiveOpening(opening);
     const locale =
       typeof body['locale'] === 'string' ? body['locale'].trim().toLowerCase() : undefined;
 

@@ -24,6 +24,7 @@ import {
   type InquiryIntakeAssistant,
   resolveLoadedProvider,
 } from '../../../../../packages/plugin-host/src';
+import { assertPublicAdaptiveBatch } from './adaptive-intake-guards';
 
 const TERMINAL_STATUSES: InquiryStatus[] = ['accepted', 'rejected', 'spam'];
 
@@ -659,24 +660,11 @@ export class InquiryService {
     email?: string;
     companyName?: string;
   }) {
-    const opening = input.opening.trim();
-    if (!opening) {
-      throw AppException.badRequest('opening is required.');
-    }
-
-    const questions = input.questions.map((q) => String(q ?? '').trim()).filter(Boolean);
-    const answers = input.answers.map((a) => String(a ?? '').trim());
-    if (!questions.length) {
-      throw AppException.badRequest('questions[] is required.');
-    }
-    if (answers.length !== questions.length) {
-      throw AppException.badRequest(
-        `Expected ${questions.length} answers (one per question), got ${answers.length}.`,
-      );
-    }
-    if (answers.some((a) => !a)) {
-      throw AppException.badRequest('Every planned question needs a non-empty answer.');
-    }
+    const { opening, questions, answers } = assertPublicAdaptiveBatch({
+      opening: input.opening,
+      questions: input.questions,
+      answers: input.answers,
+    });
 
     const locale =
       input.locale === 'pl' || input.locale === 'en'

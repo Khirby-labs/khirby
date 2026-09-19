@@ -318,8 +318,19 @@ describe('InquiryService', () => {
       await expect(
         service.submitAdaptiveIntake({
           formId: 'form-1',
-          opening: 'Need CRM',
+          opening: 'Need a CRM for our growing sales team.',
           questions: ['Q1?', 'Q2?'],
+          answers: ['A1'],
+        }),
+      ).rejects.toMatchObject({ status: 400 });
+    });
+
+    it('rejects a too-short opening before writing', async () => {
+      await expect(
+        service.submitAdaptiveIntake({
+          formId: 'form-1',
+          opening: 'hi',
+          questions: ['Q1?'],
           answers: ['A1'],
         }),
       ).rejects.toMatchObject({ status: 400 });
@@ -407,7 +418,7 @@ describe('InquiryService', () => {
 
       const result = await svc2.submitAdaptiveIntake({
         formId: 'form-1',
-        opening: 'Need CRM',
+        opening: 'Need a CRM for our small sales team.',
         questions: ['Q1?', 'Q2?', 'Q3?'],
         answers: ['A1', 'A2', 'A3'],
         email: 'ada@example.com',

@@ -292,7 +292,7 @@ describe('PublicFormsController', () => {
       const result = await controller.createInquiry(
         'tok',
         {
-          opening: 'We need a CRM',
+          opening: 'We need a CRM for our B2B sales team today.',
           questions: ['Team size?', 'Timeline?', 'Tools?'],
           answers: ['20', 'Q3', 'Sheets'],
           name: 'Ada',
@@ -304,7 +304,7 @@ describe('PublicFormsController', () => {
       expect(inquiry.submitAdaptiveIntake).toHaveBeenCalledWith(
         expect.objectContaining({
           formId: 'f2',
-          opening: 'We need a CRM',
+          opening: 'We need a CRM for our B2B sales team today.',
           questions: ['Team size?', 'Timeline?', 'Tools?'],
           answers: ['20', 'Q3', 'Sheets'],
           contactName: 'Ada',
@@ -342,11 +342,11 @@ describe('PublicFormsController', () => {
         intakeMode: 'adaptive',
       });
       const result = await controller.planAdaptive('tok', {
-        opening: 'We need help',
+        opening: 'We need help choosing a CRM for our sales team.',
         locale: 'pl',
       });
       expect(inquiry.planQuestions).toHaveBeenCalledWith('f2', {
-        openingMessage: 'We need help',
+        openingMessage: 'We need help choosing a CRM for our sales team.',
         count: 3,
         locale: 'pl',
       });
@@ -359,6 +359,17 @@ describe('PublicFormsController', () => {
       const result = await controller.planAdaptive('tok', { _hp: 'bot', opening: 'x' });
       expect(result).toEqual({ questions: [] });
       expect(forms.findByToken).not.toHaveBeenCalled();
+    });
+
+    it('rejects a too-short opening before calling the LLM', async () => {
+      forms.findByToken.mockResolvedValueOnce({
+        ...inquiryForm,
+        intakeMode: 'adaptive',
+      });
+      await expect(controller.planAdaptive('tok', { opening: 'hi' })).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(inquiry.planQuestions).not.toHaveBeenCalled();
     });
   });
 });
