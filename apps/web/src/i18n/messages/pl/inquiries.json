@@ -1,0 +1,89 @@
+{
+  "list": {
+    "title": "Do weryfikacji",
+    "resultCount": "{count} zapytanie | {count} zapytania | {count} zapytań",
+    "filters": {
+      "statusAll": "Wszystkie statusy",
+      "statusActive": "Aktywne",
+      "statusReadyForReview": "Do weryfikacji",
+      "statusAccepted": "Zaakceptowane",
+      "statusRejected": "Odrzucone",
+      "statusSpam": "Spam",
+      "searchPlaceholder": "Szukaj zapytań…",
+      "clear": "Wyczyść filtry"
+    },
+    "columns": {
+      "status": "Status",
+      "summary": "Podsumowanie",
+      "contactName": "Imię i nazwisko",
+      "email": "E-mail",
+      "companyName": "Firma",
+      "proposedType": "Typ",
+      "tags": "Tagi",
+      "createdAt": "Otrzymano",
+      "source": "Źródło"
+    },
+    "empty": {
+      "filteredTitle": "Brak pasujących zapytań",
+      "filteredMessage": "Zmień filtry lub je wyczyść, aby zobaczyć wszystkie zapytania.",
+      "noneTitle": "Brak zapytań",
+      "noneMessage": "Zapytania z adaptacyjnych formularzy pojawią się w tym miejscu."
+    },
+    "emptyCell": "Brak",
+    "errors": {
+      "load": "Nie udało się wczytać zapytań"
+    }
+  },
+  "detail": {
+    "back": "Powrót do zapytań",
+    "status": "Status",
+    "summary": "Podsumowanie",
+    "briefHeading": "Dane strukturalne",
+    "problem": "Problem",
+    "desiredOutcome": "Oczekiwany efekt",
+    "currentProcess": "Obecny proces",
+    "currentTools": "Używane narzędzia",
+    "teamSize": "Wielkość zespołu",
+    "constraints": "Ograniczenia",
+    "timeline": "Harmonogram",
+    "inquiryType": "Typ zapytania",
+    "missingInformation": "Brakujące informacje",
+    "proposedType": "Proponowany typ",
+    "tags": "Tagi",
+    "source": "Źródło",
+    "transcript": "Odpowiedzi",
+    "openingFallback": "Pierwsza odpowiedź",
+    "noSummary": "Brak podsumowania",
+    "noValue": "—",
+    "errors": {
+      "load": "Nie udało się wczytać zapytania"
+    }
+  },
+  "actions": {
+    "accept": "Akceptuj",
+    "reject": "Odrzuć",
+    "spam": "Oznacz jako spam",
+    "acceptNoEmail": "Do zaakceptowania zapytania wymagany jest adres e-mail",
+    "acceptSuccess": "Zapytanie zaakceptowane",
+    "rejectSuccess": "Zapytanie odrzucone",
+    "spamSuccess": "Zapytanie oznaczone jako spam",
+    "rejectTitle": "Odrzucić zapytanie?",
+    "rejectMessage": "Zapytanie zostanie oznaczone jako odrzucone. Tej operacji nie można cofnąć.",
+    "rejectConfirm": "Odrzuć zapytanie",
+    "spamTitle": "Oznaczyć jako spam?",
+    "spamMessage": "Zapytanie zostanie oznaczone jako spam. Tej operacji nie można cofnąć.",
+    "spamConfirm": "Oznacz jako spam",
+    "error": "Operacja nie powiodła się"
+  },
+  "status": {
+    "active": "Aktywne",
+    "ready_for_review": "Do weryfikacji",
+    "accepted": "Zaakceptowane",
+    "rejected": "Odrzucone",
+    "spam": "Spam"
+  },
+  "role": {
+    "visitor": "Odwiedzający",
+    "assistant": "Asystent"
+  }
+}

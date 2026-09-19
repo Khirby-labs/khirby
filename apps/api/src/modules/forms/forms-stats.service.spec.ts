@@ -45,10 +45,11 @@ describe('FormsStatsService', () => {
     await module?.close();
   });
 
-  it('returns aggregated stats', async () => {
+  it('returns aggregated stats (submissions + inquiries)', async () => {
     db.select
-      .mockImplementationOnce(() => makeChain([{ count: 12 }]))
-      .mockImplementationOnce(() => makeChain([{ count: 3 }]))
+      .mockImplementationOnce(() => makeChain([{ count: 8 }])) // submissions total
+      .mockImplementationOnce(() => makeChain([{ count: 4 }])) // inquiries total
+      .mockImplementationOnce(() => makeChain([{ count: 3 }])) // active forms
       .mockImplementationOnce(() =>
         makeChain([
           { formId: 'f1', formName: 'Contact', count: 8 },
@@ -66,15 +67,17 @@ describe('FormsStatsService', () => {
 
   it('includes daily buckets when requested', async () => {
     db.select
-      .mockImplementationOnce(() => makeChain([{ count: 5 }]))
-      .mockImplementationOnce(() => makeChain([{ count: 2 }]))
+      .mockImplementationOnce(() => makeChain([{ count: 5 }])) // submissions total
+      .mockImplementationOnce(() => makeChain([{ count: 0 }])) // inquiries total
+      .mockImplementationOnce(() => makeChain([{ count: 2 }])) // active forms
       .mockImplementationOnce(() => makeChain([{ formId: 'f1', formName: 'Contact', count: 5 }]))
       .mockImplementationOnce(() =>
         makeChain([
           { day: '2026-07-14', count: 2 },
           { day: '2026-07-15', count: 3 },
         ]),
-      );
+      ) // submission days
+      .mockImplementationOnce(() => makeChain([])); // inquiry days
 
     const result = await service.getStats({ daily: true });
 

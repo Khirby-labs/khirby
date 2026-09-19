@@ -31,5 +31,6 @@
   "pagination.pageOf": "Page position above a paginated table. ONE message with two params: {current} and {total}. Never split into fragments.",
   "pagination.prev": "Button to the previous page. The ← glyph stays in markup. ≤1 word, may be abbreviated.",
   "state.loading": "Combined aria-label and screen-reader text of a loading skeleton. One announcement, so it must read naturally when spoken. Ends with an ellipsis character.",
-  "state.noData": "Fallback text in a table body when there are no rows AND the calling view supplied no better empty state. Deliberately neutral, ≤2 words."
+  "state.noData": "Fallback text in a table body when there are no rows AND the calling view supplied no better empty state. Deliberately neutral, ≤2 words.",
+  "table.resizeColumn": "aria-label of the drag handle on a resizable table header. {column} is the visible column title. Never seen visually."
 }

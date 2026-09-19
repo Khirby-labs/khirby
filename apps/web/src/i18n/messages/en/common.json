@@ -49,5 +49,8 @@
   "state": {
     "loading": "Loading…",
     "noData": "No data"
+  },
+  "table": {
+    "resizeColumn": "Resize {column} column"
   }
 }

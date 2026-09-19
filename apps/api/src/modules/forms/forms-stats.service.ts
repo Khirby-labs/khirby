@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { eq, and, sql, gte, lte } from 'drizzle-orm';
 import { Db } from '../../core/database/db';
 import { DB_TOKEN } from '../../core/database/database.module';
-import { forms, submissions } from '../../core/database/schema';
+import { forms, submissions, inquiries } from '../../core/database/schema';
 import { FormStatsQueryDto } from './dto/form-stats-query.dto';
 import { AppException } from '../../core/errors/app-exception';
 
@@ -34,32 +34,64 @@ export class FormsStatsService {
       submissionFilters.push(lte(submissions.createdAt, to));
     }
 
-    const whereClause = submissionFilters.length ? and(...submissionFilters) : undefined;
+    const inquiryFilters = [];
+    if (query.formId) {
+      inquiryFilters.push(eq(inquiries.formId, query.formId));
+    }
+    if (from) {
+      inquiryFilters.push(gte(inquiries.createdAt, from));
+    }
+    if (to) {
+      inquiryFilters.push(lte(inquiries.createdAt, to));
+    }
 
-    const totalQuery = this.db.select({ count: sql<number>`count(*)::int` }).from(submissions);
-    const [{ count: total }] = whereClause ? await totalQuery.where(whereClause) : await totalQuery;
+    const submissionWhere = submissionFilters.length ? and(...submissionFilters) : undefined;
+    const inquiryWhere = inquiryFilters.length ? and(...inquiryFilters) : undefined;
+
+    const submissionTotalQuery = this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(submissions);
+    const [{ count: submissionTotal }] = submissionWhere
+      ? await submissionTotalQuery.where(submissionWhere)
+      : await submissionTotalQuery;
+
+    const inquiryTotalQuery = this.db.select({ count: sql<number>`count(*)::int` }).from(inquiries);
+    const [{ count: inquiryTotal }] = inquiryWhere
+      ? await inquiryTotalQuery.where(inquiryWhere)
+      : await inquiryTotalQuery;
+
+    const total = submissionTotal + inquiryTotal;
 
     const [{ count: activeForms }] = await this.db
       .select({ count: sql<number>`count(*)::int` })
       .from(forms)
       .where(eq(forms.active, true));
 
-    const joinFilters = [eq(submissions.formId, forms.id)];
-    if (from) joinFilters.push(gte(submissions.createdAt, from));
-    if (to) joinFilters.push(lte(submissions.createdAt, to));
+    // Per-form: lead → submissions; inquiry → inquiries (ADR-0053).
+    const fromSql = from ? sql` and created_at >= ${from}` : sql``;
+    const toSql = to ? sql` and created_at <= ${to}` : sql``;
 
-    const joinCondition = joinFilters.length === 1 ? joinFilters[0] : and(...joinFilters);
-
+    // Qualify table/column names in subqueries — drizzle's `${col}` inside sql``
+    // can drop the table prefix and make `form_id = id` compare a row to itself.
     let byFormQuery = this.db
       .select({
         formId: forms.id,
         formName: forms.name,
-        count: sql<number>`count(${submissions.id})::int`,
+        count: sql<number>`(
+          case
+            when ${forms.destination} = 'inquiry' then (
+              select count(*)::int from inquiries
+              where inquiries.form_id = forms.id${fromSql}${toSql}
+            )
+            else (
+              select count(*)::int from submissions
+              where submissions.form_id = forms.id${fromSql}${toSql}
+            )
+          end
+        )`,
       })
       .from(forms)
-      .leftJoin(submissions, joinCondition)
-      .groupBy(forms.id, forms.name)
-      .orderBy(sql`count(${submissions.id}) desc`);
+      .orderBy(sql`4 desc`);
 
     if (query.formId) {
       byFormQuery = byFormQuery.where(eq(forms.id, query.formId)) as typeof byFormQuery;
@@ -69,7 +101,7 @@ export class FormsStatsService {
 
     let byDay: Array<{ day: string; count: number }> | undefined;
     if (query.daily) {
-      const dayQuery = this.db
+      const submissionDayQuery = this.db
         .select({
           day: sql<string>`to_char(${submissions.createdAt}, 'YYYY-MM-DD')`,
           count: sql<number>`count(*)::int`,
@@ -78,9 +110,32 @@ export class FormsStatsService {
         .groupBy(sql`to_char(${submissions.createdAt}, 'YYYY-MM-DD')`)
         .orderBy(sql`to_char(${submissions.createdAt}, 'YYYY-MM-DD')`);
 
-      const dayRows = whereClause ? await dayQuery.where(whereClause) : await dayQuery;
+      const inquiryDayQuery = this.db
+        .select({
+          day: sql<string>`to_char(${inquiries.createdAt}, 'YYYY-MM-DD')`,
+          count: sql<number>`count(*)::int`,
+        })
+        .from(inquiries)
+        .groupBy(sql`to_char(${inquiries.createdAt}, 'YYYY-MM-DD')`)
+        .orderBy(sql`to_char(${inquiries.createdAt}, 'YYYY-MM-DD')`);
 
-      byDay = dayRows.map((r) => ({ day: r.day, count: r.count }));
+      const submissionDays = submissionWhere
+        ? await submissionDayQuery.where(submissionWhere)
+        : await submissionDayQuery;
+      const inquiryDays = inquiryWhere
+        ? await inquiryDayQuery.where(inquiryWhere)
+        : await inquiryDayQuery;
+
+      const merged = new Map<string, number>();
+      for (const row of submissionDays) {
+        merged.set(row.day, (merged.get(row.day) ?? 0) + row.count);
+      }
+      for (const row of inquiryDays) {
+        merged.set(row.day, (merged.get(row.day) ?? 0) + row.count);
+      }
+      byDay = [...merged.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([day, count]) => ({ day, count }));
     }
 
     return {

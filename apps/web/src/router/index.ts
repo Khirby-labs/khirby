@@ -96,6 +96,21 @@ const staticRoutes: RouteRecordRaw[] = [
         meta: { titleKey: 'nav.workspace.forms' },
       },
       {
+        path: 'inquiries',
+        name: 'inquiries',
+        component: () => import('../views/inquiries/InquiriesView.vue'),
+        meta: { titleKey: 'nav.workspace.inquiries' },
+      },
+      {
+        path: 'inquiries/:id',
+        name: 'inquiry-detail',
+        component: () => import('../views/inquiries/InquiryDetailView.vue'),
+        meta: {
+          titleKey: 'route.inquiryDetail',
+          parent: { labelKey: 'nav.workspace.inquiries', to: '/inquiries' },
+        },
+      },
+      {
         path: 'forms/analytics',
         name: 'forms-analytics',
         component: () => import('../views/forms/FormsAnalyticsView.vue'),
@@ -377,6 +392,10 @@ router.beforeEach(async (to) => {
     }
 
     if (to.path.startsWith('/ask') && !auth.hasPermission('agent', 'use')) {
+      return;
+    }
+
+    if (to.path.startsWith('/inquiries') && !auth.hasPermission('inquiries', 'manage')) {
       return;
     }
   }

@@ -62,3 +62,5 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) | Ask Khirby proxies full Pokelo MCP tools; Compose keeps `fetchContext` on same client | Accepted |
 | [0051](0051-control-plane-url-defaults-to-ctrl-bearly-pro.md) | Unset `CONTROL_PLANE_URL` defaults to `https://ctrl.bearly.pro` (amends 0044) | Accepted |
 | [0052](0052-marketplace-plugins-are-self-contained-tarballs.md) | Marketplace plugins ship a self-contained tarball; no `npm install` on extract (amends 0044) | Accepted |
+| [0053](0053-inquiry-is-a-core-aggregate-before-contact-and-lead.md) | Inquiry is a core aggregate before Contact and Lead | Accepted |
+| [0054](0054-per-form-adaptive-intake-brief-and-system-prompt.md) | Per-form adaptive intake brief + system prompt; preview-chat without Inquiry rows | Accepted |

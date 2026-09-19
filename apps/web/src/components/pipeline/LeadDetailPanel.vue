@@ -123,6 +123,76 @@
               </dl>
             </div>
 
+            <!-- Inquiry intake context (ADR-0053) -->
+            <div v-if="inquiryOrigin" class="p-6 border-b border-border space-y-4">
+              <div class="flex items-start justify-between gap-3">
+                <h3 class="text-xs font-medium text-text-ghost uppercase tracking-wider">
+                  {{ t('pipeline.leadDetail.inquiryOrigin') }}
+                </h3>
+                <RouterLink
+                  :to="`/inquiries/${inquiryOrigin.id}`"
+                  class="text-xs text-accent hover:text-accent shrink-0"
+                >
+                  {{ t('pipeline.leadDetail.openInquiry') }}
+                </RouterLink>
+              </div>
+
+              <p v-if="inquiryOrigin.aiSummary" class="text-sm text-text-primary leading-relaxed">
+                {{ inquiryOrigin.aiSummary }}
+              </p>
+
+              <dl class="space-y-2 text-sm">
+                <div v-if="inquiryOrigin.proposedType">
+                  <dt class="text-text-ghost text-xs">
+                    {{ t('pipeline.leadDetail.inquiryType') }}
+                  </dt>
+                  <dd class="text-text-secondary">{{ inquiryOrigin.proposedType }}</dd>
+                </div>
+                <div v-if="inquiryOrigin.companyName">
+                  <dt class="text-text-ghost text-xs">
+                    {{ t('pipeline.leadDetail.inquiryCompany') }}
+                  </dt>
+                  <dd class="text-text-secondary">{{ inquiryOrigin.companyName }}</dd>
+                </div>
+                <div v-if="inquiryOrigin.contactName">
+                  <dt class="text-text-ghost text-xs">
+                    {{ t('pipeline.leadDetail.inquiryContact') }}
+                  </dt>
+                  <dd class="text-text-secondary">{{ inquiryOrigin.contactName }}</dd>
+                </div>
+                <div v-if="inquiryOrigin.source">
+                  <dt class="text-text-ghost text-xs">
+                    {{ t('pipeline.leadDetail.inquirySource') }}
+                  </dt>
+                  <dd class="text-text-secondary">{{ inquiryOrigin.source }}</dd>
+                </div>
+                <div
+                  v-if="inquiryBriefRows.length === 0 && !inquiryOrigin.aiSummary"
+                  class="text-text-ghost text-xs"
+                >
+                  {{ t('pipeline.leadDetail.inquiryEmpty') }}
+                </div>
+                <div v-for="row in inquiryBriefRows" :key="row.key">
+                  <dt class="text-text-ghost text-xs">{{ row.label }}</dt>
+                  <dd class="text-text-secondary whitespace-pre-wrap">{{ row.value }}</dd>
+                </div>
+                <div v-if="inquiryOrigin.tags.length" class="pt-1">
+                  <dt class="text-text-ghost text-xs mb-1">
+                    {{ t('pipeline.leadDetail.inquiryTags') }}
+                  </dt>
+                  <dd class="flex flex-wrap gap-1">
+                    <span
+                      v-for="tag in inquiryOrigin.tags"
+                      :key="tag"
+                      class="inline-block px-2 py-0.5 text-xs rounded-md bg-surface-input text-text-secondary border border-border"
+                    >
+                      {{ tag }}
+                    </span>
+                  </dd>
+                </div>
+              </dl>
+            </div>
+
             <!-- Correspondence (mail threads) — above internal notes -->
             <div class="border-b border-border">
               <h3
@@ -238,6 +308,64 @@ const editValue = ref('');
 const deleting = ref(false);
 
 const lead = computed(() => store.selectedLead);
+
+const inquiryOrigin = computed(() => lead.value?.inquiryOrigin ?? null);
+
+const inquiryBriefRows = computed(() => {
+  const brief = inquiryOrigin.value?.structuredData;
+  if (!brief) return [] as Array<{ key: string; label: string; value: string }>;
+  const rows: Array<{ key: string; label: string; value: string }> = [];
+  if (brief.problem?.trim()) {
+    rows.push({
+      key: 'problem',
+      label: t('pipeline.leadDetail.brief.problem'),
+      value: brief.problem.trim(),
+    });
+  }
+  if (brief.desiredOutcome?.trim()) {
+    rows.push({
+      key: 'desiredOutcome',
+      label: t('pipeline.leadDetail.brief.desiredOutcome'),
+      value: brief.desiredOutcome.trim(),
+    });
+  }
+  if (brief.currentProcess?.trim()) {
+    rows.push({
+      key: 'currentProcess',
+      label: t('pipeline.leadDetail.brief.currentProcess'),
+      value: brief.currentProcess.trim(),
+    });
+  }
+  if (Array.isArray(brief.currentTools) && brief.currentTools.length) {
+    rows.push({
+      key: 'currentTools',
+      label: t('pipeline.leadDetail.brief.currentTools'),
+      value: brief.currentTools.join(', '),
+    });
+  }
+  if (brief.teamSize != null) {
+    rows.push({
+      key: 'teamSize',
+      label: t('pipeline.leadDetail.brief.teamSize'),
+      value: String(brief.teamSize),
+    });
+  }
+  if (Array.isArray(brief.constraints) && brief.constraints.length) {
+    rows.push({
+      key: 'constraints',
+      label: t('pipeline.leadDetail.brief.constraints'),
+      value: brief.constraints.join(', '),
+    });
+  }
+  if (brief.timeline?.trim()) {
+    rows.push({
+      key: 'timeline',
+      label: t('pipeline.leadDetail.brief.timeline'),
+      value: brief.timeline.trim(),
+    });
+  }
+  return rows;
+});
 
 const submissionFields = computed(() => {
   const data = lead.value?.submission?.data;

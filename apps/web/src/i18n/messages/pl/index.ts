@@ -11,6 +11,7 @@ import common from './common.json';
 import contacts from './contacts.json';
 import errors from './errors.json';
 import forms from './forms.json';
+import inquiries from './inquiries.json';
 import mail from './mail.json';
 import marketplace from './marketplace.json';
 import nav from './nav.json';
@@ -31,6 +32,7 @@ export default {
   contacts,
   errors,
   forms,
+  inquiries,
   mail,
   marketplace,
   nav,

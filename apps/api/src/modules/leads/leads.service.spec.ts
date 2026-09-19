@@ -168,4 +168,108 @@ describe('LeadsService', () => {
       await expect(service.delete('missing')).rejects.toThrow(NotFoundException);
     });
   });
+
+  describe('createFromInquiry', () => {
+    it('creates lead in first stage from inquiry data', async () => {
+      const leadRow = {
+        id: 'l2',
+        contactId: 'c1',
+        submissionId: null,
+        stageId: 'stage-1',
+        ownerId: null,
+        title: 'Alice · Acme',
+        value: null,
+        priority: 'medium',
+        formName: 'Demo form',
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+      };
+      db.insert
+        .mockImplementationOnce(() => makeChain([leadRow]))
+        .mockImplementationOnce(() => makeChain([{ id: 'cmt-1' }]));
+
+      const result = await service.createFromInquiry({
+        inquiryId: 'inq-1',
+        contactId: 'c1',
+        contactName: 'Alice',
+        email: 'alice@example.com',
+        companyName: 'Acme',
+        formName: 'Demo form',
+        aiSummary: 'Needs a CRM for sales.',
+        proposedType: 'CRM',
+        tags: ['crm'],
+        brief: {
+          problem: 'Excel chaos',
+          desiredOutcome: null,
+          currentProcess: null,
+          currentTools: [],
+          teamSize: 12,
+          constraints: [],
+          timeline: null,
+          inquiryType: null,
+        },
+      });
+
+      expect(result.id).toBe('l2');
+      expect(result.title).toBe('Alice · Acme');
+      expect(result.formName).toBe('Demo form');
+      expect(db.insert).toHaveBeenCalledTimes(2);
+      expect(stages.ensureDefaults).toHaveBeenCalled();
+      expect(stages.getFirstStage).toHaveBeenCalled();
+    });
+
+    it('uses email as title when contactName is absent', async () => {
+      const leadRow = {
+        id: 'l3',
+        contactId: 'c1',
+        submissionId: null,
+        stageId: 'stage-1',
+        ownerId: null,
+        title: 'alice@example.com',
+        value: null,
+        priority: 'medium',
+        formName: null,
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+      };
+      db.insert.mockImplementationOnce(() => makeChain([leadRow]));
+
+      const result = await service.createFromInquiry({
+        inquiryId: 'inq-1',
+        contactId: 'c1',
+        email: 'alice@example.com',
+      });
+
+      expect(result.title).toBe('alice@example.com');
+    });
+
+    it('uses provided stageId instead of first stage', async () => {
+      stages.findById.mockResolvedValueOnce({ id: 'stage-2', name: 'Qualified' } as any);
+      const leadRow = {
+        id: 'l4',
+        contactId: 'c1',
+        submissionId: null,
+        stageId: 'stage-2',
+        ownerId: null,
+        title: 'Alice',
+        value: null,
+        priority: 'medium',
+        formName: null,
+        createdAt: new Date('2026-01-01'),
+        updatedAt: new Date('2026-01-01'),
+      };
+      db.insert.mockImplementationOnce(() => makeChain([leadRow]));
+
+      const result = await service.createFromInquiry({
+        inquiryId: 'inq-1',
+        contactId: 'c1',
+        contactName: 'Alice',
+        email: 'alice@example.com',
+        stageId: 'stage-2',
+      });
+
+      expect(stages.findById).toHaveBeenCalledWith('stage-2');
+      expect(result.stageId).toBe('stage-2');
+    });
+  });
 });

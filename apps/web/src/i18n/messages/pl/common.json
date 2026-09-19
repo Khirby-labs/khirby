@@ -49,5 +49,8 @@
   "state": {
     "loading": "Ładowanie…",
     "noData": "Brak danych"
+  },
+  "table": {
+    "resizeColumn": "Zmień szerokość kolumny {column}"
   }
 }

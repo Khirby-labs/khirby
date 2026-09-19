@@ -66,12 +66,48 @@
                   trigger-class="w-full"
                 />
               </div>
+              <div>
+                <label class="crm-label">{{ t('forms.destination.label') }}</label>
+                <AppSelect
+                  v-model="form.destination"
+                  :options="destinationOptions"
+                  :aria-label="t('forms.destination.label')"
+                  trigger-class="w-full"
+                />
+              </div>
+              <div>
+                <label class="crm-label">{{ t('forms.intakeMode.label') }}</label>
+                <AppSelect
+                  v-model="form.intakeMode"
+                  :options="intakeModeOptions"
+                  :aria-label="t('forms.intakeMode.label')"
+                  trigger-class="w-full"
+                />
+                <p
+                  v-if="form.destination === 'lead' && form.intakeMode === 'adaptive'"
+                  class="text-xs text-danger mt-1"
+                >
+                  {{ t('forms.intakeMode.adaptiveLeadError') }}
+                </p>
+              </div>
             </div>
             <AppCheckbox v-model="form.active">{{ t('forms.detail.general.active') }}</AppCheckbox>
           </div>
 
-          <!-- Schema fields (the hero) -->
-          <div class="crm-panel p-6 space-y-4 ring-1 ring-accent/25">
+          <!-- Adaptive intake config (ADR-0054) -->
+          <AdaptiveIntakePanel
+            v-if="isAdaptive"
+            :form-id="form.id"
+            :brief="form.intakeBrief ?? ''"
+            :system-prompt="form.systemPrompt ?? ''"
+            :opening-labels="form.openingLabels"
+            @update:brief="form.intakeBrief = $event"
+            @update:system-prompt="form.systemPrompt = $event"
+            @update:opening-labels="form.openingLabels = $event"
+          />
+
+          <!-- Schema fields (static / lead) -->
+          <div v-else class="crm-panel p-6 space-y-4 ring-1 ring-accent/25">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h3 class="text-sm font-semibold text-text-primary">
                 {{ t('forms.detail.schema.title') }}
@@ -260,7 +296,14 @@
 
         <!-- RIGHT: preview + integration -->
         <div class="space-y-6 lg:sticky lg:top-4">
-          <FormPreview :name="form.name" :fields="previewFields" />
+          <AdaptiveFormPreview
+            v-if="isAdaptive"
+            :form-id="form.id"
+            :form-name="form.name"
+            :opening-labels="form.openingLabels"
+            :can-test="canTestAdaptive"
+          />
+          <FormPreview v-else :name="form.name" :fields="previewFields" />
           <IntegrationPanel
             :submit-url="submitUrl"
             :example-json="exampleJson"
@@ -272,19 +315,67 @@
         </div>
       </div>
 
-      <!-- Submissions -->
+      <!-- Submissions / inquiries from this form -->
       <div class="crm-panel p-6 space-y-4">
         <h3 class="text-sm font-semibold text-text-secondary">
           {{
-            t(
-              'forms.detail.submissions.title',
-              { count: n(submissionsTotal, 'integer') },
-              submissionsTotal,
-            )
+            isInquiryDestination
+              ? t(
+                  'forms.detail.inquiries.title',
+                  { count: n(submissionsTotal, 'integer') },
+                  submissionsTotal,
+                )
+              : t(
+                  'forms.detail.submissions.title',
+                  { count: n(submissionsTotal, 'integer') },
+                  submissionsTotal,
+                )
           }}
         </h3>
 
         <AppTable
+          v-if="isInquiryDestination"
+          :loading="submissionsLoading"
+          :columns="inquiryColumns"
+          :rows="formInquiries"
+          :has-actions="true"
+        >
+          <template #empty>
+            <EmptyState
+              :title="t('forms.detail.inquiries.empty.title')"
+              :message="t('forms.detail.inquiries.empty.message')"
+            />
+          </template>
+          <template #cell-createdAt="{ value }">
+            <span class="font-mono tabular-nums text-xs text-text-ghost">{{
+              formatDate(value as string)
+            }}</span>
+          </template>
+          <template #cell-status="{ value }">
+            <span class="text-xs text-text-secondary">{{
+              inquiryStatusLabel(value as string)
+            }}</span>
+          </template>
+          <template #cell-email="{ value }">
+            <span class="font-mono text-text-secondary">{{ value || '—' }}</span>
+          </template>
+          <template #cell-aiSummary="{ value }">
+            <span class="text-sm text-text-secondary line-clamp-2">{{
+              (value as string) || '—'
+            }}</span>
+          </template>
+          <template #actions="{ row }">
+            <RouterLink
+              :to="`/inquiries/${(row as FormInquiryRow).id}`"
+              class="text-accent hover:text-accent text-xs"
+            >
+              {{ t('forms.detail.inquiries.view') }}
+            </RouterLink>
+          </template>
+        </AppTable>
+
+        <AppTable
+          v-else
           :loading="submissionsLoading"
           :columns="submissionColumns"
           :rows="submissions"
@@ -361,6 +452,7 @@ import {
   type FormKind,
   type SubmissionWithContact,
 } from '@khirby/types';
+import { apiGet } from '../../api/client';
 import { useFormsStore } from '../../stores/forms.store';
 import { useToastStore } from '../../stores/toast.store';
 import { useConfirm } from '../../composables/useConfirm';
@@ -373,6 +465,10 @@ import {
   buildCodegenExample,
   buildCurlExample,
   buildExampleSubmitData,
+  buildInquiryCurlExample,
+  buildInquiryExampleJson,
+  buildInquirySdkExample,
+  buildPublicInquiryUrl,
   buildPublicSubmitUrl,
   buildSdkExample,
   buildSdkInstallHint,
@@ -386,6 +482,8 @@ import PageActions from '../../components/ui/PageActions.vue';
 import AppTable from '../../components/AppTable.vue';
 import FormPreview from '../../components/forms/FormPreview.vue';
 import IntegrationPanel from '../../components/forms/IntegrationPanel.vue';
+import AdaptiveIntakePanel from '../../components/forms/AdaptiveIntakePanel.vue';
+import AdaptiveFormPreview from '../../components/forms/AdaptiveFormPreview.vue';
 
 /** Editable field carries a stable client id so v-for keys survive reorder/remove. */
 type EditableField = FormField & { _uid: number };
@@ -404,7 +502,9 @@ type ValidationProblem =
   | { code: 'fieldNameRequired' }
   | { code: 'duplicateFieldName'; name: string }
   | { code: 'selectNeedsOptions'; name: string }
-  | { code: 'emailFieldRequired' };
+  | { code: 'emailFieldRequired' }
+  | { code: 'adaptiveLeadInvalid' }
+  | { code: 'adaptivePromptRequired' };
 
 /** The schema identifier the server matches submissions on — an identifier, never copy. */
 const EMAIL_FIELD = 'email';
@@ -471,6 +571,14 @@ const askConfirm = useConfirm();
 const kindOptions = computed(() =>
   FORM_TEMPLATE_OPTIONS.map((o) => ({ value: o.id, label: t(o.labelKey) })),
 );
+const destinationOptions = computed(() => [
+  { value: 'lead', label: t('forms.destination.lead') },
+  { value: 'inquiry', label: t('forms.destination.inquiry') },
+]);
+const intakeModeOptions = computed(() => [
+  { value: 'static', label: t('forms.intakeMode.static') },
+  { value: 'adaptive', label: t('forms.intakeMode.adaptive') },
+]);
 // Reka's SelectItem forbids an empty-string value — the "Apply template…" prompt is the
 // AppSelect placeholder (shown while templateToApply is ''), not a selectable option.
 const templateApplyOptions = computed(() =>
@@ -491,6 +599,33 @@ const submissionColumns = computed(() => [
   { key: 'referer', label: t('forms.detail.submissions.columns.referer') },
 ]);
 
+interface FormInquiryRow {
+  id: string;
+  status: string;
+  email: string | null;
+  contactName: string | null;
+  aiSummary: string | null;
+  createdAt: string;
+}
+
+const inquiryColumns = computed(() => [
+  { key: 'createdAt', label: t('forms.detail.inquiries.columns.date') },
+  { key: 'status', label: t('forms.detail.inquiries.columns.status') },
+  { key: 'email', label: t('forms.detail.inquiries.columns.email') },
+  { key: 'aiSummary', label: t('forms.detail.inquiries.columns.summary') },
+]);
+
+const isInquiryDestination = computed(() => form.value?.destination === 'inquiry');
+
+const submissions = ref<SubmissionWithContact[]>([]);
+const formInquiries = ref<FormInquiryRow[]>([]);
+const submissionsTotal = ref(0);
+const submissionsLoading = ref(false);
+const submissionsPage = ref(1);
+const submissionsPageSize = 20;
+const submissionTotalPages = computed(() =>
+  Math.max(1, Math.ceil(submissionsTotal.value / submissionsPageSize)),
+);
 const form = ref<Form | null>(null);
 const schema = ref<EditableField[]>([]);
 const loading = ref(false);
@@ -502,16 +637,15 @@ const templateToApply = ref<FormKind | ''>('');
 /** Serialized snapshot of the last-persisted state — drives the dirty flag. */
 const savedSnapshot = ref('');
 
-const submissions = ref<SubmissionWithContact[]>([]);
-const submissionsTotal = ref(0);
-const submissionsLoading = ref(false);
-const submissionsPage = ref(1);
-const submissionsPageSize = 20;
-const submissionTotalPages = computed(() =>
-  Math.max(1, Math.ceil(submissionsTotal.value / submissionsPageSize)),
+const previewFields = computed(() => stripUid(schema.value));
+
+const isAdaptive = computed(
+  () => form.value?.destination === 'inquiry' && form.value?.intakeMode === 'adaptive',
 );
 
-const previewFields = computed(() => stripUid(schema.value));
+/** Snapshot of the last saved system prompt — preview requires a persisted prompt. */
+const savedSystemPrompt = ref<string | null>(null);
+const canTestAdaptive = computed(() => isAdaptive.value && !!savedSystemPrompt.value?.trim());
 
 function serialize(): string {
   if (!form.value) return '';
@@ -520,32 +654,48 @@ function serialize(): string {
     slug: form.value.slug,
     kind: form.value.kind,
     active: form.value.active,
+    destination: form.value.destination,
+    intakeMode: form.value.intakeMode,
+    intakeBrief: form.value.intakeBrief ?? null,
+    systemPrompt: form.value.systemPrompt ?? null,
+    openingLabels: form.value.openingLabels ?? null,
     schema: stripUid(schema.value),
   });
 }
 
 const isDirty = computed(() => savedSnapshot.value !== '' && serialize() !== savedSnapshot.value);
 
+const apiOrigin = computed(() => import.meta.env?.VITE_API_URL || window.location.origin);
+
 const submitUrl = computed(() => {
   if (!form.value) return '';
-  const origin = import.meta.env?.VITE_API_URL || window.location.origin;
-  return buildPublicSubmitUrl(origin, form.value.endpointToken);
+  if (isAdaptive.value) {
+    return buildPublicInquiryUrl(apiOrigin.value, form.value.endpointToken);
+  }
+  return buildPublicSubmitUrl(apiOrigin.value, form.value.endpointToken);
 });
 
 const exampleJson = computed(() =>
-  formatSubmitBodyJson(buildExampleSubmitData(previewFields.value)),
+  isAdaptive.value
+    ? buildInquiryExampleJson()
+    : formatSubmitBodyJson(buildExampleSubmitData(previewFields.value)),
 );
 
-const curlExample = computed(() =>
-  buildCurlExample(submitUrl.value, buildExampleSubmitData(previewFields.value)),
-);
-
-const apiOrigin = computed(() => import.meta.env?.VITE_API_URL || window.location.origin);
+const curlExample = computed(() => {
+  if (!form.value) return '';
+  if (isAdaptive.value) {
+    return buildInquiryCurlExample(apiOrigin.value, form.value.endpointToken);
+  }
+  return buildCurlExample(submitUrl.value, buildExampleSubmitData(previewFields.value));
+});
 
 const sdkInstallHint = computed(() => buildSdkInstallHint());
 
 const sdkExample = computed(() => {
   if (!form.value) return '';
+  if (isAdaptive.value) {
+    return buildInquirySdkExample(apiOrigin.value, form.value.endpointToken);
+  }
   return buildSdkExample(apiOrigin.value, form.value.endpointToken, previewFields.value);
 });
 
@@ -584,6 +734,7 @@ async function fetchForm() {
     const data = await formsStore.fetchForm(route.params.id as string);
     form.value = data;
     schema.value = withUid(data.schema ?? []);
+    savedSystemPrompt.value = data.systemPrompt ?? null;
     savedSnapshot.value = serialize();
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : t('forms.errors.load');
@@ -595,19 +746,40 @@ async function fetchForm() {
 async function fetchSubmissions() {
   submissionsLoading.value = true;
   try {
-    const result = await formsStore.fetchSubmissions(
-      route.params.id as string,
-      submissionsPage.value,
-      submissionsPageSize,
-    );
-    submissions.value = result.data;
-    submissionsTotal.value = result.total;
+    if (isInquiryDestination.value) {
+      const params = new URLSearchParams({
+        formId: route.params.id as string,
+        page: String(submissionsPage.value),
+        pageSize: String(submissionsPageSize),
+      });
+      const result = await apiGet<{ data: FormInquiryRow[]; total: number }>(
+        `/api/inquiries?${params}`,
+      );
+      formInquiries.value = result.data;
+      submissions.value = [];
+      submissionsTotal.value = result.total;
+    } else {
+      const result = await formsStore.fetchSubmissions(
+        route.params.id as string,
+        submissionsPage.value,
+        submissionsPageSize,
+      );
+      submissions.value = result.data;
+      formInquiries.value = [];
+      submissionsTotal.value = result.total;
+    }
   } catch {
     submissions.value = [];
+    formInquiries.value = [];
     submissionsTotal.value = 0;
   } finally {
     submissionsLoading.value = false;
   }
+}
+
+function inquiryStatusLabel(status: string): string {
+  const key = `inquiries.status.${status}` as Parameters<typeof t>[0];
+  return t(key);
 }
 
 async function goToSubmissionsPage(page: number) {
@@ -674,6 +846,18 @@ function validateBeforeSave(): ValidationProblem | null {
   if (!form.value.name.trim()) return { code: 'nameRequired' };
   if (!SLUG_RE.test(form.value.slug)) return { code: 'slugFormat' };
 
+  if (form.value.destination === 'lead' && form.value.intakeMode === 'adaptive') {
+    return { code: 'adaptiveLeadInvalid' };
+  }
+
+  if (form.value.destination === 'inquiry' && form.value.intakeMode === 'adaptive') {
+    if (!form.value.systemPrompt?.trim()) {
+      return { code: 'adaptivePromptRequired' };
+    }
+    // Adaptive forms skip schema field validation — conversation is the intake.
+    return null;
+  }
+
   const names = schema.value.map((f) => f.name.trim());
   if (names.some((n) => n === '')) return { code: 'fieldNameRequired' };
   const dupe = names.find((n, i) => names.indexOf(n) !== i);
@@ -685,7 +869,7 @@ function validateBeforeSave(): ValidationProblem | null {
   if (selectMissingOptions)
     return { code: 'selectNeedsOptions', name: selectMissingOptions.name.trim() };
 
-  if (schema.value.length > 0) {
+  if (schema.value.length > 0 && form.value.destination !== 'inquiry') {
     const email = schema.value.find((f) => f.name.trim() === EMAIL_FIELD);
     if (!email || !email.required) return { code: 'emailFieldRequired' };
   }
@@ -710,6 +894,10 @@ function problemText(problem: ValidationProblem): string {
       // The token is a parameter, not part of the sentence: 'email' is the schema
       // identifier the server matches on and must never be translated.
       return t('forms.detail.validation.emailFieldRequired', { field: EMAIL_FIELD });
+    case 'adaptiveLeadInvalid':
+      return t('forms.intakeMode.adaptiveLeadError');
+    case 'adaptivePromptRequired':
+      return t('forms.detail.validation.adaptivePromptRequired');
   }
 }
 
@@ -729,9 +917,15 @@ async function saveForm() {
       name: form.value.name,
       slug: form.value.slug,
       kind: form.value.kind,
+      destination: form.value.destination,
+      intakeMode: form.value.intakeMode,
+      intakeBrief: form.value.intakeBrief ?? null,
+      systemPrompt: form.value.systemPrompt ?? null,
+      openingLabels: form.value.openingLabels ?? null,
       active: form.value.active,
-      schema: stripUid(schema.value),
+      schema: isAdaptive.value ? [] : stripUid(schema.value),
     });
+    savedSystemPrompt.value = form.value.systemPrompt ?? null;
     savedSnapshot.value = serialize();
     toast.success(t('forms.toast.saved'));
   } catch (e: unknown) {

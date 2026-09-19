@@ -41,6 +41,13 @@ export class AllExceptionsFilter implements ExceptionFilter {
         exception instanceof Error ? exception.message : 'Unknown error',
         exception instanceof Error ? exception.stack : undefined,
       );
+      // Intentional 503 AppExceptions (pluginRequired / pluginDisabled /
+      // upstreamFailed) carry a safe, coded body the SPA must show — do not
+      // collapse them to a generic INTERNAL like unexpected 500s.
+      if (exception instanceof HttpException && status === HttpStatus.SERVICE_UNAVAILABLE) {
+        reply.status(status).send(this.buildBody(exception, status));
+        return;
+      }
       // Generic body: never leak stack traces or internal paths, in any environment.
       reply.status(status).send({
         statusCode: status,

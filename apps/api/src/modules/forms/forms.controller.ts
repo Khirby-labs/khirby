@@ -17,10 +17,12 @@ import { PermissionGuard } from '../../core/rbac/rbac.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
 import { FormsService } from './forms.service';
 import { FormsStatsService } from './forms-stats.service';
+import { InquiryService } from '../inquiry/inquiry.service';
 import { CreateFormDto } from './dto/create-form.dto';
 import { UpdateFormDto } from './dto/update-form.dto';
 import { FormStatsQueryDto } from './dto/form-stats-query.dto';
 import { ListFormSubmissionsQueryDto } from './dto/list-form-submissions-query.dto';
+import { DraftSystemPromptDto, PreviewChatDto, PlanQuestionsDto } from './dto/adaptive-intake.dto';
 
 @ApiTags('forms')
 @ApiBearerAuth('session')
@@ -31,6 +33,7 @@ export class FormsController {
   constructor(
     private forms: FormsService,
     private stats: FormsStatsService,
+    private inquiry: InquiryService,
   ) {}
 
   @Get()
@@ -52,6 +55,30 @@ export class FormsController {
   @ApiResponse({ status: 200, description: 'Paginated submission list' })
   findSubmissions(@Param('id') id: string, @Query() query: ListFormSubmissionsQueryDto) {
     return this.forms.findSubmissionsByFormId(id, query.page, query.pageSize);
+  }
+
+  @Post(':id/draft-system-prompt')
+  @ApiOperation({ summary: 'Draft adaptive system prompt from operator brief (ADR-0054)' })
+  @ApiResponse({ status: 201, description: 'Drafted system prompt' })
+  draftSystemPrompt(@Param('id') id: string, @Body() dto: DraftSystemPromptDto) {
+    return this.inquiry.draftSystemPrompt(id, dto.brief, dto.locale);
+  }
+
+  @Post(':id/preview-chat')
+  @ApiOperation({ summary: 'Preview adaptive intake chat without creating an Inquiry (ADR-0054)' })
+  @ApiResponse({ status: 201, description: 'Assistant reply for preview' })
+  previewChat(@Param('id') id: string, @Body() dto: PreviewChatDto) {
+    return this.inquiry.previewChat(id, { messages: dto.messages, content: dto.content });
+  }
+
+  @Post(':id/plan-questions')
+  @ApiOperation({ summary: 'Plan a batch of adaptive follow-up questions (one LLM call)' })
+  @ApiResponse({ status: 201, description: 'Planned questions' })
+  planQuestions(@Param('id') id: string, @Body() dto: PlanQuestionsDto) {
+    return this.inquiry.planQuestions(id, {
+      openingMessage: dto.openingMessage,
+      locale: dto.locale,
+    });
   }
 
   @Get(':id')

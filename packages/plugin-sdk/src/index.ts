@@ -110,6 +110,76 @@ export interface EmailSentEvent {
   };
 }
 
+export interface InquiryCreatedEvent {
+  type: 'inquiry.created';
+  payload: {
+    id: string;
+    formId?: string | null;
+    status: 'active';
+    email?: string | null;
+    contactName?: string | null;
+    createdAt: Date;
+  };
+}
+
+export interface InquiryMessageCreatedEvent {
+  type: 'inquiry.message.created';
+  payload: {
+    id: string;
+    inquiryId: string;
+    role: string;
+    createdAt: Date;
+  };
+}
+
+export interface InquiryReadyForReviewEvent {
+  type: 'inquiry.ready_for_review';
+  payload: {
+    id: string;
+    email?: string | null;
+    contactName?: string | null;
+    formId?: string | null;
+    createdAt: Date;
+  };
+}
+
+export interface InquiryAcceptedEvent {
+  type: 'inquiry.accepted';
+  payload: {
+    id: string;
+    status: 'accepted';
+    email: string;
+    contactName?: string | null;
+    leadId: string;
+    formId?: string | null;
+    createdAt: Date;
+  };
+}
+
+export interface InquiryRejectedEvent {
+  type: 'inquiry.rejected';
+  payload: {
+    id: string;
+    status: 'rejected';
+    email?: string | null;
+    contactName?: string | null;
+    formId?: string | null;
+    createdAt: Date;
+  };
+}
+
+export interface InquirySpamEvent {
+  type: 'inquiry.spam';
+  payload: {
+    id: string;
+    status: 'spam';
+    email?: string | null;
+    contactName?: string | null;
+    formId?: string | null;
+    createdAt: Date;
+  };
+}
+
 export type CrmEvent =
   | ContactCreatedEvent
   | FormSubmittedEvent
@@ -117,7 +187,13 @@ export type CrmEvent =
   | LeadMovedEvent
   | LeadDeletedEvent
   | EmailReceivedEvent
-  | EmailSentEvent;
+  | EmailSentEvent
+  | InquiryCreatedEvent
+  | InquiryMessageCreatedEvent
+  | InquiryReadyForReviewEvent
+  | InquiryAcceptedEvent
+  | InquiryRejectedEvent
+  | InquirySpamEvent;
 
 export interface PluginContext {
   log: (message: string, ...args: unknown[]) => void;

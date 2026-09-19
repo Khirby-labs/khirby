@@ -70,6 +70,8 @@ const I18N_ENFORCED = [
   'apps/web/src/views/forms/FormsAnalyticsView.vue',
   'apps/web/src/components/forms/FormPreview.vue',
   'apps/web/src/components/forms/IntegrationPanel.vue',
+  'apps/web/src/components/forms/AdaptiveIntakePanel.vue',
+  'apps/web/src/components/forms/AdaptiveFormPreview.vue',
   'apps/web/src/stores/forms.store.ts',
   'apps/web/src/utils/form-field-templates.ts',
   // S8 — admin & auth
@@ -105,6 +107,9 @@ const I18N_ENFORCED = [
   // audit of this feature found a hardcoded English fallback that listing the file
   // did not, and could not, catch.
   'apps/web/src/stores/marketplace.store.ts',
+  // Inquiries — "Do weryfikacji" review queue
+  'apps/web/src/views/inquiries/InquiriesView.vue',
+  'apps/web/src/views/inquiries/InquiryDetailView.vue',
 ];
 
 /**

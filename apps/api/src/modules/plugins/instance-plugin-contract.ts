@@ -67,7 +67,9 @@ public guide):
 
 Events the host emits (CrmEvent.type) — payloads: https://khirby.com/docs/plugins/events
 - contact.created, form.submitted, lead.created, lead.moved, lead.deleted,
-  email.received, email.sent
+  email.received, email.sent,
+  inquiry.created, inquiry.message.created, inquiry.ready_for_review,
+  inquiry.accepted, inquiry.rejected, inquiry.spam
 
 Do not:
 - require() / ts-node.register / createRequire in plugin source — the host loads

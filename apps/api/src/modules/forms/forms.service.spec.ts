@@ -124,14 +124,95 @@ describe('FormsService', () => {
         name: 'Contact',
         slug: 'contact',
         kind: 'contact',
+        destination: 'lead',
+        intakeMode: 'static',
         schema: [{ name: 'email', label: 'Email', type: 'email', required: true }],
       });
       expect(result).toEqual({
         name: 'Contact',
         slug: 'contact',
         kind: 'contact',
+        destination: 'lead',
+        intakeMode: 'static',
+        openingLabel: null,
+        capabilities: { adaptiveAvailable: false },
         fields: [{ name: 'email', label: 'Email', type: 'email', required: true }],
       });
+    });
+
+    it('includes destination and intakeMode from form', () => {
+      const result = service.toPublicForm({
+        name: 'Inquiry Form',
+        slug: 'inquiry-form',
+        kind: 'contact',
+        destination: 'inquiry',
+        intakeMode: 'static',
+        schema: [],
+      });
+      expect(result.destination).toBe('inquiry');
+      expect(result.intakeMode).toBe('static');
+      expect(result.openingLabel).toBeNull();
+      expect(result.capabilities).toEqual({ adaptiveAvailable: false });
+    });
+
+    it('resolves openingLabel for the requested locale', () => {
+      const form = {
+        name: 'Adaptive',
+        slug: 'adaptive',
+        kind: 'contact' as const,
+        destination: 'inquiry' as const,
+        intakeMode: 'adaptive' as const,
+        schema: [] as [],
+        openingLabels: { en: 'What problem are you solving?', pl: 'Jaki problem rozwiązujesz?' },
+      };
+      expect(service.toPublicForm(form, 'pl').openingLabel).toBe('Jaki problem rozwiązujesz?');
+      expect(service.toPublicForm(form, 'en').openingLabel).toBe('What problem are you solving?');
+    });
+
+    it('falls back openingLabel to en then pl when locale entry is missing', () => {
+      const onlyEn = service.toPublicForm(
+        {
+          name: 'A',
+          slug: 'a',
+          kind: 'contact',
+          schema: [],
+          openingLabels: { en: 'What brings you here?' },
+        },
+        'pl',
+      );
+      expect(onlyEn.openingLabel).toBe('What brings you here?');
+
+      const onlyPl = service.toPublicForm(
+        {
+          name: 'A',
+          slug: 'a',
+          kind: 'contact',
+          schema: [],
+          openingLabels: { pl: 'W czym możemy pomóc?' },
+        },
+        'en',
+      );
+      expect(onlyPl.openingLabel).toBe('W czym możemy pomóc?');
+    });
+
+    it('defaults destination to lead and intakeMode to static when absent', () => {
+      const result = service.toPublicForm({
+        name: 'Contact',
+        slug: 'contact',
+        kind: 'contact',
+        schema: [],
+      });
+      expect(result.destination).toBe('lead');
+      expect(result.intakeMode).toBe('static');
+    });
+
+    it('passes adaptiveAvailable from opts', () => {
+      const result = service.toPublicForm(
+        { name: 'F', slug: 'f', kind: 'contact', schema: [] },
+        'en',
+        { adaptiveAvailable: true },
+      );
+      expect(result.capabilities.adaptiveAvailable).toBe(true);
     });
 
     it('resolves labels[locale] when present', () => {
@@ -235,7 +316,7 @@ describe('FormsService', () => {
       );
     });
 
-    it('rejects a non-empty schema without a required email field', async () => {
+    it('rejects a non-empty schema without a required email field (lead destination)', async () => {
       await expect(
         service.create({
           name: 'F',
@@ -244,6 +325,93 @@ describe('FormsService', () => {
         }),
       ).rejects.toThrow(BadRequestException);
       expect(db.insert).not.toHaveBeenCalled();
+    });
+
+    it('accepts an inquiry form without an email field', async () => {
+      const newForm = { id: 'fi', name: 'Inquiry', slug: 'inquiry', schema: [], active: true };
+      db.select.mockImplementationOnce(() => makeChain([])); // no slug conflict
+      db.insert.mockImplementationOnce(() => makeChain([newForm]));
+
+      const result = await service.create({
+        name: 'Inquiry',
+        slug: 'inquiry',
+        destination: 'inquiry',
+        intakeMode: 'static',
+        schema: [{ name: 'message', label: 'Message', type: 'textarea', required: true }],
+      });
+      expect(result).toEqual(newForm);
+    });
+
+    it('rejects lead+adaptive combination', async () => {
+      await expect(
+        service.create({
+          name: 'F',
+          slug: 'f',
+          schema: [],
+          destination: 'lead',
+          intakeMode: 'adaptive',
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(db.insert).not.toHaveBeenCalled();
+    });
+
+    it('allows creating adaptive inquiry without a system prompt (draft on detail)', async () => {
+      const newForm = {
+        id: 'fa',
+        name: 'Adaptive',
+        slug: 'adaptive',
+        schema: [],
+        active: true,
+        destination: 'inquiry',
+        intakeMode: 'adaptive',
+      };
+      db.select.mockImplementationOnce(() => makeChain([]));
+      db.insert.mockImplementationOnce(() => makeChain([newForm]));
+
+      const result = await service.create({
+        name: 'Adaptive',
+        slug: 'adaptive',
+        schema: [],
+        destination: 'inquiry',
+        intakeMode: 'adaptive',
+      });
+      expect(result).toEqual(newForm);
+    });
+
+    it('rejects updating adaptive inquiry without a system prompt', async () => {
+      const existing = {
+        id: 'fx',
+        name: 'F',
+        slug: 'f',
+        schema: [],
+        destination: 'inquiry',
+        intakeMode: 'adaptive',
+        systemPrompt: null,
+      };
+      db.select.mockImplementationOnce(() => makeChain([existing]));
+
+      await expect(service.update('fx', { name: 'F2' })).rejects.toThrow(BadRequestException);
+      expect(db.update).not.toHaveBeenCalled();
+    });
+
+    it('accepts updating adaptive inquiry with a system prompt', async () => {
+      const existing = {
+        id: 'fy',
+        name: 'F',
+        slug: 'f',
+        schema: [],
+        destination: 'inquiry',
+        intakeMode: 'adaptive',
+        systemPrompt: null,
+      };
+      const updated = { ...existing, systemPrompt: 'Ask about budget first.' };
+      db.select.mockImplementationOnce(() => makeChain([existing]));
+      db.update.mockImplementationOnce(() => makeChain([updated]));
+
+      const result = await service.update('fy', {
+        systemPrompt: 'Ask about budget first.',
+      });
+      expect(result.systemPrompt).toBe('Ask about budget first.');
     });
 
     it('accepts a schema that has a required email field', async () => {

@@ -22,11 +22,40 @@ export const contacts = pgTable('contacts', {
 });
 
 export type FormKind = 'contact' | 'waitlist' | 'wishlist' | 'feedback';
+export type FormDestination = 'lead' | 'inquiry';
+export type FormIntakeMode = 'static' | 'adaptive';
 
 export type SubmissionSource = {
   referer?: string;
   userAgent?: string;
   ip?: string;
+};
+
+/** Confirmed facts only — model inferences live in aiMetadata (ADR-0053). */
+export type InquiryBrief = {
+  problem: string | null;
+  desiredOutcome: string | null;
+  currentProcess: string | null;
+  currentTools: string[];
+  teamSize: number | null;
+  constraints: string[];
+  timeline: string | null;
+  inquiryType: string | null;
+};
+
+export type InquiryStatus = 'active' | 'ready_for_review' | 'accepted' | 'rejected' | 'spam';
+
+export type InquiryMessageRole = 'visitor' | 'assistant';
+
+export const EMPTY_INQUIRY_BRIEF: InquiryBrief = {
+  problem: null,
+  desiredOutcome: null,
+  currentProcess: null,
+  currentTools: [],
+  teamSize: null,
+  constraints: [],
+  timeline: null,
+  inquiryType: null,
 };
 
 export const submissions = pgTable('submissions', {
@@ -61,6 +90,16 @@ export const forms = pgTable('forms', {
     .default([]),
   endpointToken: uuid('endpoint_token').defaultRandom().notNull(),
   active: boolean('active').default(true).notNull(),
+  /** Where submissions go: sales Lead path vs Inquiry review queue (ADR-0053). */
+  destination: text('destination').$type<FormDestination>().default('lead').notNull(),
+  /** How the public intake collects answers. lead+adaptive is rejected in v1. */
+  intakeMode: text('intake_mode').$type<FormIntakeMode>().default('static').notNull(),
+  /** Operator intent (3–4 sentences) used to draft the adaptive system prompt (ADR-0054). */
+  intakeBrief: text('intake_brief'),
+  /** Per-form system prompt for INQUIRY_INTAKE_ASSISTANT (ADR-0054). */
+  systemPrompt: text('system_prompt'),
+  /** First visitor-facing question, bilingual (ADR-0025 / ADR-0054). */
+  openingLabels: jsonb('opening_labels').$type<{ en?: string; pl?: string }>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -157,6 +196,48 @@ export const leadComments = pgTable('lead_comments', {
     .notNull(),
   userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
   body: text('body').notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// ─── Inquiry (pre-lead review queue, ADR-0053) ───────────────────────────────
+
+export const inquiries = pgTable('inquiries', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  publicToken: uuid('public_token').defaultRandom().notNull().unique(),
+  formId: uuid('form_id').references(() => forms.id, { onDelete: 'set null' }),
+  source: text('source'),
+  sourceMeta: jsonb('source_meta').$type<SubmissionSource>().notNull().default({}),
+  status: text('status').$type<InquiryStatus>().default('active').notNull(),
+  contactName: text('contact_name'),
+  email: text('email'),
+  companyName: text('company_name'),
+  structuredData: jsonb('structured_data')
+    .$type<InquiryBrief>()
+    .notNull()
+    .default(EMPTY_INQUIRY_BRIEF),
+  aiSummary: text('ai_summary'),
+  proposedType: text('proposed_type'),
+  missingInformation: jsonb('missing_information').$type<string[]>().notNull().default([]),
+  tags: jsonb('tags').$type<string[]>().notNull().default([]),
+  aiMetadata: jsonb('ai_metadata').$type<Record<string, unknown>>().notNull().default({}),
+  reviewedAt: timestamp('reviewed_at'),
+  reviewedBy: uuid('reviewed_by').references(() => users.id, { onDelete: 'set null' }),
+  /** Set only after Accept; UNIQUE so one Lead links to at most one Inquiry. */
+  leadId: uuid('lead_id')
+    .references(() => leads.id, { onDelete: 'set null' })
+    .unique(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const inquiryMessages = pgTable('inquiry_messages', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  inquiryId: uuid('inquiry_id')
+    .references(() => inquiries.id, { onDelete: 'cascade' })
+    .notNull(),
+  role: text('role').$type<InquiryMessageRole>().notNull(),
+  content: text('content').notNull(),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 

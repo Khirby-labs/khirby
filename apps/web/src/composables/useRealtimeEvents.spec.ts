@@ -110,6 +110,11 @@ const form = (id: string, submissionCount: number): FormListItem => ({
   schema: [],
   endpointToken: `tok-${id}`,
   active: true,
+  destination: 'lead',
+  intakeMode: 'static',
+  intakeBrief: null,
+  systemPrompt: null,
+  openingLabels: null,
   createdAt: '2026-01-01T00:00:00.000Z',
   submissionCount,
 });

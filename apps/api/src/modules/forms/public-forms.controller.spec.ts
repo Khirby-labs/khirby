@@ -13,6 +13,7 @@ describe('PublicFormsController', () => {
   let leads: any;
   let events: any;
   let plugins: any;
+  let inquiry: any;
 
   const activeForm = {
     id: 'f1',
@@ -20,7 +21,20 @@ describe('PublicFormsController', () => {
     kind: 'contact',
     name: 'Contact us',
     active: true,
+    destination: 'lead',
+    intakeMode: 'static',
     schema: [{ name: 'email', label: 'Email', type: 'email', required: true }],
+  };
+
+  const inquiryForm = {
+    id: 'f2',
+    slug: 'inquiry',
+    kind: 'contact',
+    name: 'Inquiry form',
+    active: true,
+    destination: 'inquiry',
+    intakeMode: 'static',
+    schema: [],
   };
 
   function makeReq(headers: Record<string, unknown> = {}, ip = '203.0.113.9') {
@@ -33,10 +47,14 @@ describe('PublicFormsController', () => {
 
     forms = {
       findByToken: jest.fn().mockResolvedValue(activeForm),
-      toPublicForm: jest.fn((f: any) => ({
+      toPublicForm: jest.fn((f: any, _locale: string, _opts: any) => ({
         name: f.name,
         slug: f.slug,
         kind: f.kind,
+        destination: f.destination ?? 'lead',
+        intakeMode: f.intakeMode ?? 'static',
+        openingLabel: null,
+        capabilities: { adaptiveAvailable: false },
         fields: f.schema,
       })),
       validateSubmission: jest.fn((_schema: unknown, body: Record<string, unknown>) => {
@@ -52,8 +70,30 @@ describe('PublicFormsController', () => {
     leads = { createFromSubmission: jest.fn().mockResolvedValue(undefined) };
     events = { emit: jest.fn() };
     plugins = { emit: jest.fn() };
+    inquiry = {
+      createFromForm: jest.fn().mockResolvedValue({
+        id: 'inq-1',
+        publicToken: 'pub-tok-1',
+        status: 'active',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        reviewedAt: null,
+      }),
+      planQuestions: jest.fn().mockResolvedValue({
+        questions: ['Q1?', 'Q2?', 'Q3?'],
+      }),
+      submitAdaptiveIntake: jest.fn().mockResolvedValue({
+        id: 'inq-adapt',
+        publicToken: 'pub-adapt',
+        status: 'ready_for_review',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        reviewedAt: null,
+      }),
+      hasAssistant: jest.fn().mockReturnValue(false),
+    };
 
-    controller = new PublicFormsController(forms, contacts, leads, events, plugins);
+    controller = new PublicFormsController(forms, contacts, leads, events, plugins, inquiry);
   });
 
   afterEach(() => jest.restoreAllMocks());
@@ -63,23 +103,33 @@ describe('PublicFormsController', () => {
   describe('getPublicForm', () => {
     it('returns the public shape for an active form (default locale en)', async () => {
       const result = await controller.getPublicForm('tok');
-      expect(forms.toPublicForm).toHaveBeenCalledWith(activeForm, 'en');
+      expect(forms.toPublicForm).toHaveBeenCalledWith(activeForm, 'en', {
+        adaptiveAvailable: false,
+      });
       expect(result).toEqual({
         name: 'Contact us',
         slug: 'contact',
         kind: 'contact',
+        destination: 'lead',
+        intakeMode: 'static',
+        openingLabel: null,
+        capabilities: { adaptiveAvailable: false },
         fields: activeForm.schema,
       });
     });
 
     it('passes a supported locale query to toPublicForm', async () => {
       await controller.getPublicForm('tok', 'pl');
-      expect(forms.toPublicForm).toHaveBeenCalledWith(activeForm, 'pl');
+      expect(forms.toPublicForm).toHaveBeenCalledWith(activeForm, 'pl', {
+        adaptiveAvailable: false,
+      });
     });
 
     it('falls back to en for an unknown locale query', async () => {
       await controller.getPublicForm('tok', 'de');
-      expect(forms.toPublicForm).toHaveBeenCalledWith(activeForm, 'en');
+      expect(forms.toPublicForm).toHaveBeenCalledWith(activeForm, 'en', {
+        adaptiveAvailable: false,
+      });
     });
 
     it('404s when the form is missing', async () => {
@@ -176,6 +226,150 @@ describe('PublicFormsController', () => {
       await expect(
         controller.submit('tok', { email: 'ada@example.com' }, makeReq()),
       ).rejects.toThrow(new BadRequestException('Submission failed'));
+    });
+
+    it('rejects submit when form destination is inquiry', async () => {
+      forms.findByToken.mockResolvedValueOnce(inquiryForm);
+      await expect(
+        controller.submit('tok', { email: 'ada@example.com' }, makeReq()),
+      ).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  // ─── createInquiry ──────────────────────────────────────────────────────────
+
+  describe('createInquiry', () => {
+    it('drops honeypot hits without touching the DB', async () => {
+      const result = await controller.createInquiry('tok', { _hp: 'bot' }, makeReq());
+      expect(result).toEqual({ success: true });
+      expect(forms.findByToken).not.toHaveBeenCalled();
+    });
+
+    it('404s when the form is missing', async () => {
+      forms.findByToken.mockResolvedValueOnce(null);
+      await expect(controller.createInquiry('tok', {}, makeReq())).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('rejects when form destination is not inquiry', async () => {
+      await expect(controller.createInquiry('tok', { name: 'Ada' }, makeReq())).rejects.toThrow(
+        BadRequestException,
+      );
+    });
+
+    it('creates an inquiry for inquiry-destination form', async () => {
+      forms.findByToken.mockResolvedValueOnce(inquiryForm);
+      const result = await controller.createInquiry(
+        'tok',
+        { name: 'Bob', email: 'bob@example.com', company: 'Acme' },
+        makeReq({ referer: 'https://example.com' }),
+      );
+      expect(inquiry.createFromForm).toHaveBeenCalledWith(
+        expect.objectContaining({
+          formId: 'f2',
+          contactName: 'Bob',
+          email: 'bob@example.com',
+          companyName: 'Acme',
+        }),
+      );
+      expect(result).toEqual(
+        expect.objectContaining({
+          publicToken: 'pub-tok-1',
+          inquiryId: 'inq-1',
+          status: 'active',
+          destination: 'inquiry',
+          intakeMode: 'static',
+        }),
+      );
+    });
+
+    it('adaptive: one-shot submitAdaptiveIntake with opening + questions + answers', async () => {
+      forms.findByToken.mockResolvedValueOnce({
+        ...inquiryForm,
+        intakeMode: 'adaptive',
+      });
+      const result = await controller.createInquiry(
+        'tok',
+        {
+          opening: 'We need a CRM for our B2B sales team today.',
+          questions: ['Team size?', 'Timeline?', 'Tools?'],
+          answers: ['20', 'Q3', 'Sheets'],
+          name: 'Ada',
+          email: 'ada@example.com',
+          locale: 'en',
+        },
+        makeReq(),
+      );
+      expect(inquiry.submitAdaptiveIntake).toHaveBeenCalledWith(
+        expect.objectContaining({
+          formId: 'f2',
+          opening: 'We need a CRM for our B2B sales team today.',
+          questions: ['Team size?', 'Timeline?', 'Tools?'],
+          answers: ['20', 'Q3', 'Sheets'],
+          contactName: 'Ada',
+          email: 'ada@example.com',
+          locale: 'en',
+        }),
+      );
+      expect(inquiry.createFromForm).not.toHaveBeenCalled();
+      expect(result).toEqual(
+        expect.objectContaining({
+          publicToken: 'pub-adapt',
+          inquiryId: 'inq-adapt',
+          status: 'ready_for_review',
+          intakeMode: 'adaptive',
+        }),
+      );
+    });
+
+    it('adaptive: rejects incomplete payload', async () => {
+      forms.findByToken.mockResolvedValueOnce({
+        ...inquiryForm,
+        intakeMode: 'adaptive',
+      });
+      await expect(
+        controller.createInquiry('tok', { opening: 'only opening' }, makeReq()),
+      ).rejects.toThrow(BadRequestException);
+      expect(inquiry.submitAdaptiveIntake).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('planAdaptive', () => {
+    it('calls planQuestions without creating an inquiry', async () => {
+      forms.findByToken.mockResolvedValueOnce({
+        ...inquiryForm,
+        intakeMode: 'adaptive',
+      });
+      const result = await controller.planAdaptive('tok', {
+        opening: 'We need help choosing a CRM for our sales team.',
+        locale: 'pl',
+      });
+      expect(inquiry.planQuestions).toHaveBeenCalledWith('f2', {
+        openingMessage: 'We need help choosing a CRM for our sales team.',
+        count: 3,
+        locale: 'pl',
+      });
+      expect(inquiry.createFromForm).not.toHaveBeenCalled();
+      expect(inquiry.submitAdaptiveIntake).not.toHaveBeenCalled();
+      expect(result).toEqual({ questions: ['Q1?', 'Q2?', 'Q3?'] });
+    });
+
+    it('drops honeypot without planning', async () => {
+      const result = await controller.planAdaptive('tok', { _hp: 'bot', opening: 'x' });
+      expect(result).toEqual({ questions: [] });
+      expect(forms.findByToken).not.toHaveBeenCalled();
+    });
+
+    it('rejects a too-short opening before calling the LLM', async () => {
+      forms.findByToken.mockResolvedValueOnce({
+        ...inquiryForm,
+        intakeMode: 'adaptive',
+      });
+      await expect(controller.planAdaptive('tok', { opening: 'hi' })).rejects.toThrow(
+        BadRequestException,
+      );
+      expect(inquiry.planQuestions).not.toHaveBeenCalled();
     });
   });
 });

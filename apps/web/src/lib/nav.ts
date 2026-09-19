@@ -23,6 +23,13 @@ export interface NavItem {
 /** Daily work — the operational surfaces, top of the sidebar. */
 export const workspaceNav: NavItem[] = [
   { to: '/contacts', name: 'contacts', labelKey: 'nav.workspace.contacts', icon: 'contacts' },
+  {
+    to: '/inquiries',
+    name: 'inquiries',
+    labelKey: 'nav.workspace.inquiries',
+    icon: 'inquiries',
+    requiredPermission: { resource: 'inquiries', action: 'manage' },
+  },
   { to: '/pipeline', name: 'pipeline', labelKey: 'nav.workspace.pipeline', icon: 'pipeline' },
   { to: '/boards', name: 'boards', labelKey: 'nav.workspace.boards', icon: 'boards' },
   { to: '/forms', name: 'forms', labelKey: 'nav.workspace.forms', icon: 'forms' },

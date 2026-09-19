@@ -19,5 +19,6 @@
   "commandGroup.plugins": "Command palette group heading over enabled plugin pages. 1 word, plural.",
   "commandGroup.create": "Command palette group heading over create actions. 1 word.",
   "commandGroup.contacts": "Command palette group heading over contact search hits. 1 word, plural. Glossary: contacts → kontakty.",
-  "extensions.marketplace": "Sidebar item + page title for the plugin marketplace: the page where an operator browses what the CRM can do and installs a plugin in one click. Narrow sidebar and a collapsed-rail tooltip, so 1 word, never a sentence. The word Marketplace is established in both languages and stays as-is."
+  "extensions.marketplace": "Sidebar item + page title for the plugin marketplace: the page where an operator browses what the CRM can do and installs a plugin in one click. Narrow sidebar and a collapsed-rail tooltip, so 1 word, never a sentence. The word Marketplace is established in both languages and stays as-is.",
+  "workspace.inquiries": "Sidebar item + page title for the inquiry review queue ('Do weryfikacji' / 'For review'). Narrow sidebar — must fit. ≤3 words."
 }
