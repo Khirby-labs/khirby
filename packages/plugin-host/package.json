@@ -1,6 +1,6 @@
 {
   "name": "@khirby/plugin-host",
-  "version": "1.3.1",
+  "version": "1.3.2",
   "description": "Khirby plugin host surface — guards, DB token, AppException, service tokens for Nest plugins",
   "main": "./src/index.ts",
   "types": "./src/index.ts",

@@ -1,6 +1,6 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { join } from 'node:path';
+import { join, resolve, sep } from 'node:path';
 
 let tsNodeReady = false;
 
@@ -61,13 +61,30 @@ export function resolveVolumeNestModuleFile(absPackageDir: string): string | nul
   return null;
 }
 
+function purgeRequireCacheUnder(absDir: string): void {
+  const root = resolve(absDir);
+  const prefixes = [root + sep, `file://${root}${sep}`];
+  for (const key of Object.keys(require.cache)) {
+    if (prefixes.some((p) => key.startsWith(p)) || key === root) {
+      delete require.cache[key];
+    }
+  }
+}
+
 /** Load a Nest `@Module` class from an absolute `.ts` path via ts-node. */
 export function loadVolumeNestModuleFile(nestFile: string): unknown {
   const pkgJson = existsSync(join(nestFile, '..', 'package.json'))
     ? join(nestFile, '..', 'package.json')
     : join(nestFile, '..', '..', 'package.json');
+  const pkgDir = existsSync(join(nestFile, '..', 'package.json'))
+    ? join(nestFile, '..')
+    : join(nestFile, '..', '..');
   const nativeRequire = createRequire(pkgJson);
   ensureTsNode(nativeRequire);
+  // Drop any jiti/prior cache for this package — createPlugin() often imports the
+  // Nest module (or controllers) first, and those stay in require.cache with
+  // useDefineForClassFields class fields that break ValidationPipe DTOs.
+  purgeRequireCacheUnder(pkgDir);
   const resolved = nativeRequire.resolve(nestFile);
   const loaded = nativeRequire(resolved) as Record<string, unknown>;
   const nest = pickNestModule(loaded);

@@ -19,7 +19,7 @@ pnpm add @khirby/plugin-host @khirby/plugin-sdk
 ## Release
 
 ```bash
-./scripts/publish-plugin-packages.sh plugin-host@1.3.1
+./scripts/publish-plugin-packages.sh plugin-host@1.3.2
 # or khirby-plugins@x.y.z to publish sdk + host together
 ```
 
