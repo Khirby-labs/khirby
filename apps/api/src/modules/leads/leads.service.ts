@@ -10,6 +10,9 @@ import {
   leadComments,
   emailThreads,
   emailMessages,
+  inquiries,
+  type InquiryBrief,
+  EMPTY_INQUIRY_BRIEF,
 } from '../../core/database/schema';
 import { PipelineStagesService } from './pipeline-stages.service';
 import { ContactsService } from '../contacts/contacts.service';
@@ -27,6 +30,37 @@ function extractValueFromSubmission(data: Record<string, unknown>): string | nul
     if (!Number.isNaN(num)) return String(num);
   }
   return null;
+}
+
+function buildInquiryIntakeComment(input: {
+  aiSummary?: string | null;
+  proposedType?: string | null;
+  companyName?: string | null;
+  tags?: string[];
+  brief?: InquiryBrief | null;
+}): string {
+  const lines: string[] = [];
+  if (input.aiSummary?.trim()) lines.push(input.aiSummary.trim());
+  if (input.proposedType?.trim()) lines.push(`Type: ${input.proposedType.trim()}`);
+  if (input.companyName?.trim()) lines.push(`Company: ${input.companyName.trim()}`);
+
+  const brief = input.brief;
+  if (brief) {
+    if (brief.problem?.trim()) lines.push(`Problem: ${brief.problem.trim()}`);
+    if (brief.desiredOutcome?.trim()) lines.push(`Desired outcome: ${brief.desiredOutcome.trim()}`);
+    if (brief.currentProcess?.trim()) lines.push(`Current process: ${brief.currentProcess.trim()}`);
+    if (Array.isArray(brief.currentTools) && brief.currentTools.length) {
+      lines.push(`Tools: ${brief.currentTools.join(', ')}`);
+    }
+    if (brief.teamSize != null) lines.push(`Team size: ${brief.teamSize}`);
+    if (Array.isArray(brief.constraints) && brief.constraints.length) {
+      lines.push(`Constraints: ${brief.constraints.join(', ')}`);
+    }
+    if (brief.timeline?.trim()) lines.push(`Timeline: ${brief.timeline.trim()}`);
+  }
+  if (input.tags?.length) lines.push(`Tags: ${input.tags.join(', ')}`);
+
+  return lines.join('\n');
 }
 
 function serializeLead(row: typeof leads.$inferSelect) {
@@ -88,6 +122,78 @@ export class LeadsService {
         value: created.value != null ? String(created.value) : null,
         priority: created.priority,
         formName: input.formName,
+        contactId: input.contactId,
+        createdAt: created.createdAt,
+      },
+    });
+
+    return serializeLead(created);
+  }
+
+  async createFromInquiry(input: {
+    inquiryId: string;
+    contactId: string;
+    contactName?: string | null;
+    email: string;
+    stageId?: string;
+    companyName?: string | null;
+    formName?: string | null;
+    aiSummary?: string | null;
+    proposedType?: string | null;
+    tags?: string[];
+    brief?: InquiryBrief | null;
+  }) {
+    await this.stages.ensureDefaults();
+    const stage = input.stageId
+      ? await this.stages.findById(input.stageId)
+      : await this.stages.getFirstStage();
+    if (!stage) throw AppException.notFound('pipelineStage', input.stageId);
+
+    const name = input.contactName?.trim() || '';
+    const company = input.companyName?.trim() || '';
+    const title = name && company ? `${name} · ${company}` : name || company || input.email;
+
+    const [created] = await this.db
+      .insert(leads)
+      .values({
+        contactId: input.contactId,
+        submissionId: null,
+        stageId: stage.id,
+        title,
+        value: null,
+        priority: 'medium',
+        formName: input.formName?.trim() || null,
+      } as any)
+      .returning();
+
+    const intakeNote = buildInquiryIntakeComment({
+      aiSummary: input.aiSummary,
+      proposedType: input.proposedType,
+      companyName: input.companyName,
+      tags: input.tags,
+      brief: input.brief,
+    });
+    if (intakeNote) {
+      await this.db.insert(leadComments).values({
+        leadId: created.id,
+        userId: null,
+        body: intakeNote,
+      } as any);
+    }
+
+    this.events.emit('lead.created', { stageId: stage.id, leadId: created.id });
+    void this.plugins.emit({
+      type: 'lead.created',
+      payload: {
+        id: created.id,
+        title: created.title,
+        email: input.email,
+        name: input.contactName ?? null,
+        stageId: stage.id,
+        stageName: stage.name,
+        value: null,
+        priority: created.priority,
+        formName: created.formName,
         contactId: input.contactId,
         createdAt: created.createdAt,
       },
@@ -331,6 +437,22 @@ export class LeadsService {
       .where(eq(leadComments.leadId, id))
       .orderBy(asc(leadComments.createdAt));
 
+    const [inquiryOrigin] = await this.db
+      .select({
+        id: inquiries.id,
+        aiSummary: inquiries.aiSummary,
+        proposedType: inquiries.proposedType,
+        companyName: inquiries.companyName,
+        tags: inquiries.tags,
+        structuredData: inquiries.structuredData,
+        source: inquiries.source,
+        contactName: inquiries.contactName,
+        email: inquiries.email,
+      })
+      .from(inquiries)
+      .where(eq(inquiries.leadId, id))
+      .limit(1);
+
     return {
       id: row.id,
       contactId: row.contactId,
@@ -349,6 +471,28 @@ export class LeadsService {
       hasNewMail: hint?.hasNewMail ?? false,
       lastMailAt: hint?.lastMailAt ?? null,
       submission,
+      inquiryOrigin: inquiryOrigin
+        ? {
+            id: inquiryOrigin.id,
+            aiSummary: inquiryOrigin.aiSummary,
+            proposedType: inquiryOrigin.proposedType,
+            companyName: inquiryOrigin.companyName,
+            contactName: inquiryOrigin.contactName,
+            email: inquiryOrigin.email,
+            tags: inquiryOrigin.tags ?? [],
+            structuredData: {
+              ...EMPTY_INQUIRY_BRIEF,
+              ...(inquiryOrigin.structuredData ?? {}),
+              currentTools: Array.isArray(inquiryOrigin.structuredData?.currentTools)
+                ? inquiryOrigin.structuredData.currentTools
+                : [],
+              constraints: Array.isArray(inquiryOrigin.structuredData?.constraints)
+                ? inquiryOrigin.structuredData.constraints
+                : [],
+            },
+            source: inquiryOrigin.source,
+          }
+        : null,
       comments: comments.map((c) => ({
         id: c.id,
         leadId: c.leadId,

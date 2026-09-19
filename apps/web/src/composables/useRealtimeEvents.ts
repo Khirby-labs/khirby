@@ -27,6 +27,13 @@ export function useRealtimeEvents() {
           case 'submission.created':
             formsStore.onNewSubmission(data);
             break;
+          case 'inquiry.created':
+            if (data?.formId) formsStore.onNewSubmission({ formId: data.formId });
+            window.dispatchEvent(new CustomEvent('inquiry-updated'));
+            break;
+          case 'inquiry.ready_for_review':
+            window.dispatchEvent(new CustomEvent('inquiry-updated'));
+            break;
           case 'email.sent':
           case 'email.received':
           case 'email.deleted':

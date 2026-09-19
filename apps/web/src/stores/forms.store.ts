@@ -10,6 +10,8 @@ import type {
   FormListItem,
   FormStats,
   FormKind,
+  FormDestination,
+  FormIntakeMode,
   FormField,
   PaginatedResponse,
   SubmissionWithContact,
@@ -55,6 +57,11 @@ export const useFormsStore = defineStore('forms', () => {
     schema: FormField[];
     kind: FormKind;
     active?: boolean;
+    destination?: FormDestination;
+    intakeMode?: FormIntakeMode;
+    intakeBrief?: string | null;
+    systemPrompt?: string | null;
+    openingLabels?: { en?: string; pl?: string } | null;
   }) {
     return apiPost<Form>('/api/forms', payload);
   }
@@ -67,9 +74,45 @@ export const useFormsStore = defineStore('forms', () => {
       schema: FormField[];
       kind: FormKind;
       active: boolean;
+      destination: FormDestination;
+      intakeMode: FormIntakeMode;
+      intakeBrief: string | null;
+      systemPrompt: string | null;
+      openingLabels: { en?: string; pl?: string } | null;
     }>,
   ) {
     return apiPatch<Form>(`/api/forms/${id}`, payload);
+  }
+
+  async function draftSystemPrompt(id: string, brief: string, locale?: string) {
+    return apiPost<{
+      systemPrompt: string;
+      openingLabels: { en: string; pl: string };
+    }>(`/api/forms/${id}/draft-system-prompt`, {
+      brief,
+      ...(locale ? { locale } : {}),
+    });
+  }
+
+  async function previewChat(
+    id: string,
+    payload: {
+      messages: Array<{ role: 'visitor' | 'assistant'; content: string }>;
+      content: string;
+    },
+  ) {
+    return apiPost<{
+      readyForReview: boolean;
+      nextQuestion: string | null;
+      summary: string | null;
+    }>(`/api/forms/${id}/preview-chat`, payload);
+  }
+
+  async function planQuestions(id: string, openingMessage: string, locale?: string) {
+    return apiPost<{ questions: string[] }>(`/api/forms/${id}/plan-questions`, {
+      openingMessage,
+      ...(locale ? { locale } : {}),
+    });
   }
 
   async function deleteForm(id: string) {
@@ -124,6 +167,9 @@ export const useFormsStore = defineStore('forms', () => {
     fetchForm,
     createForm,
     updateForm,
+    draftSystemPrompt,
+    previewChat,
+    planQuestions,
     deleteForm,
     fetchSubmissions,
     fetchStats,

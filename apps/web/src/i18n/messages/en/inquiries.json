@@ -1,0 +1,89 @@
+{
+  "list": {
+    "title": "For review",
+    "resultCount": "{count} inquiry | {count} inquiries",
+    "filters": {
+      "statusAll": "All statuses",
+      "statusActive": "Active",
+      "statusReadyForReview": "Ready for review",
+      "statusAccepted": "Accepted",
+      "statusRejected": "Rejected",
+      "statusSpam": "Spam",
+      "searchPlaceholder": "Search inquiries…",
+      "clear": "Clear filters"
+    },
+    "columns": {
+      "status": "Status",
+      "summary": "Summary",
+      "contactName": "Name",
+      "email": "Email",
+      "companyName": "Company",
+      "proposedType": "Type",
+      "tags": "Tags",
+      "createdAt": "Received",
+      "source": "Source"
+    },
+    "empty": {
+      "filteredTitle": "No inquiries match",
+      "filteredMessage": "Adjust filters or clear them to see all inquiries.",
+      "noneTitle": "No inquiries yet",
+      "noneMessage": "Inquiries from adaptive intake forms will appear here."
+    },
+    "emptyCell": "None",
+    "errors": {
+      "load": "Couldn't load inquiries"
+    }
+  },
+  "detail": {
+    "back": "Back to inquiries",
+    "status": "Status",
+    "summary": "Summary",
+    "briefHeading": "Structured brief",
+    "problem": "Problem",
+    "desiredOutcome": "Desired outcome",
+    "currentProcess": "Current process",
+    "currentTools": "Current tools",
+    "teamSize": "Team size",
+    "constraints": "Constraints",
+    "timeline": "Timeline",
+    "inquiryType": "Inquiry type",
+    "missingInformation": "Missing information",
+    "proposedType": "Proposed type",
+    "tags": "Tags",
+    "source": "Source",
+    "transcript": "Answers",
+    "openingFallback": "Opening answer",
+    "noSummary": "No summary available",
+    "noValue": "—",
+    "errors": {
+      "load": "Couldn't load inquiry"
+    }
+  },
+  "actions": {
+    "accept": "Accept",
+    "reject": "Reject",
+    "spam": "Mark as spam",
+    "acceptNoEmail": "An email address is required to accept this inquiry",
+    "acceptSuccess": "Inquiry accepted",
+    "rejectSuccess": "Inquiry rejected",
+    "spamSuccess": "Inquiry marked as spam",
+    "rejectTitle": "Reject inquiry?",
+    "rejectMessage": "The inquiry will be marked as rejected. This cannot be undone.",
+    "rejectConfirm": "Reject inquiry",
+    "spamTitle": "Mark as spam?",
+    "spamMessage": "The inquiry will be marked as spam. This cannot be undone.",
+    "spamConfirm": "Mark as spam",
+    "error": "Action failed"
+  },
+  "status": {
+    "active": "Active",
+    "ready_for_review": "Ready for review",
+    "accepted": "Accepted",
+    "rejected": "Rejected",
+    "spam": "Spam"
+  },
+  "role": {
+    "visitor": "Visitor",
+    "assistant": "Assistant"
+  }
+}

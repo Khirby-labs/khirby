@@ -12,6 +12,8 @@ import { Type } from 'class-transformer';
 import { FORM_FIELD_TYPES } from '../validate-submission-data';
 
 export const FORM_KINDS = ['contact', 'waitlist', 'wishlist', 'feedback'] as const;
+export const FORM_DESTINATIONS = ['lead', 'inquiry'] as const;
+export const FORM_INTAKE_MODES = ['static', 'adaptive'] as const;
 
 /** Slug: lowercase letters, digits and hyphens only — mirrors the builder's input pattern. */
 export const SLUG_PATTERN = /^[a-z0-9-]+$/;
@@ -77,4 +79,25 @@ export class CreateFormDto {
   @IsOptional()
   @IsIn(FORM_KINDS)
   kind?: (typeof FORM_KINDS)[number];
+
+  @IsOptional()
+  @IsIn([...FORM_DESTINATIONS])
+  destination?: (typeof FORM_DESTINATIONS)[number];
+
+  @IsOptional()
+  @IsIn([...FORM_INTAKE_MODES])
+  intakeMode?: (typeof FORM_INTAKE_MODES)[number];
+
+  @IsOptional()
+  @IsString()
+  intakeBrief?: string | null;
+
+  @IsOptional()
+  @IsString()
+  systemPrompt?: string | null;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => FormFieldLabelsDto)
+  openingLabels?: FormFieldLabelsDto | null;
 }

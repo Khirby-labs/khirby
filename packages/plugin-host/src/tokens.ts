@@ -331,6 +331,95 @@ export interface PokeloContextServiceLike {
 export type PokeloFetchOpts = KnowledgeFetchOpts;
 
 /**
+ * Optional AI intake assistant for inquiry forms (ADR-0053).
+ * Provided by crm-plugin-ai-compose when configured. Core resolves it at call
+ * time via resolveLoadedProvider — never constructor-@Optional().
+ */
+export const INQUIRY_INTAKE_ASSISTANT = 'INQUIRY_INTAKE_ASSISTANT';
+
+export type InquiryAssistantInput = {
+  inquiryId: string;
+  messages: Array<{ role: 'visitor' | 'assistant'; content: string }>;
+  brief: {
+    problem: string | null;
+    desiredOutcome: string | null;
+    currentProcess: string | null;
+    currentTools: string[];
+    teamSize: number | null;
+    constraints: string[];
+    timeline: string | null;
+    inquiryType: string | null;
+  };
+  latestVisitorMessage: string;
+  locale?: string;
+  /** Per-form system prompt (ADR-0054). When set, overrides the plugin default. */
+  systemPrompt?: string | null;
+};
+
+export type InquiryAssistantResult = {
+  readyForReview: boolean;
+  nextQuestion: string | null;
+  briefPatch: Partial<InquiryAssistantInput['brief']>;
+  summary: string | null;
+  proposedType: string | null;
+  tags: string[];
+  missingInformation: string[];
+  evidence: Record<string, string[]>;
+  inferences: Record<string, unknown>;
+};
+
+export type DraftSystemPromptInput = {
+  brief: string;
+  locale?: string;
+};
+
+export type DraftSystemPromptResult = {
+  systemPrompt: string;
+  /** First form field question in both supported locales. */
+  openingLabels: { en: string; pl: string };
+};
+
+/** One-shot plan of follow-up form fields after the visitor's opening answer. */
+export type PlanQuestionsInput = {
+  openingMessage: string;
+  systemPrompt?: string | null;
+  /** How many questions to plan (default 3). */
+  count?: number;
+  locale?: string;
+};
+
+export type PlanQuestionsResult = {
+  questions: string[];
+};
+
+/** Fill summary / type when the intake ends without the model having set them. */
+export type FinalizeInquiryInput = {
+  messages: Array<{ role: 'visitor' | 'assistant'; content: string }>;
+  brief: InquiryAssistantInput['brief'];
+  systemPrompt?: string | null;
+  locale?: string;
+};
+
+export type FinalizeInquiryResult = {
+  summary: string;
+  proposedType: string;
+  tags: string[];
+};
+
+export interface InquiryIntakeAssistant {
+  process(input: InquiryAssistantInput): Promise<InquiryAssistantResult>;
+  /** Draft a per-form system prompt from an operator brief (ADR-0054). */
+  draftSystemPrompt(input: DraftSystemPromptInput): Promise<DraftSystemPromptResult>;
+  /**
+   * Plan a short batch of follow-up questions in one LLM call so the UI can
+   * step through them without waiting between answers.
+   */
+  planQuestions(input: PlanQuestionsInput): Promise<PlanQuestionsResult>;
+  /** Produce summary + proposedType for an inquiry that is ready for review. */
+  finalize(input: FinalizeInquiryInput): Promise<FinalizeInquiryResult>;
+}
+
+/**
  * Instance-volume plugins (ADR-0036, ADR-0038). Provided by PluginsModule.
  * MCP and in-app chat consume this token — never import `apps/api`.
  */

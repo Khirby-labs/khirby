@@ -121,6 +121,18 @@ describe('filterNavForUser', () => {
     );
     expect(paths).toContain('/settings/custom-fields');
   });
+
+  it('hides inquiries without inquiries:manage', () => {
+    const paths = filterNavForUser(workspaceNav, []).map((i) => i.to);
+    expect(paths).not.toContain('/inquiries');
+  });
+
+  it('shows inquiries when inquiries:manage is granted', () => {
+    const paths = filterNavForUser(workspaceNav, [{ resource: 'inquiries', action: 'manage' }]).map(
+      (i) => i.to,
+    );
+    expect(paths).toContain('/inquiries');
+  });
 });
 
 describe('filterCommandGroups', () => {

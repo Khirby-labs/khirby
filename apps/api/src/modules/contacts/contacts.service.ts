@@ -302,12 +302,17 @@ export class ContactsService {
     if (existing) {
       const patch: Record<string, unknown> = {};
 
-      if (data.submissionContext) {
-        patch.metadata = mergeFormInterest(
-          (existing.metadata ?? {}) as Record<string, unknown>,
-          data.submissionContext,
-        );
+      let nextMeta = (existing.metadata ?? {}) as Record<string, unknown>;
+      let metaChanged = false;
+      if (data.metadata && Object.keys(data.metadata).length > 0) {
+        nextMeta = { ...nextMeta, ...data.metadata };
+        metaChanged = true;
       }
+      if (data.submissionContext) {
+        nextMeta = mergeFormInterest(nextMeta, data.submissionContext);
+        metaChanged = true;
+      }
+      if (metaChanged) patch.metadata = nextMeta;
 
       if (data.name && !existing.name) {
         patch.name = data.name;

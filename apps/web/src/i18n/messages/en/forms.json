@@ -88,8 +88,23 @@
       "title": "{count} submission | {count} submissions",
       "viewContact": "View contact"
     },
+    "inquiries": {
+      "columns": {
+        "date": "Received",
+        "email": "Email",
+        "status": "Status",
+        "summary": "Summary"
+      },
+      "empty": {
+        "message": "Inquiries from this form will appear here for review.",
+        "title": "No inquiries yet"
+      },
+      "title": "{count} inquiry | {count} inquiries",
+      "view": "Open"
+    },
     "unsavedChanges": "Unsaved changes",
     "validation": {
+      "adaptivePromptRequired": "Add a system prompt before testing the form.",
       "duplicateFieldName": "Duplicate field name “{name}” — field names must be unique.",
       "emailFieldRequired": "Add a required “{field}” field — submissions are matched to contacts by email.",
       "fieldNameRequired": "Every field needs a name.",
@@ -130,6 +145,17 @@
       "copied": "Copied",
       "endpointCopied": "Endpoint URL copied"
     }
+  },
+  "destination": {
+    "label": "Destination",
+    "lead": "Lead",
+    "inquiry": "Inquiry"
+  },
+  "intakeMode": {
+    "label": "Intake mode",
+    "static": "Static",
+    "adaptive": "Adaptive",
+    "adaptiveLeadError": "Adaptive intake is not available for lead destination."
   },
   "kind": {
     "contact": "Contact",
@@ -181,6 +207,64 @@
     "submit": "Submit",
     "untitledField": "Untitled field",
     "untitledForm": "Untitled form"
+  },
+  "adaptive": {
+    "title": "Adaptive intake",
+    "brief": {
+      "label": "Brief",
+      "hint": "Write 3–4 sentences about what this form should gather.",
+      "placeholder": "E.g. Gather company size, growth plans, and current tools from interested prospects."
+    },
+    "generate": "Generate prompt",
+    "generating": "Generating…",
+    "prompt": {
+      "label": "System prompt",
+      "hint": "Keep the prompt language-neutral — visitor language is chosen at runtime, not in the prompt.",
+      "placeholder": "Generate a prompt or paste your own."
+    },
+    "opening": {
+      "labelEn": "Opening question (EN)",
+      "labelPl": "Opening question (PL)",
+      "placeholderEn": "What brings you here today?",
+      "placeholderPl": "W czym możemy pomóc?",
+      "hint": "First field visitors see. Generated with the system prompt — edit freely."
+    },
+    "errors": {
+      "briefRequired": "Add a brief before generating.",
+      "generate": "Couldn't generate the prompt",
+      "preview": "Couldn't load the form preview",
+      "savePromptFirst": "Save the form before testing it."
+    },
+    "preview": {
+      "title": "Test form",
+      "caption": "Answer the opening question, fill the planned fields, then leave contact details. Test responses don't create inquiries.",
+      "empty": "Answer the first question to test the form.",
+      "inputPlaceholder": "Your answer…",
+      "send": "Send",
+      "sending": "Sending…",
+      "reset": "Start over",
+      "you": "You",
+      "assistant": "Form",
+      "ready": "Form complete.",
+      "openingFallback": "What brings you here today?",
+      "start": "Continue",
+      "continue": "Continue",
+      "finish": "Submit",
+      "loadingTitle": "Building the form",
+      "loadingBody": "Preparing a few follow-up questions…",
+      "phaseQuestions": "Questions",
+      "phaseContact": "Contact",
+      "answersRequired": "Fill every field before continuing.",
+      "contactIntro": "Almost done — leave a way to get back in touch.",
+      "contactName": "Name",
+      "contactNamePlaceholder": "Full name",
+      "contactEmail": "Email",
+      "contactEmailPlaceholder": "name{'@'}company.com",
+      "contactInvalid": "Add a name and a valid email."
+    },
+    "toast": {
+      "drafted": "Prompt drafted"
+    }
   },
   "toast": {
     "created": "Form created",

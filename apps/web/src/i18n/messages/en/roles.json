@@ -79,7 +79,8 @@
       "roles": "Roles",
       "settings": "Settings",
       "boards": "Boards",
-      "users": "Members"
+      "users": "Members",
+      "inquiries": "Inquiries"
     }
   },
   "seed": {

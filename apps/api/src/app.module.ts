@@ -20,6 +20,7 @@ import { EventsModule } from './core/events/events.module';
 import { MailModule } from './modules/mail/mail.module';
 import { AgentModule } from './modules/agent/agent.module';
 import { SystemModule } from './modules/system/system.module';
+import { InquiryModule } from './modules/inquiry/inquiry.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { SystemModule } from './modules/system/system.module';
     SystemModule,
     MailModule,
     AgentModule,
+    InquiryModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

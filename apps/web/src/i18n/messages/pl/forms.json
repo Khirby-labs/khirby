@@ -88,8 +88,23 @@
       "title": "{count} zgłoszenie | {count} zgłoszenia | {count} zgłoszeń",
       "viewContact": "Zobacz kontakt"
     },
+    "inquiries": {
+      "columns": {
+        "date": "Otrzymano",
+        "email": "E-mail",
+        "status": "Status",
+        "summary": "Podsumowanie"
+      },
+      "empty": {
+        "message": "Zgłoszenia z tego formularza pojawią się tutaj do weryfikacji.",
+        "title": "Brak zgłoszeń"
+      },
+      "title": "{count} zgłoszenie | {count} zgłoszenia | {count} zgłoszeń",
+      "view": "Otwórz"
+    },
     "unsavedChanges": "Niezapisane zmiany",
     "validation": {
+      "adaptivePromptRequired": "Dodaj podpowiedź systemową przed przetestowaniem formularza.",
       "duplicateFieldName": "Nazwa pola „{name}” powtarza się — nazwy pól muszą być unikalne.",
       "emailFieldRequired": "Dodaj wymagane pole „{field}” — zgłoszenia są dopasowywane do kontaktów po adresie e-mail.",
       "fieldNameRequired": "Każde pole musi mieć nazwę.",
@@ -130,6 +145,17 @@
       "copied": "Skopiowano",
       "endpointCopied": "Adres endpointu skopiowany"
     }
+  },
+  "destination": {
+    "label": "Cel",
+    "lead": "Lead",
+    "inquiry": "Zapytanie"
+  },
+  "intakeMode": {
+    "label": "Tryb zbierania",
+    "static": "Statyczny",
+    "adaptive": "Adaptacyjny",
+    "adaptiveLeadError": "Tryb adaptacyjny nie jest dostępny dla celu Lead."
   },
   "kind": {
     "contact": "Kontakt",
@@ -181,6 +207,64 @@
     "submit": "Wyślij",
     "untitledField": "Pole bez nazwy",
     "untitledForm": "Formularz bez nazwy"
+  },
+  "adaptive": {
+    "title": "Zbieranie adaptacyjne",
+    "brief": {
+      "label": "Streszczenie",
+      "hint": "Napisz 3–4 zdania o tym, co powinien zbierać formularz.",
+      "placeholder": "Np. Zbieraj wielkość firmy, plany wzrostu i używane narzędzia od zainteresowanych potencjalnych klientów."
+    },
+    "generate": "Generuj podpowiedź",
+    "generating": "Generowanie…",
+    "prompt": {
+      "label": "Podpowiedź systemowa",
+      "hint": "Utrzymuj podpowiedź niezależną od języka — język odwiedzającego wybiera się w czasie działania, nie w podpowiedzi.",
+      "placeholder": "Generuj podpowiedź lub wklej własną."
+    },
+    "opening": {
+      "labelEn": "Pierwsze pytanie (EN)",
+      "labelPl": "Pierwsze pytanie (PL)",
+      "placeholderEn": "What brings you here today?",
+      "placeholderPl": "W czym możemy pomóc?",
+      "hint": "Pierwsze pole, które widzi odwiedzający. Generowane z podpowiedzią — możesz edytować."
+    },
+    "errors": {
+      "briefRequired": "Dodaj streszczenie przed generowaniem.",
+      "generate": "Nie udało się wygenerować podpowiedzi",
+      "preview": "Nie udało się wczytać podglądu formularza",
+      "savePromptFirst": "Zapisz formularz przed jego przetestowaniem."
+    },
+    "preview": {
+      "title": "Testuj formularz",
+      "caption": "Odpowiedź na pierwsze pytanie, potem wszystkie pola naraz, na końcu dane kontaktowe. Test nie tworzy zapytań.",
+      "empty": "Odpowiedz na pierwsze pytanie, aby przetestować formularz.",
+      "inputPlaceholder": "Odpowiedź…",
+      "send": "Wyślij",
+      "sending": "Wysyłanie…",
+      "reset": "Od początku",
+      "you": "Ty",
+      "assistant": "Formularz",
+      "ready": "Formularz ukończony.",
+      "openingFallback": "W czym możemy pomóc?",
+      "start": "Dalej",
+      "continue": "Dalej",
+      "finish": "Wyślij",
+      "loadingTitle": "Składanie formularza",
+      "loadingBody": "Przygotowywanie kilku pytań uzupełniających…",
+      "phaseQuestions": "Pytania",
+      "phaseContact": "Kontakt",
+      "answersRequired": "Uzupełnij wszystkie pola przed przejściem dalej.",
+      "contactIntro": "Prawie gotowe — zostaw sposób na kontakt.",
+      "contactName": "Imię i nazwisko",
+      "contactNamePlaceholder": "np. imię i nazwisko",
+      "contactEmail": "E-mail",
+      "contactEmailPlaceholder": "jan{'@'}firma.pl",
+      "contactInvalid": "Podaj imię oraz poprawny e-mail."
+    },
+    "toast": {
+      "drafted": "Podpowiedź wygenerowana"
+    }
   },
   "toast": {
     "created": "Formularz utworzony",

@@ -135,6 +135,30 @@
           />
           <p class="text-xs text-text-ghost mt-1">{{ t('forms.list.create.slugHint') }}</p>
         </div>
+        <div>
+          <label class="crm-label">{{ t('forms.destination.label') }}</label>
+          <AppSelect
+            v-model="newForm.destination"
+            :options="destinationOptions"
+            :aria-label="t('forms.destination.label')"
+            trigger-class="w-full"
+          />
+        </div>
+        <div>
+          <label class="crm-label">{{ t('forms.intakeMode.label') }}</label>
+          <AppSelect
+            v-model="newForm.intakeMode"
+            :options="intakeModeOptions"
+            :aria-label="t('forms.intakeMode.label')"
+            trigger-class="w-full"
+          />
+          <p
+            v-if="newForm.destination === 'lead' && newForm.intakeMode === 'adaptive'"
+            class="text-xs text-danger mt-1"
+          >
+            {{ t('forms.intakeMode.adaptiveLeadError') }}
+          </p>
+        </div>
         <AppCheckbox v-model="newForm.active">{{ t('forms.list.create.active') }}</AppCheckbox>
         <div v-if="createError" class="text-sm text-danger">{{ createError }}</div>
         <div class="flex gap-2 pt-2">
@@ -154,7 +178,7 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { RouterLink, useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import type { FormKind, FormListItem } from '@khirby/types';
+import type { FormKind, FormDestination, FormIntakeMode, FormListItem } from '@khirby/types';
 import { useFormsStore } from '../../stores/forms.store';
 import { useToastStore } from '../../stores/toast.store';
 import { useConfirm } from '../../composables/useConfirm';
@@ -198,8 +222,20 @@ const newForm = ref({
   slug: '',
   active: true,
   kind: 'contact' as FormKind,
+  destination: 'lead' as FormDestination,
+  intakeMode: 'static' as FormIntakeMode,
   schema: getTemplate('contact').fields.map((f) => ({ ...f })),
 });
+
+const destinationOptions = computed(() => [
+  { value: 'lead', label: t('forms.destination.lead') },
+  { value: 'inquiry', label: t('forms.destination.inquiry') },
+]);
+
+const intakeModeOptions = computed(() => [
+  { value: 'static', label: t('forms.intakeMode.static') },
+  { value: 'adaptive', label: t('forms.intakeMode.adaptive') },
+]);
 const creating = ref(false);
 const createError = ref('');
 const slugTouched = ref(false);
@@ -247,6 +283,8 @@ function openCreateModal() {
     slug: '',
     active: true,
     kind: 'contact',
+    destination: 'lead',
+    intakeMode: 'static',
     schema: getTemplate('contact').fields.map((f) => ({ ...f })),
   };
   createError.value = '';
@@ -299,6 +337,8 @@ async function createForm() {
       slug: newForm.value.slug,
       active: newForm.value.active,
       kind: newForm.value.kind,
+      destination: newForm.value.destination,
+      intakeMode: newForm.value.intakeMode,
       schema: newForm.value.schema,
     });
     showCreateModal.value = false;

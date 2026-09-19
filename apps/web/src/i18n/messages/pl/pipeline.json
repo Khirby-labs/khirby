@@ -55,7 +55,24 @@
     "panelAria": "Szczegóły leada",
     "unknownAuthor": "Nieznany",
     "titleField": "Tytuł",
-    "formSubmission": "Zgłoszenie z formularza"
+    "formSubmission": "Zgłoszenie z formularza",
+    "inquiryOrigin": "Z zapytania",
+    "openInquiry": "Otwórz zapytanie",
+    "inquiryType": "Typ",
+    "inquiryCompany": "Firma",
+    "inquiryContact": "Kontakt",
+    "inquirySource": "Formularz",
+    "inquiryTags": "Tagi",
+    "inquiryEmpty": "Brak szczegółów z intake.",
+    "brief": {
+      "problem": "Problem",
+      "desiredOutcome": "Oczekiwany efekt",
+      "currentProcess": "Obecny proces",
+      "currentTools": "Narzędzia",
+      "teamSize": "Wielkość zespołu",
+      "constraints": "Ograniczenia",
+      "timeline": "Termin"
+    }
   },
   "owner": {
     "unassigned": "Brak opiekuna"

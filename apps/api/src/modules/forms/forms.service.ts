@@ -5,8 +5,11 @@ import { DB_TOKEN } from '../../core/database/database.module';
 import {
   forms,
   submissions,
+  inquiries,
   contacts,
   FormKind,
+  FormDestination,
+  FormIntakeMode,
   SubmissionSource,
 } from '../../core/database/schema';
 import { validateSubmissionDataAgainstSchema } from './validate-submission-data';
@@ -37,6 +40,10 @@ export class FormsService {
   constructor(@Inject(DB_TOKEN) private db: Db) {}
 
   async findAll() {
+    // Inquiry-destination forms never write `submissions` (ADR-0053) — count
+    // `inquiries` for those rows so the Forms list matches the review queue.
+    // Qualify table names in the subquery: drizzle's `${col}` inside sql`` drops
+    // the table prefix, so `form_id = id` would compare inquiries.id to itself → 0.
     const rows = await this.db
       .select({
         id: forms.id,
@@ -46,12 +53,24 @@ export class FormsService {
         schema: forms.schema,
         endpointToken: forms.endpointToken,
         active: forms.active,
+        destination: forms.destination,
+        intakeMode: forms.intakeMode,
+        intakeBrief: forms.intakeBrief,
+        systemPrompt: forms.systemPrompt,
+        openingLabels: forms.openingLabels,
         createdAt: forms.createdAt,
-        submissionCount: sql<number>`count(${submissions.id})::int`,
+        submissionCount: sql<number>`(
+          case
+            when ${forms.destination} = 'inquiry' then (
+              select count(*)::int from inquiries where inquiries.form_id = forms.id
+            )
+            else (
+              select count(*)::int from submissions where submissions.form_id = forms.id
+            )
+          end
+        )`,
       })
       .from(forms)
-      .leftJoin(submissions, eq(submissions.formId, forms.id))
-      .groupBy(forms.id)
       .orderBy(desc(forms.createdAt));
 
     return rows;
@@ -74,14 +93,29 @@ export class FormsService {
   /**
    * Public shape for GET /api/public/forms/:token (ADR-0025).
    * Resolves each field's `label` for `locale`; strips the stored `labels` map.
+   * Includes destination, intakeMode and capabilities.
    */
   toPublicForm(
-    form: { name: string; slug: string; kind: FormKind; schema: FormSchema },
+    form: {
+      name: string;
+      slug: string;
+      kind: FormKind;
+      schema: FormSchema;
+      destination?: FormDestination;
+      intakeMode?: FormIntakeMode;
+      openingLabels?: { en?: string; pl?: string } | null;
+    },
     locale: LocaleCode = 'en',
+    opts: { adaptiveAvailable?: boolean } = {},
   ): {
     name: string;
     slug: string;
     kind: FormKind;
+    destination: FormDestination;
+    intakeMode: FormIntakeMode;
+    /** Resolved first question for adaptive forms (ADR-0054). */
+    openingLabel: string | null;
+    capabilities: { adaptiveAvailable: boolean };
     fields: PublicFormField[];
   } {
     const fields = (form.schema ?? []).map((f): PublicFormField => {
@@ -94,10 +128,17 @@ export class FormsService {
       if (f.options) field.options = f.options;
       return field;
     });
+    const labels = form.openingLabels;
+    const openingLabel =
+      labels?.[locale]?.trim() || labels?.en?.trim() || labels?.pl?.trim() || null;
     return {
       name: form.name,
       slug: form.slug,
       kind: form.kind,
+      destination: form.destination ?? 'lead',
+      intakeMode: form.intakeMode ?? 'static',
+      openingLabel,
+      capabilities: { adaptiveAvailable: opts.adaptiveAvailable ?? false },
       fields,
     };
   }
@@ -107,8 +148,12 @@ export class FormsService {
    * controller always requires a valid top-level `email`. A non-empty schema that lacks a required
    * `email` field therefore builds a form that can never accept a submission — reject it at write time.
    * An empty schema is an open form (accepts any body carrying an email), so it is allowed.
+   *
+   * Only enforced for lead destination (or default). Inquiry forms do not require email.
    */
-  private assertSchemaCollectsEmail(schema?: FormSchema): void {
+  private assertSchemaCollectsEmail(schema?: FormSchema, destination?: FormDestination): void {
+    const effectiveDestination = destination ?? 'lead';
+    if (effectiveDestination !== 'lead') return;
     if (!schema || schema.length === 0) return;
     const email = schema.find((f) => f.name === 'email');
     if (!email || !email.required) {
@@ -119,14 +164,50 @@ export class FormsService {
     }
   }
 
+  /**
+   * Adaptive intake needs a non-empty per-form system prompt (ADR-0054).
+   * Create may land with an empty prompt so the operator can draft it on the detail page;
+   * any subsequent update that leaves the form adaptive must keep a prompt.
+   */
+  private assertAdaptiveHasPrompt(
+    intakeMode: FormIntakeMode,
+    systemPrompt: string | null | undefined,
+    opts: { requireOnCreate?: boolean } = {},
+  ): void {
+    if (intakeMode !== 'adaptive') return;
+    if (!opts.requireOnCreate && (systemPrompt === undefined || systemPrompt === null)) return;
+    if (!systemPrompt?.trim()) {
+      throw AppException.badRequest(
+        'Adaptive intake requires a non-empty system prompt. Describe the form intent and generate one first.',
+        { field: 'systemPrompt' },
+      );
+    }
+  }
+
   async create(dto: {
     name: string;
     slug: string;
     schema: FormSchema;
     active?: boolean;
     kind?: FormKind;
+    destination?: FormDestination;
+    intakeMode?: FormIntakeMode;
+    intakeBrief?: string | null;
+    systemPrompt?: string | null;
+    openingLabels?: { en?: string; pl?: string } | null;
   }) {
-    this.assertSchemaCollectsEmail(dto.schema);
+    const destination = dto.destination ?? 'lead';
+    const intakeMode = dto.intakeMode ?? 'static';
+
+    if (destination === 'lead' && intakeMode === 'adaptive') {
+      throw AppException.badRequest('Adaptive intake mode is not supported for lead destination.', {
+        field: 'intakeMode',
+      });
+    }
+
+    this.assertSchemaCollectsEmail(dto.schema, destination);
+    // Allow empty prompt on create — detail page drafts it (ADR-0054).
+    this.assertAdaptiveHasPrompt(intakeMode, dto.systemPrompt, { requireOnCreate: false });
 
     const [existing] = await this.db.select().from(forms).where(eq(forms.slug, dto.slug)).limit(1);
     if (existing) throw AppException.alreadyExists('form', 'slug', dto.slug);
@@ -139,6 +220,11 @@ export class FormsService {
         schema: dto.schema,
         active: dto.active ?? true,
         kind: dto.kind ?? 'contact',
+        destination,
+        intakeMode,
+        intakeBrief: dto.intakeBrief ?? null,
+        systemPrompt: dto.systemPrompt ?? null,
+        openingLabels: dto.openingLabels ?? null,
       } as any)
       .returning();
     return created;
@@ -146,12 +232,34 @@ export class FormsService {
 
   async update(
     id: string,
-    dto: { name?: string; slug?: string; schema?: FormSchema; active?: boolean; kind?: FormKind },
+    dto: {
+      name?: string;
+      slug?: string;
+      schema?: FormSchema;
+      active?: boolean;
+      kind?: FormKind;
+      destination?: FormDestination;
+      intakeMode?: FormIntakeMode;
+      intakeBrief?: string | null;
+      systemPrompt?: string | null;
+      openingLabels?: { en?: string; pl?: string } | null;
+    },
   ) {
     const [existing] = await this.db.select().from(forms).where(eq(forms.id, id)).limit(1);
     if (!existing) throw AppException.notFound('form', id);
 
-    if (dto.schema !== undefined) this.assertSchemaCollectsEmail(dto.schema);
+    const destination = dto.destination ?? existing.destination ?? 'lead';
+    const intakeMode = dto.intakeMode ?? existing.intakeMode ?? 'static';
+    const systemPrompt = dto.systemPrompt !== undefined ? dto.systemPrompt : existing.systemPrompt;
+
+    if (destination === 'lead' && intakeMode === 'adaptive') {
+      throw AppException.badRequest('Adaptive intake mode is not supported for lead destination.', {
+        field: 'intakeMode',
+      });
+    }
+
+    if (dto.schema !== undefined) this.assertSchemaCollectsEmail(dto.schema, destination);
+    this.assertAdaptiveHasPrompt(intakeMode, systemPrompt, { requireOnCreate: true });
 
     if (dto.slug && dto.slug !== existing.slug) {
       const [slugConflict] = await this.db

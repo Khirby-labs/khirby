@@ -55,7 +55,24 @@
     "panelAria": "Lead details",
     "unknownAuthor": "Unknown",
     "titleField": "Title",
-    "formSubmission": "Form submission"
+    "formSubmission": "Form submission",
+    "inquiryOrigin": "From inquiry",
+    "openInquiry": "Open inquiry",
+    "inquiryType": "Type",
+    "inquiryCompany": "Company",
+    "inquiryContact": "Contact",
+    "inquirySource": "Form",
+    "inquiryTags": "Tags",
+    "inquiryEmpty": "No intake details recorded.",
+    "brief": {
+      "problem": "Problem",
+      "desiredOutcome": "Desired outcome",
+      "currentProcess": "Current process",
+      "currentTools": "Tools",
+      "teamSize": "Team size",
+      "constraints": "Constraints",
+      "timeline": "Timeline"
+    }
   },
   "owner": {
     "unassigned": "No owner"

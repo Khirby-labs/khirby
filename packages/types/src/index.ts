@@ -1,11 +1,89 @@
 // Shared types between API and Web
 
 export type FormKind = 'contact' | 'waitlist' | 'wishlist' | 'feedback';
+export type FormDestination = 'lead' | 'inquiry';
+export type FormIntakeMode = 'static' | 'adaptive';
 
 export interface SubmissionSource {
   referer?: string;
   userAgent?: string;
   ip?: string;
+}
+
+/** Confirmed facts only — model inferences live in aiMetadata (ADR-0053). */
+export type InquiryBrief = {
+  problem: string | null;
+  desiredOutcome: string | null;
+  currentProcess: string | null;
+  currentTools: string[];
+  teamSize: number | null;
+  constraints: string[];
+  timeline: string | null;
+  inquiryType: string | null;
+};
+
+export type InquiryStatus = 'active' | 'ready_for_review' | 'accepted' | 'rejected' | 'spam';
+
+export type InquiryMessageRole = 'visitor' | 'assistant';
+
+export const EMPTY_INQUIRY_BRIEF: InquiryBrief = {
+  problem: null,
+  desiredOutcome: null,
+  currentProcess: null,
+  currentTools: [],
+  teamSize: null,
+  constraints: [],
+  timeline: null,
+  inquiryType: null,
+};
+
+export interface InquiryMessage {
+  id: string;
+  inquiryId: string;
+  role: InquiryMessageRole;
+  content: string;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface Inquiry {
+  id: string;
+  publicToken: string;
+  formId: string | null;
+  source: string | null;
+  sourceMeta: SubmissionSource;
+  status: InquiryStatus;
+  contactName: string | null;
+  email: string | null;
+  companyName: string | null;
+  structuredData: InquiryBrief;
+  aiSummary: string | null;
+  proposedType: string | null;
+  missingInformation: string[];
+  tags: string[];
+  aiMetadata: Record<string, unknown>;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  leadId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InquiryListItem {
+  id: string;
+  status: InquiryStatus;
+  contactName: string | null;
+  email: string | null;
+  companyName: string | null;
+  aiSummary: string | null;
+  proposedType: string | null;
+  tags: string[];
+  source: string | null;
+  createdAt: string;
+}
+
+export interface InquiryDetail extends Inquiry {
+  messages: InquiryMessage[];
 }
 
 export interface Contact {
@@ -45,6 +123,14 @@ export interface Form {
   schema: FormField[];
   endpointToken: string;
   active: boolean;
+  destination: FormDestination;
+  intakeMode: FormIntakeMode;
+  /** Operator intent for adaptive intake; used to draft systemPrompt (ADR-0054). */
+  intakeBrief: string | null;
+  /** Per-form system prompt for the adaptive assistant (ADR-0054). */
+  systemPrompt: string | null;
+  /** First visitor-facing question per locale (ADR-0025 / ADR-0054). */
+  openingLabels: { en?: string; pl?: string } | null;
   createdAt: string;
 }
 
@@ -95,6 +181,12 @@ export interface PublicForm {
   kind: FormKind;
   /** Fields with `label` already resolved for the requested locale (ADR-0025). */
   fields: FormField[];
+  destination: FormDestination;
+  intakeMode: FormIntakeMode;
+  capabilities: {
+    /** True when destination=inquiry, intakeMode=adaptive, and an assistant is bound. */
+    adaptiveAvailable: boolean;
+  };
 }
 
 export interface SubmitFormResult {
@@ -336,6 +428,7 @@ export const PERMISSION_RESOURCES = [
   'contacts',
   'forms',
   'leads',
+  'inquiries',
   'newsletter',
   'settings',
   'integrations',
@@ -468,6 +561,21 @@ export interface LeadComment {
 
 export interface LeadDetail extends LeadBoardItem {
   submission: Submission | null;
+  /**
+   * Intake context when this lead was accepted from an Inquiry (ADR-0053).
+   * Null for classic form/manual leads.
+   */
+  inquiryOrigin: {
+    id: string;
+    aiSummary: string | null;
+    proposedType: string | null;
+    companyName: string | null;
+    contactName: string | null;
+    email: string | null;
+    tags: string[];
+    structuredData: InquiryBrief;
+    source: string | null;
+  } | null;
   comments: LeadComment[];
 }
 

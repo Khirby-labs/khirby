@@ -83,11 +83,13 @@ natural Polish equivalent is translated. **These are frozen — do not re-decide
 | stage | etap | |
 | form | formularz | |
 | submission | zgłoszenie | Not `przesłanie`, not `submisja`. |
+| inquiry | zapytanie | Nav label for the review queue is `Do weryfikacji` / `For review`, not the raw noun. Resource label: `Zapytania` / `Inquiries`. Never confuse with `zgłoszenie` (form submission). |
 | field | pole | |
 | plugin | wtyczka | |
 | newsletter | newsletter | `do newslettera` |
 | subscriber | subskrybent | |
 | list | lista | |
+| inquiry | zapytanie | Nav label: "Do weryfikacji". Resource label: "Zapytania". Never "zgłoszenie" (that is a form submission). |
 | role | rola | |
 | permission | uprawnienie | |
 | member / user | użytkownik | One Polish word for both. `Członek` reads like a club. |

@@ -88,7 +88,7 @@ describe('RolesView — permission matrix', () => {
     // the key path here instead of copy. One role in the fixture, so English
     // takes its singular form; the module fraction counts all permission pairs.
     expect(wrapper.text()).toContain('Role (1)');
-    expect(wrapper.text()).toContain('1/11 modules');
+    expect(wrapper.text()).toContain('1/12 modules');
   });
 
   it('renders separate checkboxes for agent use and manage', async () => {

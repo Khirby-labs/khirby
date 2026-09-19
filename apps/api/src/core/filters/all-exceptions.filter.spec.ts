@@ -105,6 +105,24 @@ describe('AllExceptionsFilter', () => {
     });
   });
 
+  it('passes through intentional 503 AppException messages (pluginRequired)', () => {
+    const { status, body } = capture(
+      AppException.pluginRequired(
+        'ai-compose',
+        'AI Compose is required to draft a system prompt. Install and configure it in Settings → Plugins.',
+      ),
+    );
+
+    expect(status).toBe(HttpStatus.SERVICE_UNAVAILABLE);
+    expect(body).toMatchObject({
+      statusCode: 503,
+      code: 'PLUGIN_DISABLED',
+      message:
+        'AI Compose is required to draft a system prompt. Install and configure it in Settings → Plugins.',
+      params: { name: 'ai-compose' },
+    });
+  });
+
   it('does not send twice when reply was already sent (SSE hijack)', () => {
     const sent = {} as { status: number; body: ApiErrorBody; sendCount: number };
     sent.sendCount = 0;
