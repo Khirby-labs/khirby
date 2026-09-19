@@ -71,6 +71,8 @@ export class FormsStatsService {
     const fromSql = from ? sql` and created_at >= ${from}` : sql``;
     const toSql = to ? sql` and created_at <= ${to}` : sql``;
 
+    // Qualify table/column names in subqueries — drizzle's `${col}` inside sql``
+    // can drop the table prefix and make `form_id = id` compare a row to itself.
     let byFormQuery = this.db
       .select({
         formId: forms.id,
@@ -78,12 +80,12 @@ export class FormsStatsService {
         count: sql<number>`(
           case
             when ${forms.destination} = 'inquiry' then (
-              select count(*)::int from ${inquiries}
-              where ${inquiries.formId} = ${forms.id}${fromSql}${toSql}
+              select count(*)::int from inquiries
+              where inquiries.form_id = forms.id${fromSql}${toSql}
             )
             else (
-              select count(*)::int from ${submissions}
-              where ${submissions.formId} = ${forms.id}${fromSql}${toSql}
+              select count(*)::int from submissions
+              where submissions.form_id = forms.id${fromSql}${toSql}
             )
           end
         )`,

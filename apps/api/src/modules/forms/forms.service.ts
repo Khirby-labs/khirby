@@ -5,7 +5,6 @@ import { DB_TOKEN } from '../../core/database/database.module';
 import {
   forms,
   submissions,
-  inquiries,
   contacts,
   FormKind,
   FormDestination,
