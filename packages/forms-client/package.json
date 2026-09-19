@@ -1,7 +1,7 @@
 {
   "name": "@khirby/forms-client",
-  "version": "0.1.2",
-  "description": "Khirby forms client \u2014 submit landing page forms with typed fields from CRM schema",
+  "version": "0.2.0",
+  "description": "Khirby forms client — submit landing page forms with typed fields from CRM schema",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",

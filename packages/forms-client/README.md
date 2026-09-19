@@ -8,6 +8,8 @@ CRM is the source of truth for field schema. This package only talks to:
 |--------|------|
 | `GET` | `/api/public/forms/:token` |
 | `POST` | `/api/public/forms/:token/submit` |
+| `POST` | `/api/public/forms/:token/adaptive/plan` |
+| `POST` | `/api/public/forms/:token/inquiries` |
 
 `:token` = form **endpoint token** from CRM → Forms → Integration (not a session JWT).
 
