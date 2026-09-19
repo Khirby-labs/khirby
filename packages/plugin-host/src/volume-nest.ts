@@ -26,13 +26,18 @@ function ensureTsNode(nativeRequire: NodeJS.Require): void {
   const tsNode = nativeRequire('ts-node') as {
     register: (opts: Record<string, unknown>) => void;
   };
+  // useDefineForClassFields must stay false: TS 5 defaults it on for ES2022+
+  // targets, and then class-validator @Body() DTOs explode at ValidationPipe
+  // with "Decorating class property failed" (listmonk preview / lookup 500s).
   tsNode.register({
     transpileOnly: true,
     compilerOptions: {
       module: 'commonjs',
+      target: 'ES2021',
       experimentalDecorators: true,
       emitDecoratorMetadata: true,
       esModuleInterop: true,
+      useDefineForClassFields: false,
     },
   });
   tsNodeReady = true;
