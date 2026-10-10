@@ -10,7 +10,7 @@ The repo is the team's memory. Three artifacts capture what git alone can't. Eac
 | Artifact | Lives in | Written when | Via |
 |----------|----------|--------------|-----|
 | Devlog | `docs/journal/devlog/` (+ `DEVLOG.md` index) | closing a work session | `/wrap` |
-| ADR | `docs/adr/` + Pokelo | an architectural decision is made | `bash scripts/adr-publish.sh "title"` |
+| ADR | **Pokelo** (SoT) + `docs/adr/` mirror | an architectural decision is made | `/adr` → `node scripts/adr-sync-to-pokelo.mjs` (or `bash scripts/adr-publish.sh`) |
 | Incident | `docs/journal/INCIDENTS.md` | right after a trap bites (esp. your own) | `/incident` |
 
 > All journal artifacts and skills are live: `/adr`, `/incident`, `/wrap`, plus
@@ -45,8 +45,9 @@ Verify:   pnpm verify ✅ (74 tests, typecheck clean, lint clean)
 ## ADR — decisions with rationale (MADR minimal)
 
 Context → Decision → Consequences (+ optional considered alternatives). One decision = one
-file, chronological numbering. Check `docs/adr/` before changing architecture — AGENTS.md says
-what not to do, ADRs say **why**, so the agent doesn't "fix" a deliberate choice.
+file, chronological numbering. **Pokelo (Khirby) is the source of truth**; `docs/adr/` is
+the git mirror — always sync with `node scripts/adr-sync-to-pokelo.mjs` in the same turn.
+Check ADRs before changing architecture — AGENTS.md says what not to do, ADRs say **why**.
 When a decision surfaces mid-task, `/wrap` prompts: "did a decision worth an ADR emerge?"
 
 ## Incidents — so traps don't recur

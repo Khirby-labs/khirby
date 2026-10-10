@@ -1,13 +1,16 @@
 ---
 name: adr
-description: Record an architecture decision — creates a numbered MADR-minimal ADR in docs/adr/. Use when a decision about architecture, a library, a data model, or a cross-cutting convention is made (or surfaces mid-task).
+description: Record an architecture decision — creates a numbered MADR-minimal ADR in docs/adr/ and syncs it to Pokelo (source of truth). Use when a decision about architecture, a library, a data model, or a cross-cutting convention is made (or surfaces mid-task).
 ---
 
 # /adr — record an architecture decision
 
-Capture an architecturally significant decision in `docs/adr/` while the reasoning
-is fresh. An ADR records the **why** behind a choice, so a future contributor —
-human or agent — doesn't undo a deliberate decision that only looks arbitrary.
+Capture an architecturally significant decision while the reasoning is fresh.
+An ADR records the **why** behind a choice, so a future contributor — human or
+agent — doesn't undo a deliberate decision that only looks arbitrary.
+
+**Pokelo (Khirby project) is the source of truth** for ADRs. `docs/adr/` is the
+git mirror. An ADR that exists only in git is incomplete.
 
 ## When this applies
 
@@ -32,9 +35,24 @@ for routine implementation choices — those belong in the devlog, if anywhere.
      creates a rule agents must not "fix", say so explicitly here.
    - **Considered alternatives** — what was rejected and why (optional but valued).
 5. **Update the index table** in `docs/adr/README.md` with the new row.
-6. **If this ADR justifies an existing prohibition** in `AGENTS.md` or a
+6. **Sync to Pokelo (mandatory, same turn):**
+   ```bash
+   node scripts/adr-sync-to-pokelo.mjs docs/adr/<NNNN>-<kebab-title>.md
+   ```
+   This creates/updates a Pokelo document with **`type: ADR`** (never Note),
+   writes `- **Pokelo ADR id:** \`…\` (Khirby project)` into the local file, and
+   must succeed before you report done. If auth fails, fix auth — do not ship a
+   repo-only ADR.
+7. **If this ADR justifies an existing prohibition** in `AGENTS.md` or a
    `.claude/rules/*` file, add a pointer to it there so the rule cites its rationale.
-7. **Report** the path and one-line summary. Do not commit unless asked.
+8. **Report** the path, Pokelo ADR id, and one-line summary. Do not commit unless asked.
+
+## Amending or superseding
+
+- Status notes / supersession lines in an existing `docs/adr/*.md` → run the same
+  sync script on that file immediately.
+- Full reversal → new ADR + set old status to `Superseded by ADR-XXXX` (line must
+  **start** with `Superseded`) + sync **both** files.
 
 ## Rules
 
@@ -44,3 +62,5 @@ for routine implementation choices — those belong in the devlog, if anywhere.
   never rewrite the original's decision.
 - Every "don't" implied by the decision must be paired with a "do instead"
   (pairing rule).
+- Never create ADRs as Pokelo Notes or under the documents tree — they are a
+  separate entity and must not clutter the docs list.

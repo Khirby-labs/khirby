@@ -3,6 +3,7 @@
 - **Status:** Accepted — partly superseded by [0044](0044-control-plane-telemetry-and-marketplace-client.md)
 - **Date:** 2026-08-18
 - **Deciders:** Damian Orzeł
+- **Pokelo ADR id:** `6a467994-f022-4cfa-afe3-26338517404d` (Khirby project)
 
 > Note: boot no longer seeds native rows on an empty `plugins` table (ADR-0044).
 > “A row means installed” still stands.

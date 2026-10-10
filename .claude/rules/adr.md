@@ -1,25 +1,37 @@
 ---
-description: ADR protocol — how to create Architecture Decision Records. Always in context.
+description: ADR protocol — Pokelo is source of truth; docs/adr/ is the git mirror. Always in context.
 ---
 
 # ADR protocol
 
-When an architectural decision is made, record it with:
+**Pokelo (Khirby) is the source of truth** for architecture decisions.
+`docs/adr/` mirrors them for git/PRs. Leaving Pokelo stale is a miss.
+
+## Create or update
+
+Preferred for agents (non-interactive, syncs Pokelo as `type: ADR`):
+
+1. Write/edit `docs/adr/NNNN-slug.md` + update `docs/adr/README.md`
+2. Run:
+   ```bash
+   node scripts/adr-sync-to-pokelo.mjs docs/adr/NNNN-slug.md
+   ```
+
+Interactive human path (opens `$EDITOR`, then publishes):
 
 ```bash
 bash scripts/adr-publish.sh "Short decision title"
 ```
 
-This script:
-1. Auto-numbers the ADR (next in sequence from `docs/adr/`)
-2. Opens `$EDITOR` with the MADR template pre-filled
-3. Saves the file to `docs/adr/NNNN-slug.md`
-4. Publishes to Pokelo (reads `POKELO_TOKEN` from `.env` — no manual auth needed)
+After either path the local file must contain
+`- **Pokelo ADR id:** \`<uuid>\` (Khirby project)`.
 
-## Never do this manually
+## Never
 
-**Do not** create ADR files by hand in `docs/adr/` and **do not** call the Pokelo API directly.
-The script keeps local files and Pokelo in sync automatically.
+- Create ADR files and skip Pokelo “for later”
+- Create ADRs as Pokelo **Note** / under a docs folder — ADRs are a separate entity
+- Call ad-hoc Pokelo creates that bypass `adr-sync-to-pokelo.mjs` unless fixing the script itself
+- Treat “it’s in git” as done
 
 ## When to write an ADR
 
@@ -32,35 +44,20 @@ Write an ADR when you make a decision that:
 
 When in doubt — write it. A short ADR is better than a missing one.
 
-## MADR format (what the template gives you)
+## Status → Pokelo
 
-```markdown
-# NNNN — Short decision title
-
-- **Status:** Accepted
-- **Date:** YYYY-MM-DD
-- **Deciders:** <name>
-
-## Context
-What problem are we solving?
-
-## Decision
-What did we decide and why?
-
-## Consequences
-What becomes easier / harder?
-
-## Considered alternatives
-What else was considered and why rejected?
-```
+| Local status line | Pokelo `status` |
+|-------------------|-----------------|
+| Starts with `Superseded` | `deprecated` |
+| `Accepted` (incl. “amended by…” / “partly superseded by…”) | `approved` |
 
 ## Token setup (one time per developer)
 
-Add to `.env` (already gitignored):
+`pokelo auth login` **or** in `.env`:
 
 ```
-POKELO_TOKEN=mcp_...        # generate in Pokelo UI → Settings → API tokens
+POKELO_TOKEN=mcp_...
 POKELO_PROJECT_ID=d5fb3b0f-a5e5-44ca-9ec0-d3cc4f50963a
 ```
 
-Without `POKELO_TOKEN` the script still saves locally — Pokelo publish is skipped with a warning.
+Without credentials, sync must fail visibly — do not pretend the ADR is published.

@@ -3,7 +3,7 @@
 - **Status:** Accepted — Ask surface amended by [ADR-0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md) (`KNOWLEDGE_TOOLS` MCP proxy)
 - **Date:** 2026-09-09
 - **Deciders:** Patryk
-- **Pokelo ADR id:** `816c41fe-a257-4bab-8c51-e18c769acc0c` (Bearly CRM / Khirby project)
+- **Pokelo ADR id:** `816c41fe-a257-4bab-8c51-e18c769acc0c` (Khirby project)
 - **Supersedes:** [ADR-0022](0022-pokelo-rag-context-token.md)
 
 ## Context

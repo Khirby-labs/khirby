@@ -8,8 +8,8 @@ alwaysApply: true
 After creating a git commit (and before considering the push/session done):
 
 1. **Ask:** did this commit introduce or change an architectural choice (storage, auth, plugin contract, cross-cutting UI/API convention, deliberate constraint)?
-2. **If yes and no ADR yet:** run `/adr` (or create a numbered ADR in `docs/adr/`) and update `docs/adr/README.md`. Prefer committing the ADR in the same push or immediately after.
-3. **If an existing ADR is affected:** check that its status/index still match reality (supersede rather than rewrite Accepted decisions).
+2. **If yes and no ADR yet:** run `/adr` (writes `docs/adr/` **and** syncs Pokelo via `scripts/adr-sync-to-pokelo.mjs`). Update `docs/adr/README.md`. Prefer committing the ADR in the same push or immediately after.
+3. **If an existing ADR is affected:** amend status/index in `docs/adr/`, then **immediately** re-run `node scripts/adr-sync-to-pokelo.mjs <file>` so Pokelo stays the source of truth (supersede rather than rewrite Accepted decisions).
 4. **If no:** say so briefly — do not invent ADRs for routine UI/bugfix commits.
 
-Do not skip this check because the user did not mention ADRs. Leaving an untracked ADR (or an index row without the file, or vice versa) after a feature commit is a miss.
+Do not skip this check because the user did not mention ADRs. Leaving an untracked ADR, an index row without the file, a repo ADR without a Pokelo id, or a Pokelo ADR behind the git text is a miss.

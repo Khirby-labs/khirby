@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-09-09
 - **Deciders:** Patryk
-- **Pokelo ADR id:** `a5fb2e67-eae3-4b62-adc7-3178bf44520e` (Khirby / Bearly CRM project)
+- **Pokelo ADR id:** `a5fb2e67-eae3-4b62-adc7-3178bf44520e` (Khirby project)
 
 ## Context
 

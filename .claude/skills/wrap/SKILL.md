@@ -37,8 +37,10 @@ of a task. An agent finishing a substantial piece of work should invoke it itsel
    The index stays one line per entry — no prose.
 
 4. **ADR check (mandatory after commits this session).** For each architectural
-   change that landed (or was pushed) without an ADR: run `/adr` now. Also verify
-   `docs/adr/README.md` matches files on disk (no orphan index rows / untracked ADRs).
+   change that landed (or was pushed) without an ADR: run `/adr` now (that syncs
+   Pokelo). Also verify `docs/adr/README.md` matches files on disk **and** every
+   touched ADR has a current Pokelo id (`node scripts/adr-sync-to-pokelo.mjs <file>`
+   if anything drifted). Pokelo is the source of truth — git-only ADRs are incomplete.
    If nothing architectural changed, say so and move on — do not invent ADRs for
    routine UI polish.
 

@@ -3,7 +3,7 @@
 - **Status:** Accepted — `resolveLoadedProvider` lives on `@khirby/plugin-host`; Compose call-time resolve covered by [ADR-0050](0050-ask-khirby-proxies-full-pokelo-mcp-tools.md)
 - **Date:** 2026-09-09
 - **Deciders:** Patryk
-- **Pokelo ADR id:** `376ddb72-b92e-4dd4-94fc-8e62d00b4de0` (Khirby / Bearly CRM project)
+- **Pokelo ADR id:** `376ddb72-b92e-4dd4-94fc-8e62d00b4de0` (Khirby project)
 
 ## Context
 

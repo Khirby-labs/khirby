@@ -3,6 +3,7 @@
 - **Status:** Accepted — partly superseded by [0044](0044-control-plane-telemetry-and-marketplace-client.md)
 - **Date:** 2026-08-11
 - **Deciders:** Patryk
+- **Pokelo ADR id:** `db9eba95-df83-4e32-a888-c29a47ac566d` (Khirby project)
 
 > Note: the public image no longer bakes a first-party plugin set as the install
 > path; marketplace installs come from Control Plane + npm (ADR-0044). npm

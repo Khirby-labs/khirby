@@ -3,6 +3,7 @@
 - **Status:** Accepted — boot skip of first-party dirs amended by [0045](0045-local-checkout-plugins-preferred-over-marketplace.md) (`KHIRBY_PLUGINS_LOCAL`)
 - **Date:** 2026-08-19
 - **Deciders:** Patryk
+- **Pokelo ADR id:** `a8c049c3-46a5-4e16-bfda-9f0b52d61428` (Khirby project)
 
 ## Context
 

@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-04
 - **Deciders:** team
+- **Pokelo ADR id:** `eb5f0229-4cce-46aa-94d8-f177ed7870c5` (Khirby project)
 
 ## Context
 

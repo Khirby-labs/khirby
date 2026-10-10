@@ -3,6 +3,7 @@
 - **Status:** Accepted (backfilled)
 - **Date:** 2026-07-23
 - **Deciders:** Damian
+- **Pokelo ADR id:** `3855c54d-71e7-4378-ade1-7423f4887243` (Khirby project)
 
 ## Context
 

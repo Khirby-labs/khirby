@@ -3,6 +3,7 @@
 - **Status:** Superseded by ADR-0029
 - **Date:** 2026-08-03
 - **Deciders:** Damian
+- **Pokelo ADR id:** `b1a6b7d2-d1ab-4a86-94f7-6e8854c8b93a` (Khirby project)
 
 ## Context
 
