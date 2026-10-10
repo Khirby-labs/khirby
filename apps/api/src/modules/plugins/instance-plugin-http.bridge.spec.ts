@@ -104,6 +104,7 @@ describe('InstancePluginHttpBridge', () => {
   it('registers and dispatches GET handlers from a lazy-loaded module', async () => {
     const registry = {
       isEnabled: jest.fn().mockReturnValue(true),
+      isEnabledAsync: jest.fn().mockResolvedValue(true),
       findByName: jest.fn(),
     };
 
@@ -121,11 +122,15 @@ describe('InstancePluginHttpBridge', () => {
     await expect(bridge.dispatch('GET', 'plugins/demo-page')).resolves.toEqual({
       stats: [{ label: 'Leads', value: 3 }],
     });
-    expect(registry.isEnabled).toHaveBeenCalledWith('crm_demo_page');
+    expect(registry.isEnabledAsync).toHaveBeenCalledWith('crm_demo_page');
   });
 
   it('registers nested settings paths and forwards PATCH body', async () => {
-    const registry = { isEnabled: jest.fn().mockReturnValue(true), findByName: jest.fn() };
+    const registry = {
+      isEnabled: jest.fn().mockReturnValue(true),
+      isEnabledAsync: jest.fn().mockResolvedValue(true),
+      findByName: jest.fn(),
+    };
     const moduleRef = await Test.createTestingModule({
       imports: [SettingsNestModule],
       providers: [InstancePluginHttpBridge, { provide: PLUGIN_REGISTRY, useValue: registry }],
@@ -167,7 +172,11 @@ describe('InstancePluginHttpBridge', () => {
   });
 
   it('reads plugin name from controller metadata', async () => {
-    const registry = { isEnabled: jest.fn().mockReturnValue(false), findByName: jest.fn() };
+    const registry = {
+      isEnabled: jest.fn().mockReturnValue(false),
+      isEnabledAsync: jest.fn().mockResolvedValue(false),
+      findByName: jest.fn(),
+    };
     const moduleRef = await Test.createTestingModule({
       imports: [DemoNestModule],
       providers: [InstancePluginHttpBridge, { provide: PLUGIN_REGISTRY, useValue: registry }],
@@ -183,7 +192,11 @@ describe('InstancePluginHttpBridge', () => {
   });
 
   it('enforces plugin @RequirePermission on the reflective dispatcher', async () => {
-    const registry = { isEnabled: jest.fn().mockReturnValue(true), findByName: jest.fn() };
+    const registry = {
+      isEnabled: jest.fn().mockReturnValue(true),
+      isEnabledAsync: jest.fn().mockResolvedValue(true),
+      findByName: jest.fn(),
+    };
     const rbac = {
       hasPermission: jest.fn().mockImplementation(async (_id: string, resource: string) => {
         return resource === 'integrations';
@@ -218,7 +231,11 @@ describe('InstancePluginHttpBridge', () => {
   });
 
   it('runs ValidationPipe whitelist on @Body() DTOs', async () => {
-    const registry = { isEnabled: jest.fn().mockReturnValue(true), findByName: jest.fn() };
+    const registry = {
+      isEnabled: jest.fn().mockReturnValue(true),
+      isEnabledAsync: jest.fn().mockResolvedValue(true),
+      findByName: jest.fn(),
+    };
     const rbac = {
       hasPermission: jest.fn().mockResolvedValue(true),
       isSuperAdmin: jest.fn().mockResolvedValue(false),
@@ -255,7 +272,11 @@ describe('InstancePluginHttpBridge', () => {
   });
 
   it('dispatches @Get(":id") and prefers a static sibling over the param', async () => {
-    const registry = { isEnabled: jest.fn().mockReturnValue(true), findByName: jest.fn() };
+    const registry = {
+      isEnabled: jest.fn().mockReturnValue(true),
+      isEnabledAsync: jest.fn().mockResolvedValue(true),
+      findByName: jest.fn(),
+    };
     const moduleRef = await Test.createTestingModule({
       imports: [ItemsNestModule],
       providers: [InstancePluginHttpBridge, { provide: PLUGIN_REGISTRY, useValue: registry }],

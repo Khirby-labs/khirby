@@ -2,7 +2,7 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/commo
 import { ImapFlow } from 'imapflow';
 import { simpleParser } from 'mailparser';
 import { Readable } from 'stream';
-import { MailboxService } from './mailbox.service';
+import { MailboxService, type DecryptedMailboxCredentials } from './mailbox.service';
 import { MailThreadService } from './mail-thread.service';
 import { PluginRegistryService } from '../plugins/plugin-registry.service';
 import { EventsService } from '../../core/events/events.service';
@@ -18,12 +18,17 @@ const MAX_IDLE_TIME_MS = 20 * 60 * 1000;
 export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MailIdleWorker.name);
 
+  /**
+   * Specs inject a client via `(worker as any).client = …`. Live sessions live in
+   * `clients` keyed by mailbox id (one IMAP connection per workspace mailbox).
+   */
   private client: ImapFlow | null = null;
+  private readonly clients = new Map<string, ImapFlow>();
   private restartRequested = false;
   private destroyed = false;
   private running: Promise<void> | null = null;
-  /** Serialise exists-driven fetches so we don't overlap IMAP commands. */
-  private fetchQueue: Promise<void> = Promise.resolve();
+  /** Per-mailbox fetch queues so IDLE exists handlers do not overlap commands. */
+  private readonly fetchQueues = new Map<string, Promise<void>>();
 
   constructor(
     private readonly mailboxSvc: MailboxService,
@@ -76,6 +81,10 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Watch every enabled mailbox (one per workspace under Enterprise). Community
+   * still has a single row — same path with a list of length 0 or 1.
+   */
   private async runSession() {
     this.restartRequested = false;
 
@@ -86,13 +95,24 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
       return;
     }
 
-    const creds = await this.mailboxSvc.getDecryptedCredentials();
-    if (!creds) {
+    const allCreds = await this.mailboxSvc.listEnabledDecryptedCredentials();
+    if (allCreds.length === 0) {
       this.logger.log('No enabled mailbox configured; IMAP worker staying idle');
       await this.waitWhileMailboxDisabled();
       return;
     }
 
+    if (this.destroyed || this.restartRequested) return;
+
+    this.logger.log(`IMAP watching ${allCreds.length} mailbox(es)`);
+    try {
+      await Promise.all(allCreds.map((creds) => this.runSessionFor(creds)));
+    } finally {
+      await this.stopSession();
+    }
+  }
+
+  private async runSessionFor(creds: DecryptedMailboxCredentials) {
     if (this.destroyed || this.restartRequested) return;
     const { mailbox } = creds;
     const mailboxId = mailbox.id;
@@ -113,6 +133,7 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
       maxIdleTime: MAX_IDLE_TIME_MS,
     });
 
+    this.clients.set(mailboxId, client);
     this.client = client;
     let closed = false;
     let ready = false;
@@ -124,9 +145,16 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
     const onExists = () => {
       if (!ready) return;
       this.enqueueFetch(
+        mailboxId,
         async () => {
-          const row = await this.mailboxSvc.getRawRow();
-          if (!row || this.destroyed || this.restartRequested || closed || this.client !== client)
+          const row = await this.mailboxSvc.getRawRow(mailboxId);
+          if (
+            !row ||
+            this.destroyed ||
+            this.restartRequested ||
+            closed ||
+            this.clients.get(mailboxId) !== client
+          )
             return;
           await this.fetchSinceUid(mailboxId, row.imapLastUid ?? 0);
         },
@@ -145,7 +173,7 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
       socketError = err;
       closed = true;
       client.close();
-      this.logger.error(`IMAP socket error: ${formatImapError(err)}`);
+      this.logger.error(`IMAP socket error [${mailboxId}]: ${formatImapError(err)}`);
     };
 
     client.on('exists', onExists);
@@ -175,7 +203,7 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
         liveUidValidity !== mailbox.imapUidValidity
       ) {
         this.logger.warn(
-          `uidValidity mismatch (stored=${mailbox.imapUidValidity}, live=${liveUidValidity}); resetting lastUid`,
+          `uidValidity mismatch mailbox=${mailboxId} (stored=${mailbox.imapUidValidity}, live=${liveUidValidity}); resetting lastUid`,
         );
         await this.mailboxSvc.updateSyncPointer(mailboxId, {
           imapUidValidity: liveUidValidity,
@@ -195,7 +223,7 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
 
       const hasIdle = Boolean(client.capabilities?.has?.('IDLE'));
       this.logger.log(
-        `IMAP watching INBOX (${hasIdle ? 'auto-idle' : 'NOOP fallback — server has no IDLE'})`,
+        `IMAP watching INBOX mailbox=${mailboxId} (${hasIdle ? 'auto-idle' : 'NOOP fallback — server has no IDLE'})`,
       );
 
       ready = true;
@@ -208,7 +236,7 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
     } catch (err) {
       if (this.destroyed || this.restartRequested) return;
       const errMsg = formatImapError(err);
-      this.logger.error(`IMAP error: ${errMsg}`);
+      this.logger.error(`IMAP error mailbox=${mailboxId}: ${errMsg}`);
       await this.mailboxSvc.updateConnectionStatus(mailboxId, 'error', {
         lastSyncError: errMsg,
       });
@@ -218,15 +246,25 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
       closed = true;
       client.off('exists', onExists);
       client.close();
-      await this.fetchQueue;
+      await this.fetchQueues.get(mailboxId);
       client.off('error', onError);
       client.off('close', onClose);
+      if (this.clients.get(mailboxId) === client) this.clients.delete(mailboxId);
       if (this.client === client) this.client = null;
     }
   }
 
-  private enqueueFetch(job: () => Promise<void>, onFailure: (err: unknown) => Promise<void>) {
-    this.fetchQueue = this.fetchQueue
+  private clientFor(mailboxId: string): ImapFlow | null {
+    return this.clients.get(mailboxId) ?? this.client;
+  }
+
+  private enqueueFetch(
+    mailboxId: string,
+    job: () => Promise<void>,
+    onFailure: (err: unknown) => Promise<void>,
+  ) {
+    const prev = this.fetchQueues.get(mailboxId) ?? Promise.resolve();
+    const next = prev
       .then(job)
       .catch(async (err) => {
         try {
@@ -236,20 +274,22 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
         }
       })
       .catch((err) => this.logger.error(`IMAP status update error: ${formatImapError(err)}`));
+    this.fetchQueues.set(mailboxId, next);
   }
 
   private async performBackfill(mailboxId: string, backfillDays: number) {
-    if (!this.client) throw new Error('IMAP session is not connected');
+    const client = this.clientFor(mailboxId);
+    if (!client) throw new Error('IMAP session is not connected');
     const since = new Date();
     since.setDate(since.getDate() - backfillDays);
 
-    this.logger.log(`Performing backfill for last ${backfillDays} days`);
+    this.logger.log(`Performing backfill for last ${backfillDays} days (mailbox=${mailboxId})`);
     try {
-      const uids = await this.client.search({ since }, { uid: true });
+      const uids = await client.search({ since }, { uid: true });
       if (!uids || uids.length === 0) {
         // Advance pointer past empty so we don't re-backfill every reconnect.
         // Use uidNext-1 when available so catch-up starts from current tip.
-        const mb = this.client.mailbox;
+        const mb = client.mailbox;
         const uidNext = mb ? Number(mb.uidNext ?? 1) : 1;
         await this.mailboxSvc.updateSyncPointer(mailboxId, {
           imapLastUid: Math.max(0, uidNext - 1),
@@ -279,9 +319,10 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
   }
 
   private async fetchSinceUid(mailboxId: string, lastUid: number) {
-    if (!this.client) throw new Error('IMAP session is not connected');
+    const client = this.clientFor(mailboxId);
+    if (!client) throw new Error('IMAP session is not connected');
     try {
-      const uids = await this.client.search({ uid: `${lastUid + 1}:*` }, { uid: true });
+      const uids = await client.search({ uid: `${lastUid + 1}:*` }, { uid: true });
       if (!uids || uids.length === 0) return;
 
       let maxUid = lastUid;
@@ -306,9 +347,10 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
   }
 
   private async fetchAndIngestUid(mailboxId: string, uid: number) {
-    if (!this.client) throw new Error('IMAP session is not connected');
+    const client = this.clientFor(mailboxId);
+    if (!client) throw new Error('IMAP session is not connected');
     try {
-      const message = await this.client.fetchOne(String(uid), { source: true }, { uid: true });
+      const message = await client.fetchOne(String(uid), { source: true }, { uid: true });
       if (!message) return;
       const msgObj = message as {
         source?: Buffer | Readable;
@@ -350,24 +392,27 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
           : []
       ).filter(Boolean);
 
-      const result = await this.threadSvc.ingestMessage({
-        mailboxId,
-        rawMessageId: parsed.messageId,
-        inReplyTo: parsed.inReplyTo,
-        references: Array.isArray(parsed.references)
-          ? parsed.references.join(' ')
-          : (parsed.references ?? undefined),
-        fromAddress,
-        toAddresses,
-        ccAddresses,
-        subject: parsed.subject ?? '(no subject)',
-        bodyText: parsed.text ?? '',
-        bodyHtml: parsed.html || undefined,
-        sentAt: parsed.date ?? undefined,
-        receivedAt: new Date(),
-        imapUid: uid,
-        hasAttachments: (parsed.attachments?.length ?? 0) > 0,
-      });
+      const scopeId = await this.mailboxSvc.mailboxScopeId(mailboxId);
+      const result = await this.mailboxSvc.withMailboxScope(scopeId, () =>
+        this.threadSvc.ingestMessage({
+          mailboxId,
+          rawMessageId: parsed.messageId,
+          inReplyTo: parsed.inReplyTo,
+          references: Array.isArray(parsed.references)
+            ? parsed.references.join(' ')
+            : (parsed.references ?? undefined),
+          fromAddress,
+          toAddresses,
+          ccAddresses,
+          subject: parsed.subject ?? '(no subject)',
+          bodyText: parsed.text ?? '',
+          bodyHtml: parsed.html || undefined,
+          sentAt: parsed.date ?? undefined,
+          receivedAt: new Date(),
+          imapUid: uid,
+          hasAttachments: (parsed.attachments?.length ?? 0) > 0,
+        }),
+      );
 
       if (result.isNew) {
         void this.plugins.emit({
@@ -399,11 +444,16 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
   }
 
   private async stopSession() {
-    await this.safeLogout();
+    for (const client of this.clients.values()) {
+      client.close();
+    }
+    this.clients.clear();
+    this.client?.close();
+    this.client = null;
   }
 
   /**
-   * Park until the firm mailbox is enabled (or restart/destroy).
+   * Park until any firm mailbox is enabled (or restart/destroy).
    * Polling matters: enabling via SQL / another process / UI without
    * `restartSession()` used to leave the worker stuck forever.
    */
@@ -411,18 +461,12 @@ export class MailIdleWorker implements OnModuleInit, OnModuleDestroy {
     while (!this.destroyed && !this.restartRequested) {
       await sleep(3_000);
       if (this.destroyed || this.restartRequested) return;
-      const row = await this.mailboxSvc.getRawRow();
-      if (row?.enabled) {
-        this.logger.log('Mailbox became enabled; starting IMAP session');
+      const rows = await this.mailboxSvc.listEnabledRows();
+      if (rows.length > 0) {
+        this.logger.log(`Mailbox became enabled (${rows.length}); starting IMAP session(s)`);
         return;
       }
     }
-  }
-
-  private async safeLogout() {
-    // Close immediately so a stuck IMAP command cannot block restart/shutdown.
-    // The sole retry loop drains the old fetch queue before opening a new client.
-    this.client?.close();
   }
 }
 

@@ -145,7 +145,11 @@ export class InstancePluginHttpBridge {
 
     if (entry.pluginName) {
       const registry = this.registry();
-      if (typeof registry.isEnabled === 'function') {
+      if (typeof registry.isEnabledAsync === 'function') {
+        if (!(await registry.isEnabledAsync(entry.pluginName))) {
+          throw AppException.pluginDisabled(entry.pluginName);
+        }
+      } else if (typeof registry.isEnabled === 'function') {
         if (!registry.isEnabled(entry.pluginName)) {
           throw AppException.pluginDisabled(entry.pluginName);
         }

@@ -51,7 +51,15 @@ describe('mail-google-oauth', () => {
 
   it('round-trips a signed OAuth state', () => {
     const state = signOAuthState('user-1');
-    expect(verifyOAuthState(state)).toEqual({ userId: 'user-1' });
+    expect(verifyOAuthState(state)).toEqual({ userId: 'user-1', scopeId: null });
+  });
+
+  it('round-trips OAuth state with workspace scopeId', () => {
+    const state = signOAuthState('user-1', '00000000-0000-4000-8000-000000000001');
+    expect(verifyOAuthState(state)).toEqual({
+      userId: 'user-1',
+      scopeId: '00000000-0000-4000-8000-000000000001',
+    });
   });
 
   it('rejects a tampered OAuth state', () => {

@@ -4,6 +4,7 @@ import { IsOptional, IsString, IsUrl, Matches, MaxLength, MinLength } from 'clas
 import { SessionGuard } from '../../core/auth/session.guard';
 import { PermissionGuard } from '../../core/rbac/rbac.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { PluginScopeAdminGuard } from '../../../../../packages/plugin-host/src';
 import { MarketplaceService } from './marketplace.service';
 
 class SubmitMarketplacePluginDto {
@@ -51,7 +52,7 @@ class SubmitMarketplacePluginDto {
 @ApiTags('marketplace')
 @ApiBearerAuth('session')
 @Controller('marketplace')
-@UseGuards(SessionGuard, PermissionGuard)
+@UseGuards(SessionGuard, PermissionGuard, PluginScopeAdminGuard)
 @RequirePermission('integrations', 'manage')
 export class MarketplaceController {
   constructor(private readonly marketplace: MarketplaceService) {}

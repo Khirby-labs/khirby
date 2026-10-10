@@ -3,6 +3,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { DatabaseModule } from './core/database/database.module';
+import { ScopeModule } from './core/scope/scope.module';
 import { AuthModule } from './core/auth/auth.module';
 import { RbacModule } from './core/rbac/rbac.module';
 import { ContactsModule } from './modules/contacts/contacts.module';
@@ -27,6 +28,7 @@ import { InquiryModule } from './modules/inquiry/inquiry.module';
     ConfigModule.forRoot({ isGlobal: true, envFilePath: '../../.env' }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
     DatabaseModule,
+    ScopeModule,
     AuthModule,
     RbacModule,
     EventsModule,
