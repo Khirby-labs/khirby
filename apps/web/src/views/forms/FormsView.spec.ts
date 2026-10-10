@@ -24,7 +24,18 @@ import { apiGet, apiPost, apiDelete } from '../../api/client';
 import { mountWithI18n, withLocale, resetLocale } from '../../test/i18n';
 
 const AppModalStub = { props: ['title'], template: '<div class="modal-stub"><slot /></div>' };
-const AppSelectStub = { props: ['modelValue', 'options'], template: '<select></select>' };
+const AppSelectStub = {
+  props: ['modelValue', 'options'],
+  emits: ['update:modelValue', 'change'],
+  template: `
+    <select
+      :value="modelValue"
+      @change="$emit('update:modelValue', ($event.target).value); $emit('change', ($event.target).value)"
+    >
+      <option v-for="o in options" :key="o.value" :value="o.value">{{ o.label }}</option>
+    </select>
+  `,
+};
 const AppCheckboxStub = { props: ['modelValue'], template: '<label><slot /></label>' };
 const PageActionsStub = { template: '<div><slot /></div>' };
 
@@ -71,9 +82,46 @@ describe('FormsView', () => {
 
     expect(apiPost).toHaveBeenCalledWith(
       '/api/forms',
-      expect.objectContaining({ name: 'My Form', slug: 'my-form' }),
+      expect.objectContaining({
+        name: 'My Form',
+        slug: 'my-form',
+        intakeMode: 'static',
+        schema: expect.arrayContaining([expect.objectContaining({ name: 'email' })]),
+      }),
     );
     expect(routerMock.push).toHaveBeenCalledWith('/forms/new-id');
+  });
+
+  it('creates an adaptive form with an empty schema (no reserved contact fields)', async () => {
+    vi.mocked(apiGet).mockResolvedValue([]);
+    vi.mocked(apiPost).mockResolvedValue({
+      id: 'adaptive-id',
+      name: 'Landing',
+      slug: 'landing',
+    } as any);
+
+    const wrapper = mountView();
+    await flushPromises();
+
+    await buttonByText(wrapper, '+ Create form')!.trigger('click');
+    await wrapper.find('#form-name').setValue('Landing');
+    await wrapper.find('#form-slug').setValue('landing');
+    // Modal selects: template, destination, intakeMode (form order).
+    const selects = wrapper.find('.modal-stub').findAll('select');
+    await selects[1]!.setValue('inquiry');
+    await selects[2]!.setValue('adaptive');
+    await selects[2]!.trigger('change');
+    await wrapper.find('.modal-stub form').trigger('submit');
+    await flushPromises();
+
+    expect(apiPost).toHaveBeenCalledWith(
+      '/api/forms',
+      expect.objectContaining({
+        intakeMode: 'adaptive',
+        destination: 'inquiry',
+        schema: [],
+      }),
+    );
   });
 
   it('deletes a form only after the confirm dialog is accepted', async () => {

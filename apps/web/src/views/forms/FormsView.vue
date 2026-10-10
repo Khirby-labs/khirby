@@ -151,6 +151,7 @@
             :options="intakeModeOptions"
             :aria-label="t('forms.intakeMode.label')"
             trigger-class="w-full"
+            @change="onIntakeModeChange"
           />
           <p
             v-if="newForm.destination === 'lead' && newForm.intakeMode === 'adaptive'"
@@ -182,7 +183,12 @@ import type { FormKind, FormDestination, FormIntakeMode, FormListItem } from '@k
 import { useFormsStore } from '../../stores/forms.store';
 import { useToastStore } from '../../stores/toast.store';
 import { useConfirm } from '../../composables/useConfirm';
-import { FORM_TEMPLATE_OPTIONS, getTemplate, slugifyName } from '../../utils/form-field-templates';
+import {
+  FORM_TEMPLATE_OPTIONS,
+  getTemplate,
+  schemaForIntakeMode,
+  slugifyName,
+} from '../../utils/form-field-templates';
 import PageActions from '../../components/ui/PageActions.vue';
 import AppTable from '../../components/AppTable.vue';
 import AppModal from '../../components/AppModal.vue';
@@ -295,11 +301,20 @@ function openCreateModal() {
  * The template's field labels are copied verbatim into `schema` and end up in the
  * database, rendered to the customer's site visitors — so they stay the English
  * seed from form-field-templates.ts (ADR-0011). Only the picker is localized.
+ * Adaptive intake: schema stays empty (name/email are first-class — ADR-0058).
  */
 function applyTemplate() {
   const template = getTemplate(selectedTemplate.value);
   newForm.value.kind = template.kind;
-  newForm.value.schema = template.fields.map((f) => ({ ...f }));
+  newForm.value.schema = schemaForIntakeMode(newForm.value.intakeMode, template.fields);
+}
+
+function onIntakeModeChange() {
+  const template = getTemplate(selectedTemplate.value);
+  newForm.value.schema = schemaForIntakeMode(newForm.value.intakeMode, template.fields);
+  if (newForm.value.intakeMode === 'adaptive' && newForm.value.destination === 'lead') {
+    newForm.value.destination = 'inquiry';
+  }
 }
 
 function syncSlugFromName() {
@@ -332,6 +347,7 @@ async function createForm() {
   createError.value = '';
   creating.value = true;
   try {
+    const template = getTemplate(selectedTemplate.value);
     const created = await formsStore.createForm({
       name: newForm.value.name,
       slug: newForm.value.slug,
@@ -339,7 +355,8 @@ async function createForm() {
       kind: newForm.value.kind,
       destination: newForm.value.destination,
       intakeMode: newForm.value.intakeMode,
-      schema: newForm.value.schema,
+      // Belt-and-suspenders: never POST contact-template name/email on adaptive.
+      schema: schemaForIntakeMode(newForm.value.intakeMode, template.fields),
     });
     showCreateModal.value = false;
     toast.success(t('forms.toast.created'));

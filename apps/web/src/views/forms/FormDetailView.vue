@@ -478,6 +478,7 @@ import { useToastStore } from '../../stores/toast.store';
 import { useConfirm } from '../../composables/useConfirm';
 import {
   FORM_FIELD_TYPES,
+  ADAPTIVE_RESERVED_CONTACT_FIELD_NAMES,
   FORM_TEMPLATE_OPTIONS,
   getTemplate,
 } from '../../utils/form-field-templates';
@@ -529,21 +530,6 @@ type ValidationProblem =
 
 /** The schema identifier the server matches submissions on — an identifier, never copy. */
 const EMAIL_FIELD = 'email';
-
-/** First-class adaptive keys — must not appear in contact-step schema (ADR-0058). */
-const ADAPTIVE_RESERVED_CONTACT_NAMES = new Set([
-  'name',
-  'email',
-  'company',
-  'companyName',
-  'opening',
-  'content',
-  'questions',
-  'answers',
-  'locale',
-  'fields',
-  '_hp',
-]);
 
 let uidSeq = 0;
 const nextUid = () => ++uidSeq;
@@ -898,7 +884,7 @@ function validateBeforeSave(): ValidationProblem | null {
   if (dupe) return { code: 'duplicateFieldName', name: dupe };
 
   if (form.value.destination === 'inquiry' && form.value.intakeMode === 'adaptive') {
-    const reserved = names.find((n) => ADAPTIVE_RESERVED_CONTACT_NAMES.has(n));
+    const reserved = names.find((n) => ADAPTIVE_RESERVED_CONTACT_FIELD_NAMES.has(n));
     if (reserved) return { code: 'reservedContactField', name: reserved };
   }
 

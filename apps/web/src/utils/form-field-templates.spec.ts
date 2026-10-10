@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   slugifyName,
   getTemplate,
+  schemaForIntakeMode,
   FORM_TEMPLATE_OPTIONS,
   FORM_SCHEMA_TEMPLATES,
   FORM_FIELD_TYPES,
+  ADAPTIVE_RESERVED_CONTACT_FIELD_NAMES,
 } from './form-field-templates';
 
 describe('slugifyName', () => {
@@ -53,6 +55,23 @@ describe('getTemplate', () => {
       expect(email, `${template.id} must have an email field`).toBeDefined();
       expect(email?.required, `${template.id} email must be required`).toBe(true);
     }
+  });
+});
+
+describe('schemaForIntakeMode', () => {
+  it('seeds static forms from the template', () => {
+    const fields = getTemplate('contact').fields;
+    expect(schemaForIntakeMode('static', fields).map((f) => f.name)).toEqual([
+      'name',
+      'email',
+      'message',
+    ]);
+  });
+
+  it('returns an empty schema for adaptive forms (name/email are first-class)', () => {
+    const fields = getTemplate('contact').fields;
+    expect(schemaForIntakeMode('adaptive', fields)).toEqual([]);
+    expect(ADAPTIVE_RESERVED_CONTACT_FIELD_NAMES.has('name')).toBe(true);
   });
 });
 

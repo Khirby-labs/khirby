@@ -1,4 +1,34 @@
-import type { FormField, FormKind } from '@khirby/types';
+import type { FormField, FormIntakeMode, FormKind } from '@khirby/types';
+
+/**
+ * First-class adaptive submit keys — must not appear in forms.schema (ADR-0058).
+ * Keep in sync with apps/api adaptive-contact-fields.ts.
+ */
+export const ADAPTIVE_RESERVED_CONTACT_FIELD_NAMES = new Set([
+  'name',
+  'email',
+  'company',
+  'companyName',
+  'opening',
+  'content',
+  'questions',
+  'answers',
+  'locale',
+  'fields',
+  '_hp',
+]);
+
+/**
+ * Schema seed for create/apply. Adaptive forms use schema only for extra
+ * contact-step fields (phone, address…) — never name/email/company.
+ */
+export function schemaForIntakeMode(
+  intakeMode: FormIntakeMode,
+  templateFields: FormField[],
+): FormField[] {
+  if (intakeMode === 'adaptive') return [];
+  return templateFields.map((f) => ({ ...f }));
+}
 
 export const FORM_FIELD_TYPES = [
   'text',
