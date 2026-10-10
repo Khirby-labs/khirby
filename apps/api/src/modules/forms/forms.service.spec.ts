@@ -354,6 +354,29 @@ describe('FormsService', () => {
       );
     });
 
+    it('maps insert unique-violation (23505) to ConflictException', async () => {
+      db.select.mockImplementationOnce(() => makeChain([]));
+      const pgErr = Object.assign(new Error('duplicate key'), { code: '23505' });
+      const drizzleErr = Object.assign(new Error('Failed query: insert into forms'), {
+        cause: pgErr,
+      });
+      db.insert.mockImplementationOnce(() => {
+        const chain = makeChain([]);
+        chain.returning = () => Promise.reject(drizzleErr);
+        return chain;
+      });
+
+      await expect(
+        service.create({
+          name: 'Landing',
+          slug: 'landing-page',
+          destination: 'inquiry',
+          intakeMode: 'adaptive',
+          schema: [],
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
     it('rejects a non-empty schema without a required email field (lead destination)', async () => {
       await expect(
         service.create({

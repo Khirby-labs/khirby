@@ -220,22 +220,31 @@ export class FormsService {
     const [existing] = await this.db.select().from(forms).where(eq(forms.slug, dto.slug)).limit(1);
     if (existing) throw AppException.alreadyExists('form', 'slug', dto.slug);
 
-    const [created] = await this.db
-      .insert(forms)
-      .values({
-        name: dto.name,
-        slug: dto.slug,
-        schema: dto.schema,
-        active: dto.active ?? true,
-        kind: dto.kind ?? 'contact',
-        destination,
-        intakeMode,
-        intakeBrief: dto.intakeBrief ?? null,
-        systemPrompt: dto.systemPrompt ?? null,
-        openingLabels: dto.openingLabels ?? null,
-      } as any)
-      .returning();
-    return created;
+    try {
+      const [created] = await this.db
+        .insert(forms)
+        .values({
+          name: dto.name,
+          slug: dto.slug,
+          schema: dto.schema,
+          active: dto.active ?? true,
+          kind: dto.kind ?? 'contact',
+          destination,
+          intakeMode,
+          intakeBrief: dto.intakeBrief ?? null,
+          systemPrompt: dto.systemPrompt ?? null,
+          openingLabels: dto.openingLabels ?? null,
+        } as any)
+        .returning();
+      return created;
+    } catch (err) {
+      // Global UNIQUE(slug) + RLS: another workspace's row is invisible to the
+      // pre-read but still trips 23505. Prefer a coded conflict over a 500.
+      if (pgErrorCode(err) === '23505') {
+        throw AppException.alreadyExists('form', 'slug', dto.slug);
+      }
+      throw err;
+    }
   }
 
   async update(
@@ -358,4 +367,13 @@ export class FormsService {
       throw AppException.badRequest(e instanceof Error ? e.message : 'Validation failed');
     }
   }
+}
+
+/** Drizzle wraps Postgres errors on `.cause`; bare `pg` puts `code` on the error. */
+function pgErrorCode(err: unknown): string | undefined {
+  if (!err || typeof err !== 'object') return undefined;
+  const e = err as { code?: unknown; cause?: { code?: unknown } };
+  if (typeof e.code === 'string') return e.code;
+  if (typeof e.cause?.code === 'string') return e.cause.code;
+  return undefined;
 }

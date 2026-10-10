@@ -37,8 +37,16 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (status >= 500) {
       // Full detail (incl. PostgresError stack + filesystem paths) stays in the
       // server log only — it must never reach the HTTP response body.
+      // Drizzle's "Failed query: …" is useless without `.cause` (SQLSTATE / hint).
+      const nested =
+        exception instanceof Error ? (exception as Error & { cause?: unknown }).cause : undefined;
+      const cause =
+        nested && typeof nested === 'object'
+          ? (nested as { message?: string; code?: string })
+          : null;
+      const causeLine = cause?.message ? ` cause=${cause.code ?? '?'} ${cause.message}` : '';
       this.logger.error(
-        exception instanceof Error ? exception.message : 'Unknown error',
+        `${exception instanceof Error ? exception.message : 'Unknown error'}${causeLine}`,
         exception instanceof Error ? exception.stack : undefined,
       );
       // Intentional 503 AppExceptions (pluginRequired / pluginDisabled /
