@@ -24,7 +24,10 @@ export interface PluginRegistryLike {
     enabled: boolean;
     config: Record<string, string> | null;
   } | null>;
+  /** Sync: Nest context loaded (instance). Prefer isEnabledAsync under Multi-Workspace. */
   isEnabled?(name: string): boolean;
+  /** Async: instance loaded + optional per-workspace enable (ADR-0057). */
+  isEnabledAsync?(name: string): Promise<boolean>;
 }
 
 export const CONTACTS_SERVICE = 'CRM_CONTACTS_SERVICE';
@@ -504,5 +507,14 @@ export interface AiComposeLlmLike {
     reasoningEffort?: 'none' | 'low' | 'medium' | 'high' | null;
     /** From the provider `/models` catalog when advertised; omit when unknown. */
     reasoningSupported?: boolean | null;
+    /** Optional provider id for usage metering (e.g. openai, bedrock). */
+    provider?: string;
+    region?: string | null;
   } | null>;
 }
+
+/** Re-export scope / usage tokens for a single import surface (ADR-0055). */
+export { SCOPE_PROVIDER } from './scope/scope-provider';
+export type { ScopeProviderLike } from './scope/scope-provider';
+export { AI_USAGE_RECORDER } from './scope/ai-usage-recorder';
+export type { AiUsageRecorderLike } from './scope/ai-usage-recorder';

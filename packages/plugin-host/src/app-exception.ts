@@ -96,6 +96,16 @@ export const AppException = {
     );
   },
 
+  workspaceOwnerRequired(): HttpException {
+    return new ForbiddenException(
+      body(
+        HttpStatus.FORBIDDEN,
+        'WORKSPACE_OWNER_REQUIRED',
+        'Only the workspace owner can manage plugins and the marketplace',
+      ),
+    );
+  },
+
   pluginDisabled(plugin: string): HttpException {
     return new ServiceUnavailableException(
       body(

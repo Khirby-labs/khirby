@@ -230,6 +230,11 @@ export interface SessionUser {
   permissions: RolePermission[];
   /** True when the user holds a protected super-admin role. */
   isSuperAdmin: boolean;
+  /**
+   * Optional opaque claims from a SCOPE_PROVIDER plugin (ADR-0055), e.g. active
+   * scope id and membership list. Core forwards without interpreting shape.
+   */
+  scope?: Record<string, unknown> | null;
 }
 
 export interface LoginResponse {
@@ -574,6 +579,8 @@ export interface LeadDetail extends LeadBoardItem {
     email: string | null;
     tags: string[];
     structuredData: InquiryBrief;
+    /** Adaptive contact-step values (ADR-0058). Also on contacts.metadata.formContact after accept. */
+    contactFields?: Record<string, unknown> | null;
     source: string | null;
   } | null;
   comments: LeadComment[];

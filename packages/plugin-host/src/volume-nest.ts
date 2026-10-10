@@ -1,8 +1,54 @@
 import { existsSync, readdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join, resolve, sep } from 'node:path';
+// CJS Module class (has private _resolveFilename) — not the ESM namespace export.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const NodeModule = require('module') as typeof import('module') & {
+  _resolveFilename: (
+    request: string,
+    parent: NodeModule | null,
+    isMain: boolean,
+    options?: object,
+  ) => string;
+};
 
 let tsNodeReady = false;
+let nestHostAliasInstalled = false;
+
+/**
+ * Volume packages often nest their own `@nestjs/*` (even as peers). Design:paramtypes
+ * then points at a different ModuleRef class than the running API → UnknownDependenciesException
+ * and a dead process (Vite proxy 502). Force resolution onto the host Nest that already boots.
+ */
+function ensureHostNestAliases(): void {
+  if (nestHostAliasInstalled) return;
+  const hostRequire = createRequire(
+    existsSync(join(process.cwd(), 'apps/api/package.json'))
+      ? join(process.cwd(), 'apps/api/package.json')
+      : join(process.cwd(), 'package.json'),
+  );
+  const aliases: Record<string, string> = {};
+  for (const spec of ['@nestjs/core', '@nestjs/common', '@nestjs/swagger']) {
+    try {
+      aliases[spec] = hostRequire.resolve(spec);
+    } catch {
+      // optional peer (swagger) may be absent
+    }
+  }
+  if (Object.keys(aliases).length === 0) return;
+
+  const orig = NodeModule._resolveFilename.bind(NodeModule);
+  NodeModule._resolveFilename = function (
+    request: string,
+    parent: NodeModule | null,
+    isMain: boolean,
+    options?: object,
+  ) {
+    if (aliases[request]) return aliases[request];
+    return orig(request, parent, isMain, options);
+  };
+  nestHostAliasInstalled = true;
+}
 
 function pickNestModule(loaded: Record<string, unknown>): unknown {
   if (typeof loaded.PluginNestModule === 'function') return loaded.PluginNestModule;
@@ -79,6 +125,7 @@ export function loadVolumeNestModuleFile(nestFile: string): unknown {
   const pkgDir = existsSync(join(nestFile, '..', 'package.json'))
     ? join(nestFile, '..')
     : join(nestFile, '..', '..');
+  ensureHostNestAliases();
   const nativeRequire = createRequire(pkgJson);
   ensureTsNode(nativeRequire);
   // Drop any jiti/prior cache for this package — createPlugin() often imports the
