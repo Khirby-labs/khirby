@@ -317,6 +317,23 @@ describe('ContactsService', () => {
       expect(db.update).not.toHaveBeenCalled();
     });
 
+    it('fills phone when existing contact has none', async () => {
+      const existing = {
+        id: 'uuid-6',
+        email: 'exists@x.com',
+        name: 'Ada',
+        phone: null,
+        metadata: {},
+      };
+      const updated = { ...existing, phone: '997998999' };
+      db.select.mockImplementationOnce(() => makeChain([existing]));
+      db.update.mockImplementationOnce(() => makeChain([updated]));
+
+      const result = await service.upsertByEmail('exists@x.com', { phone: '997998999' });
+      expect(result).toEqual(updated);
+      expect(db.update).toHaveBeenCalled();
+    });
+
     it('merges form interest and updates name for existing contact', async () => {
       const existing = {
         id: 'uuid-6',

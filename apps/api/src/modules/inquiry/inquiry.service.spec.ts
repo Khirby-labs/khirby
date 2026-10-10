@@ -1,12 +1,32 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { InquiryService } from './inquiry.service';
+import { InquiryService, extractPhoneFromInquiryThread } from './inquiry.service';
 import { ContactsService } from '../contacts/contacts.service';
 import { LeadsService } from '../leads/leads.service';
 import { EventsService } from '../../core/events/events.service';
 import { PluginRegistryService } from '../plugins/plugin-registry.service';
 import { DB_TOKEN } from '../../core/database/database.module';
+
+describe('extractPhoneFromInquiryThread', () => {
+  it('returns the visitor answer after a phone/telefon question', () => {
+    expect(
+      extractPhoneFromInquiryThread([
+        { role: 'assistant', content: 'Jaki jest numer telefonu?' },
+        { role: 'visitor', content: '997998999' },
+      ]),
+    ).toBe('997998999');
+  });
+
+  it('ignores short or non-phone answers', () => {
+    expect(
+      extractPhoneFromInquiryThread([
+        { role: 'assistant', content: 'Phone number?' },
+        { role: 'visitor', content: 'n/a' },
+      ]),
+    ).toBeNull();
+  });
+});
 
 function makeChain(result: any[] = []) {
   const chain: any = {};
@@ -197,7 +217,12 @@ describe('InquiryService', () => {
       // Inside transaction: same db mock
       db.select
         .mockImplementationOnce(() => makeChain([READY_INQUIRY])) // load for update
-        .mockImplementationOnce(() => makeChain([])); // unused
+        .mockImplementationOnce(() =>
+          makeChain([
+            { role: 'assistant', content: 'Jaki jest numer telefonu?' },
+            { role: 'visitor', content: '997998999' },
+          ]),
+        ); // adaptive thread → phone
       db.update
         .mockImplementationOnce(() => makeChain([{ ...READY_INQUIRY, status: 'accepted' }])) // CAS
         .mockImplementationOnce(() => makeChain([])); // set leadId
@@ -205,7 +230,11 @@ describe('InquiryService', () => {
 
       const result = await service.accept('inq-1', 'user-1');
 
-      expect(contacts.upsertByEmail).toHaveBeenCalledWith('alice@example.com', { name: 'Alice' });
+      expect(contacts.upsertByEmail).toHaveBeenCalledWith('alice@example.com', {
+        name: 'Alice',
+        phone: '997998999',
+        metadata: undefined,
+      });
       expect(leads.createFromInquiry).toHaveBeenCalledWith(
         expect.objectContaining({ inquiryId: 'inq-1', email: 'alice@example.com' }),
       );
@@ -213,6 +242,76 @@ describe('InquiryService', () => {
       expect(events.emit).toHaveBeenCalledWith(
         'inquiry.accepted',
         expect.objectContaining({ id: 'inq-1' }),
+      );
+    });
+
+    it('prefers phone from sourceMeta.contactFields and writes formContact metadata', async () => {
+      const withFields = {
+        ...READY_INQUIRY,
+        companyName: 'Acme',
+        sourceMeta: { contactFields: { phone: '500600700', city: 'Gdańsk' } },
+      };
+      db.select
+        .mockImplementationOnce(() => makeChain([withFields]))
+        .mockImplementationOnce(() =>
+          makeChain([
+            { role: 'assistant', content: 'Jaki jest numer telefonu?' },
+            { role: 'visitor', content: '997998999' },
+          ]),
+        );
+      db.update
+        .mockImplementationOnce(() => makeChain([{ ...withFields, status: 'accepted' }]))
+        .mockImplementationOnce(() => makeChain([]));
+      db.execute.mockResolvedValueOnce([]);
+
+      await service.accept('inq-1', 'user-1');
+
+      expect(contacts.upsertByEmail).toHaveBeenCalledWith('alice@example.com', {
+        name: 'Alice',
+        phone: '500600700',
+        metadata: {
+          company: 'Acme',
+          formContact: { phone: '500600700', city: 'Gdańsk' },
+        },
+      });
+      expect(leads.createFromInquiry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contactFields: { phone: '500600700', city: 'Gdańsk' },
+        }),
+      );
+    });
+
+    it('passes form-schema labels when the inquiry has a form', async () => {
+      const withForm = { ...READY_INQUIRY, formId: 'form-1' };
+      db.select
+        .mockImplementationOnce(() => makeChain([withForm]))
+        .mockImplementationOnce(() =>
+          makeChain([
+            {
+              schema: [
+                {
+                  name: 'roofArea',
+                  label: 'Powierzchnia dachu',
+                  labels: { pl: 'Powierzchnia dachu', en: 'Roof area' },
+                },
+              ],
+            },
+          ]),
+        )
+        .mockImplementationOnce(() => makeChain([]));
+      db.update
+        .mockImplementationOnce(() => makeChain([{ ...withForm, status: 'accepted' }]))
+        .mockImplementationOnce(() => makeChain([]));
+      db.execute.mockResolvedValueOnce([]);
+
+      await service.accept('inq-1', 'user-1');
+
+      expect(leads.createFromInquiry).toHaveBeenCalledWith(
+        expect.objectContaining({
+          fieldLabels: {
+            roofArea: { label: 'Powierzchnia dachu', pl: 'Powierzchnia dachu', en: 'Roof area' },
+          },
+        }),
       );
     });
 

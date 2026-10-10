@@ -47,6 +47,14 @@
       "title": "Replace all fields?"
     },
     "save": "Save changes",
+    "contactFields": {
+      "title": "Contact fields",
+      "hint": "Shown after the AI questions. Name, email and company stay first-class — don't add them here.",
+      "empty": {
+        "title": "No contact fields yet",
+        "message": "Add phone, address or other fields for the contact step."
+      }
+    },
     "schema": {
       "addField": "Add field",
       "apply": "Apply",
@@ -109,6 +117,7 @@
       "emailFieldRequired": "Add a required “{field}” field — submissions are matched to contacts by email.",
       "fieldNameRequired": "Every field needs a name.",
       "nameRequired": "Name is required.",
+      "reservedContactField": "“{name}” is reserved — name, email and company are collected separately.",
       "selectNeedsOptions": "Dropdown field “{name}” needs at least one option.",
       "slugFormat": "Slug must contain only lowercase letters, numbers and hyphens.",
       "unnamedField": "unnamed"

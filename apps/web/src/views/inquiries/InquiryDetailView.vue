@@ -77,6 +77,16 @@
               </dt>
               <dd class="text-text-primary">{{ inquiry.companyName }}</dd>
             </div>
+            <template v-if="contactFieldEntries.length">
+              <div
+                v-for="entry in contactFieldEntries"
+                :key="entry.key"
+                class="border-t border-border pt-3"
+              >
+                <dt class="text-text-muted crm-label">{{ entry.key }}</dt>
+                <dd class="text-text-primary">{{ entry.value }}</dd>
+              </div>
+            </template>
             <div v-if="inquiry.proposedType">
               <dt class="text-text-muted crm-label">{{ t('inquiries.detail.proposedType') }}</dt>
               <dd class="text-text-primary">{{ inquiry.proposedType }}</dd>
@@ -223,6 +233,10 @@ interface InquiryDetail {
   missingInformation: string[];
   tags: string[];
   source: string | null;
+  sourceMeta?: {
+    contactFields?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
   structuredData: InquiryBrief;
   messages: InquiryMessage[];
   /** Form opening question — used when the first answer has no preceding assistant message. */
@@ -257,6 +271,15 @@ const brief = computed<InquiryBrief>(() => {
     timeline: raw?.timeline ?? null,
     inquiryType: raw?.inquiryType ?? null,
   };
+});
+
+/** Operator-defined contact-step values from adaptive submit (ADR-0058). */
+const contactFieldEntries = computed(() => {
+  const bag = inquiry.value?.sourceMeta?.contactFields;
+  if (!bag || typeof bag !== 'object') return [] as Array<{ key: string; value: string }>;
+  return Object.entries(bag)
+    .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== '')
+    .map(([key, value]) => ({ key, value: String(value) }));
 });
 
 /** Pair assistant questions with the following visitor answer (form Q→A, not chat). */

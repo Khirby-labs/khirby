@@ -289,10 +289,14 @@ export class ContactsService {
     email: string,
     data: {
       name?: string;
+      phone?: string;
       metadata?: Record<string, unknown>;
       submissionContext?: FormSubmissionContext;
     },
   ) {
+    const phone =
+      typeof data.phone === 'string' && data.phone.trim() ? data.phone.trim() : undefined;
+
     const [existing] = await this.db
       .select()
       .from(contacts)
@@ -317,6 +321,10 @@ export class ContactsService {
       if (data.name && !existing.name) {
         patch.name = data.name;
       }
+      // Fill phone when missing — do not overwrite an existing number on upsert.
+      if (phone && !existing.phone?.trim()) {
+        patch.phone = phone;
+      }
 
       if (Object.keys(patch).length === 0) {
         return existing;
@@ -337,7 +345,12 @@ export class ContactsService {
 
     const [created] = await this.db
       .insert(contacts)
-      .values({ email, name: data.name ?? null, metadata } as any)
+      .values({
+        email,
+        name: data.name ?? null,
+        phone: phone ?? null,
+        metadata,
+      } as any)
       .returning();
     this.emitContactCreated(created);
     return created;

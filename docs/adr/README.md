@@ -4,9 +4,14 @@ Significant architectural decisions, one file per decision, MADR-minimal format
 (Context → Decision → Consequences). Numbered chronologically. Immutable once
 accepted — a reversal is a *new* ADR that supersedes the old one, never an edit.
 
-New decision? Use the `/adr` skill (copies `template.md`, assigns the next number).
-Check here **before changing architecture**: `AGENTS.md` says what not to do, ADRs
-say why — so a deliberate choice doesn't get "fixed".
+**Source of truth:** Pokelo project **Khirby** (document type `ADR`). This directory
+is the git mirror for PRs and offline work. After any create/amend, run
+`node scripts/adr-sync-to-pokelo.mjs <file>` so Pokelo stays current — do not leave
+repo-only ADRs.
+
+New decision? Use the `/adr` skill (copies `template.md`, assigns the next number,
+syncs Pokelo). Check here **or Pokelo** before changing architecture: `AGENTS.md`
+says what not to do, ADRs say why — so a deliberate choice doesn't get "fixed".
 
 | # | Decision | Status |
 |---|----------|--------|
@@ -23,7 +28,7 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0011](0011-i18n-architecture.md) | i18n: two authored locales, keys as the contract | Accepted |
 | [0012](0012-date-input-standard.md) | One date-input standard: Reka Calendar over native date inputs | Accepted |
 | [0013](0013-mcp-plugin-bearer-tokens.md) | MCP plugin: Streamable HTTP + hashed bearer token (OAuth later) | Accepted |
-| [0014](0014-core-firm-mailbox.md) | Core firm mailbox (IMAP+SMTP), email threads as first-class CRM data | Accepted — encryption env amended by [0046](0046-one-instance-secrets-key.md) |
+| [0014](0014-core-firm-mailbox.md) | Core firm mailbox (IMAP+SMTP), email threads as first-class CRM data | Accepted — encryption env amended by [0046](0046-one-instance-secrets-key.md); per-scope under Enterprise by [0056](0056-per-workspace-firm-mailbox.md) |
 | [0015](0015-public-vitepress-docs.md) | Public VitePress docs vs internal `docs/` | Superseded by [0029](0029-public-docs-on-landing.md) |
 | [0016](0016-npm-community-plugins.md) | npm-installable community plugins (manifest + host package) | Accepted |
 | [0017](0017-mail-compose-assistant-slot.md) | Mail compose assistant slot (plugin UI in core mail) | Accepted — encryption env amended by [0046](0046-one-instance-secrets-key.md) |
@@ -64,3 +69,8 @@ say why — so a deliberate choice doesn't get "fixed".
 | [0052](0052-marketplace-plugins-are-self-contained-tarballs.md) | Marketplace plugins ship a self-contained tarball; no `npm install` on extract (amends 0044) | Accepted |
 | [0053](0053-inquiry-is-a-core-aggregate-before-contact-and-lead.md) | Inquiry is a core aggregate before Contact and Lead | Accepted |
 | [0054](0054-per-form-adaptive-intake-brief-and-system-prompt.md) | Per-form adaptive intake brief + system prompt; preview-chat without Inquiry rows | Accepted |
+| [0055](0055-enterprise-row-scope-via-plugin-host-hooks.md) | Enterprise row scope via plugin-host hooks; core stays single-tenant (narrows 0004) | Accepted |
+| [0056](0056-per-workspace-firm-mailbox.md) | Per-workspace firm mailbox under Enterprise scope (narrows 0014) | Accepted |
+| [0057](0057-per-workspace-plugin-enablement.md) | Per-workspace plugin enable/config; owner-only marketplace (amends 0032/0033) | Accepted |
+| [0058](0058-adaptive-inquiry-contact-fields.md) | Adaptive inquiry contact fields reuse `forms.schema` (operator-defined, not LLM) | Accepted — intake comment amended by [0059](0059-accept-lead-comment-is-a-handoff.md) |
+| [0059](0059-accept-lead-comment-is-a-handoff.md) | Accept-from-review lead comment is a handoff, not a field dump | Accepted |

@@ -64,7 +64,7 @@ export interface FormsClient {
   /**
    * Inquiry flow: POST /api/public/forms/:token/inquiries.
    * Static: field payload + optional contact.
-   * Adaptive: one-shot `{ opening, questions, answers, name?, email?, company?, locale? }`
+   * Adaptive: one-shot `{ opening, questions, answers, name?, email?, company?, fields?, locale? }`
    * after `planAdaptive`.
    */
   createInquiry(token: string, data: Record<string, unknown>): Promise<CreateInquiryResult>;
@@ -184,6 +184,21 @@ export function createClient(options: ClientOptions): FormsClient {
     planAdaptive,
 
     async submitAdaptive(token: string, input: SubmitAdaptiveInquiryInput) {
+      let fields = input.fields;
+      if (validateBeforeSubmit && fields !== undefined) {
+        const form = await fetchForm(token, true, input.locale);
+        const schema = form.contactFields ?? form.fields ?? [];
+        if (schema.length > 0) {
+          try {
+            fields = validateSubmissionDataAgainstSchema(schema, fields);
+          } catch (e) {
+            if (e instanceof FormValidationError) {
+              throw new CrmFormsError(e.message, 400);
+            }
+            throw e;
+          }
+        }
+      }
       return createInquiryForm(token, {
         opening: input.opening,
         questions: input.questions,
@@ -192,6 +207,7 @@ export function createClient(options: ClientOptions): FormsClient {
         ...(input.name !== undefined ? { name: input.name } : {}),
         ...(input.email !== undefined ? { email: input.email } : {}),
         ...(input.company !== undefined ? { company: input.company } : {}),
+        ...(fields !== undefined ? { fields } : {}),
       });
     },
 

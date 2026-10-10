@@ -32,35 +32,165 @@ function extractValueFromSubmission(data: Record<string, unknown>): string | nul
   return null;
 }
 
-function buildInquiryIntakeComment(input: {
+const HANDOFF_COPY = {
+  pl: {
+    address: 'Adres',
+    phone: 'Telefon',
+    timeline: 'Termin',
+    desiredOutcome: 'Oczekiwany efekt',
+    currentProcess: 'Obecny proces',
+    tools: 'Narzędzia',
+    teamSize: 'Wielkość zespołu',
+    constraints: 'Ograniczenia',
+  },
+  en: {
+    address: 'Address',
+    phone: 'Phone',
+    timeline: 'Timeline',
+    desiredOutcome: 'Desired outcome',
+    currentProcess: 'Current process',
+    tools: 'Tools',
+    teamSize: 'Team size',
+    constraints: 'Constraints',
+  },
+} as const;
+
+const STREET_KEYS = new Set(['street', 'ulica', 'address', 'adres', 'addressline1', 'line1']);
+const POSTAL_KEYS = new Set(['postalcode', 'zip', 'zipcode', 'kodpocztowy', 'postcode']);
+const CITY_KEYS = new Set(['city', 'miasto', 'town', 'miejscowosc']);
+const COUNTRY_KEYS = new Set(['country', 'kraj']);
+const PHONE_KEYS = new Set(['phone', 'telefon', 'mobile', 'tel', 'komorka', 'komorkowy']);
+
+function normalizeFieldKey(key: string): string {
+  return key.replace(/[_\-\s]/g, '').toLowerCase();
+}
+
+function contactFieldText(raw: unknown): string | null {
+  if (typeof raw === 'string') {
+    const value = raw.trim();
+    return value || null;
+  }
+  if (typeof raw === 'number' || typeof raw === 'boolean') return String(raw);
+  return null;
+}
+
+function humanizeFieldKey(key: string): string {
+  const spaced = key
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-ząćęłńóśźż])([A-Z])/g, '$1 $2')
+    .trim();
+  if (!spaced) return key;
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
+}
+
+export type ContactFieldLabel = {
+  label?: string | null;
+  pl?: string | null;
+  en?: string | null;
+};
+
+function resolveFieldLabel(
+  key: string,
+  labels: Record<string, ContactFieldLabel | string> | null | undefined,
+  locale: 'pl' | 'en',
+): string {
+  const entry = labels?.[key];
+  if (!entry) return humanizeFieldKey(key);
+  if (typeof entry === 'string') return entry.trim() || humanizeFieldKey(key);
+  const localized = entry[locale]?.trim();
+  const fallback = entry.label?.trim();
+  const other = (locale === 'pl' ? entry.en : entry.pl)?.trim();
+  return localized || fallback || other || humanizeFieldKey(key);
+}
+
+function handoffLocale(parts: Array<string | null | undefined>): 'pl' | 'en' {
+  const blob = parts.filter((part): part is string => !!part).join('\n');
+  return /[ąćęłńóśźżĄĆĘŁŃÓŚŹŻ]/.test(blob) ? 'pl' : 'en';
+}
+
+function takeContactField(bag: Map<string, string>, aliases: Set<string>): string | null {
+  for (const [key, value] of bag) {
+    if (!aliases.has(normalizeFieldKey(key))) continue;
+    bag.delete(key);
+    return value;
+  }
+  return null;
+}
+
+/**
+ * Handoff note written on the lead when an inquiry is accepted from review.
+ * A person should be able to act on it: the summary, then the site address,
+ * phone, and brief facts. Raw keys, tags, company, and type stay off the note
+ * (ADR-0059) — those already live on the lead.
+ */
+export function buildInquiryIntakeComment(input: {
   aiSummary?: string | null;
-  proposedType?: string | null;
-  companyName?: string | null;
-  tags?: string[];
   brief?: InquiryBrief | null;
+  contactFields?: Record<string, unknown> | null;
+  /** Operator labels from the form schema, keyed by field name. */
+  fieldLabels?: Record<string, ContactFieldLabel | string> | null;
 }): string {
-  const lines: string[] = [];
-  if (input.aiSummary?.trim()) lines.push(input.aiSummary.trim());
-  if (input.proposedType?.trim()) lines.push(`Type: ${input.proposedType.trim()}`);
-  if (input.companyName?.trim()) lines.push(`Company: ${input.companyName.trim()}`);
+  const bag = new Map<string, string>();
+  if (input.contactFields) {
+    for (const [key, raw] of Object.entries(input.contactFields)) {
+      const value = contactFieldText(raw);
+      if (value) bag.set(key, value);
+    }
+  }
+
+  const street = takeContactField(bag, STREET_KEYS);
+  const postal = takeContactField(bag, POSTAL_KEYS);
+  const city = takeContactField(bag, CITY_KEYS);
+  const country = takeContactField(bag, COUNTRY_KEYS);
+  const phone = takeContactField(bag, PHONE_KEYS);
+  const locality = [postal, city].filter(Boolean).join(' ');
+  const address = [street, locality, country].filter(Boolean).join(', ');
+
+  const summary = input.aiSummary?.trim() || '';
+  const problem = input.brief?.problem?.trim() || '';
+  const opening = summary || problem;
+
+  const locale = handoffLocale([
+    opening,
+    address,
+    phone,
+    ...bag.values(),
+    input.brief?.desiredOutcome,
+    input.brief?.currentProcess,
+    input.brief?.timeline,
+    ...(input.brief?.constraints ?? []),
+    ...(input.brief?.currentTools ?? []),
+  ]);
+  const copy = HANDOFF_COPY[locale];
+  const facts: string[] = [];
+
+  if (address) facts.push(`${copy.address}: ${address}`);
+  if (phone) facts.push(`${copy.phone}: ${phone}`);
+
+  for (const [key, value] of bag) {
+    facts.push(`${resolveFieldLabel(key, input.fieldLabels, locale)}: ${value}`);
+  }
 
   const brief = input.brief;
   if (brief) {
-    if (brief.problem?.trim()) lines.push(`Problem: ${brief.problem.trim()}`);
-    if (brief.desiredOutcome?.trim()) lines.push(`Desired outcome: ${brief.desiredOutcome.trim()}`);
-    if (brief.currentProcess?.trim()) lines.push(`Current process: ${brief.currentProcess.trim()}`);
+    if (brief.timeline?.trim()) facts.push(`${copy.timeline}: ${brief.timeline.trim()}`);
+    if (brief.desiredOutcome?.trim()) {
+      facts.push(`${copy.desiredOutcome}: ${brief.desiredOutcome.trim()}`);
+    }
+    if (brief.currentProcess?.trim()) {
+      facts.push(`${copy.currentProcess}: ${brief.currentProcess.trim()}`);
+    }
     if (Array.isArray(brief.currentTools) && brief.currentTools.length) {
-      lines.push(`Tools: ${brief.currentTools.join(', ')}`);
+      facts.push(`${copy.tools}: ${brief.currentTools.join(', ')}`);
     }
-    if (brief.teamSize != null) lines.push(`Team size: ${brief.teamSize}`);
+    if (brief.teamSize != null) facts.push(`${copy.teamSize}: ${brief.teamSize}`);
     if (Array.isArray(brief.constraints) && brief.constraints.length) {
-      lines.push(`Constraints: ${brief.constraints.join(', ')}`);
+      facts.push(`${copy.constraints}: ${brief.constraints.join(', ')}`);
     }
-    if (brief.timeline?.trim()) lines.push(`Timeline: ${brief.timeline.trim()}`);
   }
-  if (input.tags?.length) lines.push(`Tags: ${input.tags.join(', ')}`);
 
-  return lines.join('\n');
+  if (opening && facts.length) return `${opening}\n\n${facts.join('\n')}`;
+  return opening || facts.join('\n');
 }
 
 function serializeLead(row: typeof leads.$inferSelect) {
@@ -142,6 +272,10 @@ export class LeadsService {
     proposedType?: string | null;
     tags?: string[];
     brief?: InquiryBrief | null;
+    /** Adaptive contact-step values (ADR-0058) — also on inquiry.sourceMeta.contactFields. */
+    contactFields?: Record<string, unknown> | null;
+    /** Form-schema labels for contactFields, keyed by field name (ADR-0059). */
+    fieldLabels?: Record<string, ContactFieldLabel | string> | null;
   }) {
     await this.stages.ensureDefaults();
     const stage = input.stageId
@@ -168,10 +302,9 @@ export class LeadsService {
 
     const intakeNote = buildInquiryIntakeComment({
       aiSummary: input.aiSummary,
-      proposedType: input.proposedType,
-      companyName: input.companyName,
-      tags: input.tags,
       brief: input.brief,
+      contactFields: input.contactFields,
+      fieldLabels: input.fieldLabels,
     });
     if (intakeNote) {
       await this.db.insert(leadComments).values({
@@ -446,12 +579,19 @@ export class LeadsService {
         tags: inquiries.tags,
         structuredData: inquiries.structuredData,
         source: inquiries.source,
+        sourceMeta: inquiries.sourceMeta,
         contactName: inquiries.contactName,
         email: inquiries.email,
       })
       .from(inquiries)
       .where(eq(inquiries.leadId, id))
       .limit(1);
+
+    const originContactFields = (() => {
+      const bag = (inquiryOrigin?.sourceMeta as { contactFields?: unknown } | null)?.contactFields;
+      if (!bag || typeof bag !== 'object' || Array.isArray(bag)) return null;
+      return bag as Record<string, unknown>;
+    })();
 
     return {
       id: row.id,
@@ -490,6 +630,7 @@ export class LeadsService {
                 ? inquiryOrigin.structuredData.constraints
                 : [],
             },
+            contactFields: originContactFields,
             source: inquiryOrigin.source,
           }
         : null,
