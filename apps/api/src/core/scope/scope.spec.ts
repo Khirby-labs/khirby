@@ -3,6 +3,8 @@ import {
   runWithScope,
   runWithScopeAsync,
   getScopedDb,
+  getScopeStore,
+  enterScopeStore,
 } from '../../../../../packages/plugin-host/src/scope/scope-context';
 import {
   createScopedDbProxy,
@@ -42,6 +44,18 @@ describe('scope-context', () => {
       }),
     ]);
     expect(order).toEqual(['b:b', 'a:a']);
+  });
+
+  it('enterScopeStore rebinds a store after run() exits', () => {
+    let stored: ReturnType<typeof getScopeStore>;
+    runWithScope('s1', () => {
+      stored = getScopeStore();
+    });
+    expect(getScopeId()).toBeNull();
+    enterScopeStore(stored!);
+    expect(getScopeId()).toBe('s1');
+    // Clear for later tests — enterWith has no exit; nest a null run.
+    runWithScope(null, () => undefined);
   });
 });
 

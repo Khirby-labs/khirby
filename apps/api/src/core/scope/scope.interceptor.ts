@@ -1,7 +1,6 @@
 import { CallHandler, ExecutionContext, Injectable, NestInterceptor, Logger } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
-import { from, Observable, throwError } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { defer, from, Observable } from 'rxjs';
 import { sql } from 'drizzle-orm';
 import {
   DB_TOKEN,
@@ -14,14 +13,21 @@ import {
   SCOPE_DB_ROLE,
   ScopeEnforcementError,
   withScopedDb,
-  runWithScopeAsync,
   resolveLoadedProvider,
+  getScopeStore,
+  enterScopeStore,
 } from '../../../../../packages/plugin-host/src';
 
 /**
  * Thin core wiring for ADR-0055: when a plugin registers SCOPE_PROVIDER, wrap
  * HTTP handlers in a scoped DB transaction. No workspace product logic here.
  * Provider is resolved at call time (volume plugins bind after boot — ADR-0048).
+ *
+ * Important: Nest/RxJS can drop AsyncLocalStorage across `next.handle()`.
+ * We subscribe inside the scoped store and re-enter it on each notification so
+ * `createScopedDbProxy` keeps using the same transaction connection. Otherwise
+ * the SET LOCAL connection sits `idle in transaction` while domain queries take
+ * new pool clients — with `max: 10` that deadlocks and Cloudflare returns 504.
  */
 @Injectable()
 export class ScopeInterceptor implements NestInterceptor {
@@ -52,22 +58,68 @@ export class ScopeInterceptor implements NestInterceptor {
       raw?: { url?: string };
     }>();
 
-    return from(this.resolve(provider, req)).pipe(
-      switchMap(({ scopeId, enforcement }) => {
-        if (enforcement && !scopeId && req?.session?.userId) {
-          return throwError(() => new ScopeEnforcementError());
-        }
-        const run = () => next.handle().toPromise() as Promise<unknown>;
-        if (!scopeId) {
-          return from(runWithScopeAsync(null, run));
-        }
-        return from(
-          withScopedDb(this.db(), scopeId, (tx, id) => this.setLocal(tx, id), run, {
-            enforcement,
-          }),
-        );
-      }),
+    return defer(() =>
+      from(
+        (async () => {
+          const { scopeId, enforcement } = await this.resolve(provider, req);
+          if (enforcement && !scopeId && req?.session?.userId) {
+            throw new ScopeEnforcementError();
+          }
+          if (!scopeId) {
+            return this.firstValue(next);
+          }
+          return withScopedDb(
+            this.db(),
+            scopeId,
+            (tx, id) => this.setLocal(tx, id),
+            () => this.firstValueInScope(next),
+            { enforcement },
+          );
+        })(),
+      ),
     );
+  }
+
+  /** Subscribe to the route Observable while re-binding ALS on each hop. */
+  private firstValueInScope(next: CallHandler): Promise<unknown> {
+    const store = getScopeStore();
+    if (!store) return this.firstValue(next);
+    return new Promise((resolve, reject) => {
+      let last: unknown;
+      let hasValue = false;
+      // Subscribe synchronously inside the store so the controller starts scoped.
+      enterScopeStore(store);
+      next.handle().subscribe({
+        next: (value) => {
+          enterScopeStore(store);
+          last = value;
+          hasValue = true;
+        },
+        error: (err) => {
+          enterScopeStore(store);
+          reject(err);
+        },
+        complete: () => {
+          enterScopeStore(store);
+          resolve(hasValue ? last : undefined);
+        },
+      });
+    });
+  }
+
+  private firstValue(next: CallHandler): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      let last: unknown;
+      let hasValue = false;
+      next.handle().subscribe({
+        next: (value) => {
+          last = value;
+          hasValue = true;
+        },
+        error: (err) => reject(err),
+        complete: () => resolve(hasValue ? last : undefined),
+      });
+    });
   }
 
   private async resolve(

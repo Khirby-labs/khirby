@@ -17,6 +17,12 @@ export function getDb() {
     const client = postgres(process.env.DATABASE_URL!, {
       max: 10,
       idle_timeout: 20,
+      // Safety net for ADR-0055 scoped txs: if a request leaves a connection
+      // `idle in transaction` (ALS drop / hung handler), kill it before the
+      // pool of 10 deadlocks and every authenticated call 504s.
+      connection: {
+        idle_in_transaction_session_timeout: '15000',
+      },
       // Default postgres.js logs every NOTICE to console — plugin onMigrate
       // runs CREATE IF NOT EXISTS on every boot and floods the API log.
       onnotice: (notice) => {

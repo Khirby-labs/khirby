@@ -103,6 +103,7 @@ export {
   getScopedDb,
   runWithScope,
   runWithScopeAsync,
+  enterScopeStore,
   type ScopeStore,
 } from './scope/scope-context';
 export {

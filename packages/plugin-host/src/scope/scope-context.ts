@@ -34,5 +34,12 @@ export async function runWithScopeAsync<T>(
   fn: () => Promise<T>,
   opts?: { db?: unknown },
 ): Promise<T> {
-  return scopeAls.run({ scopeId, db: opts?.db }, fn);
+  // Await inside `run` so the store stays bound for the whole Promise chain
+  // (RxJS / Nest scheduling can otherwise drop ALS mid-request).
+  return scopeAls.run({ scopeId, db: opts?.db }, async () => fn());
+}
+
+/** Re-bind an existing store after RxJS / Nest hops that drop ALS. */
+export function enterScopeStore(store: ScopeStore): void {
+  scopeAls.enterWith(store);
 }
