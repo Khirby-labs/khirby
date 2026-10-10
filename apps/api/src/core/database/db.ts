@@ -21,7 +21,7 @@ export function getDb() {
       // `idle in transaction` (ALS drop / hung handler), kill it before the
       // pool of 10 deadlocks and every authenticated call 504s.
       connection: {
-        idle_in_transaction_session_timeout: '15000',
+        idle_in_transaction_session_timeout: 15000,
       },
       // Default postgres.js logs every NOTICE to console — plugin onMigrate
       // runs CREATE IF NOT EXISTS on every boot and floods the API log.
