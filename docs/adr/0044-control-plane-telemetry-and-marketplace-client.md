@@ -1,8 +1,9 @@
 # 0044 — Control Plane client: telemetry, marketplace catalog, npm install
 
-- **Status:** Accepted — default URL amended by [0051](0051-control-plane-url-defaults-to-ctrl-bearly-pro.md); Marketplace tarball contract amended by [0052](0052-marketplace-plugins-are-self-contained-tarballs.md)
+- **Status:** Accepted — default URL amended by [0051](0051-control-plane-url-defaults-to-ctrl-bearly-pro.md); Marketplace tarball contract amended by [0052](0052-marketplace-plugins-are-self-contained-tarballs.md); private plugins / install-grant (Control Plane ADR-0007): catalog passes `installationId`, install uses `POST …/install-grant` + `downloadUrl` (ssri unchanged)
 - **Date:** 2026-09-09
 - **Deciders:** Patryk
+- **Pokelo ADR id:** `ff8a29ac-8822-4638-a3f9-223065214e34` (Khirby project)
 
 ## Context
 

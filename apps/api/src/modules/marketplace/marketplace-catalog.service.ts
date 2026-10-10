@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { ControlPlaneClient } from '../control-plane/control-plane.client';
 import type { MarketplacePlugin as CpMarketplacePlugin } from '../control-plane/contracts';
+import { InstallationIdentityService } from '../control-plane/installation-identity.service';
 import {
   CATALOG_FORMAT_VERSION,
   CatalogDocument,
@@ -43,6 +44,7 @@ export class MarketplaceCatalogService {
   constructor(
     private readonly config: ConfigService,
     private readonly controlPlane: ControlPlaneClient,
+    private readonly identity: InstallationIdentityService,
   ) {}
 
   /** Drop the success (and failure) cache so the next load hits Control Plane. */
@@ -89,11 +91,12 @@ export class MarketplaceCatalogService {
     // CP filters with semver compare — "dev" / non-semver makes every plugin look incompatible
     // and returns []. Only send compatibleWith when we have a real version.
     const compatibleWith = isSemverish(appVersion) ? appVersion : undefined;
+    const { installationId } = await this.identity.getOrCreate();
     const plugins = await this.controlPlane.listPlugins({
+      installationId,
       ...(compatibleWith ? { compatibleWith } : {}),
       ...(search ? { search } : {}),
     });
-
     if (plugins == null) {
       this.logger.warn('Control Plane marketplace list failed — using the empty catalog');
       return null;

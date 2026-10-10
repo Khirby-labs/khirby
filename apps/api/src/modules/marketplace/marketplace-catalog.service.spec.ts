@@ -13,6 +13,14 @@ function makeConfig(values: Record<string, string | undefined> = {}) {
   } as any;
 }
 
+const INSTALLATION_ID = '11111111-1111-4111-8111-111111111111';
+
+function makeIdentity(installationId = INSTALLATION_ID) {
+  return {
+    getOrCreate: jest.fn().mockResolvedValue({ installationId }),
+  } as any;
+}
+
 function makeCp(
   overrides: {
     configured?: boolean;
@@ -23,6 +31,14 @@ function makeCp(
     isConfigured: () => overrides.configured ?? true,
     listPlugins: overrides.listPlugins ?? jest.fn().mockResolvedValue([]),
   } as any;
+}
+
+function makeCatalogService(
+  config: ReturnType<typeof makeConfig>,
+  cp: ReturnType<typeof makeCp>,
+  identity = makeIdentity(),
+) {
+  return new MarketplaceCatalogService(config, cp, identity);
 }
 
 function cpPlugin(overrides: Record<string, unknown> = {}) {
@@ -44,7 +60,7 @@ function cpPlugin(overrides: Record<string, unknown> = {}) {
 describe('MarketplaceCatalogService — no Control Plane', () => {
   it('uses the empty catalog without calling the client', async () => {
     const listPlugins = jest.fn();
-    const svc = new MarketplaceCatalogService(
+    const svc = makeCatalogService(
       makeConfig({ APP_VERSION: '1.0.0' }),
       makeCp({ configured: false, listPlugins }),
     );
@@ -70,13 +86,13 @@ describe('MarketplaceCatalogService — Control Plane feed', () => {
         packageName: '@khirby/plugin-beta',
       }),
     ]);
-    const svc = new MarketplaceCatalogService(
-      makeConfig({ APP_VERSION: '1.0.0' }),
-      makeCp({ listPlugins }),
-    );
+    const svc = makeCatalogService(makeConfig({ APP_VERSION: '1.0.0' }), makeCp({ listPlugins }));
 
     const doc = await svc.load();
-    expect(listPlugins).toHaveBeenCalledWith({ compatibleWith: '1.0.0' });
+    expect(listPlugins).toHaveBeenCalledWith({
+      installationId: INSTALLATION_ID,
+      compatibleWith: '1.0.0',
+    });
     expect(doc.version).toBe(CATALOG_FORMAT_VERSION);
     expect(doc.entries.map((e) => e.slug)).toEqual(['alpha', 'beta', 'zeta']);
     expect(doc.entries[0]).toEqual(
@@ -98,17 +114,17 @@ describe('MarketplaceCatalogService — Control Plane feed', () => {
 
   it('passes search through and omits non-semver APP_VERSION from compatibleWith', async () => {
     const listPlugins = jest.fn().mockResolvedValue([]);
-    const svc = new MarketplaceCatalogService(
-      makeConfig({ APP_VERSION: 'dev' }),
-      makeCp({ listPlugins }),
-    );
+    const svc = makeCatalogService(makeConfig({ APP_VERSION: 'dev' }), makeCp({ listPlugins }));
     await svc.load('mail');
-    expect(listPlugins).toHaveBeenCalledWith({ search: 'mail' });
+    expect(listPlugins).toHaveBeenCalledWith({
+      installationId: INSTALLATION_ID,
+      search: 'mail',
+    });
   });
 
   it('falls back to the empty catalog when the client returns null', async () => {
     const listPlugins = jest.fn().mockResolvedValue(null);
-    const svc = new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins }));
+    const svc = makeCatalogService(makeConfig(), makeCp({ listPlugins }));
     await expect(svc.load()).resolves.toEqual(LOCAL_CATALOG);
   });
 
@@ -116,7 +132,7 @@ describe('MarketplaceCatalogService — Control Plane feed', () => {
     const listPlugins = jest
       .fn()
       .mockResolvedValue([cpPlugin({ compatible: undefined, packageName: '@khirby/plugin-x' })]);
-    const doc = await new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins })).load();
+    const doc = await makeCatalogService(makeConfig(), makeCp({ listPlugins })).load();
     expect(doc.entries[0].compatible).toBe(true);
   });
 
@@ -124,7 +140,7 @@ describe('MarketplaceCatalogService — Control Plane feed', () => {
     const listPlugins = jest
       .fn()
       .mockResolvedValue([cpPlugin({ repositoryUrl: 'http://example.com/repo' })]);
-    const doc = await new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins })).load();
+    const doc = await makeCatalogService(makeConfig(), makeCp({ listPlugins })).load();
     expect(doc.entries[0].docsUrl).toBeNull();
   });
 });
@@ -140,7 +156,7 @@ describe('MarketplaceCatalogService — caching', () => {
 
   it('reuses a successful document inside the success window', async () => {
     const listPlugins = jest.fn().mockResolvedValue([cpPlugin()]);
-    const svc = new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins }));
+    const svc = makeCatalogService(makeConfig(), makeCp({ listPlugins }));
 
     await svc.load();
     await svc.load();
@@ -154,7 +170,7 @@ describe('MarketplaceCatalogService — caching', () => {
 
   it('bypasses the success cache when fresh is set', async () => {
     const listPlugins = jest.fn().mockResolvedValue([cpPlugin()]);
-    const svc = new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins }));
+    const svc = makeCatalogService(makeConfig(), makeCp({ listPlugins }));
 
     await svc.load();
     await svc.load(undefined, { fresh: true });
@@ -163,7 +179,7 @@ describe('MarketplaceCatalogService — caching', () => {
 
   it('does not retry a failed remote inside the failure window', async () => {
     const listPlugins = jest.fn().mockResolvedValue(null);
-    const svc = new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins }));
+    const svc = makeCatalogService(makeConfig(), makeCp({ listPlugins }));
 
     await svc.load();
     await svc.load();
@@ -178,7 +194,7 @@ describe('MarketplaceCatalogService — caching', () => {
 
   it('drops the success cache on invalidate', async () => {
     const listPlugins = jest.fn().mockResolvedValue([cpPlugin()]);
-    const svc = new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins }));
+    const svc = makeCatalogService(makeConfig(), makeCp({ listPlugins }));
 
     await svc.load();
     svc.invalidate();
@@ -194,10 +210,12 @@ describe('MarketplaceCatalogService — caching', () => {
           resolveList = resolve;
         }),
     );
-    const svc = new MarketplaceCatalogService(makeConfig(), makeCp({ listPlugins }));
+    const svc = makeCatalogService(makeConfig(), makeCp({ listPlugins }));
 
     const first = svc.load();
     const second = svc.load();
+    // load() awaits installation identity before listPlugins — flush that microtask.
+    await Promise.resolve();
     expect(listPlugins).toHaveBeenCalledTimes(1);
     resolveList([cpPlugin()]);
     expect((await first).entries).toHaveLength(1);

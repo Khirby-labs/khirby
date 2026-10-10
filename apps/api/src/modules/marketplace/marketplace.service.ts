@@ -213,7 +213,8 @@ export class MarketplaceService {
 
   /**
    * Install by Control Plane slug (preferred) or `crm_*` name.
-   * Downloads from npm when the package is not already loaded in this process.
+   * Downloads via Control Plane install-grant (public npm proxied by CP, or
+   * private artifact) when the package is not already loaded in this process.
    */
   async install(slugOrName: string) {
     const key = slugOrName.trim();
@@ -222,7 +223,7 @@ export class MarketplaceService {
     const resolved = await this.resolveInstallTarget(key);
     if (!resolved) throw AppException.notFound('plugin', key);
 
-    const { crmName, version } = resolved;
+    const { slug, crmName, version } = resolved;
 
     if (this.registry.loadedNames().includes(crmName)) {
       return this.registry.install(crmName);
@@ -232,11 +233,7 @@ export class MarketplaceService {
       throw AppException.notFound('plugin', key);
     }
 
-    const extracted = await this.installer.extract({
-      packageName: version.packageName,
-      version: version.version,
-      checksum: version.checksum,
-    });
+    const extracted = await this.extractViaInstallGrant(slug, version);
 
     try {
       assertWebBundlePresent(extracted.absDir);
@@ -263,8 +260,8 @@ export class MarketplaceService {
   }
 
   /**
-   * Re-fetch the approved npm package and replace the volume copy for an
-   * already-installed plugin. Updates the `plugins.version` row to match.
+   * Re-fetch the approved package via install-grant and replace the volume copy
+   * for an already-installed plugin. Updates the `plugins.version` row to match.
    */
   async update(slugOrName: string) {
     const key = slugOrName.trim();
@@ -273,15 +270,11 @@ export class MarketplaceService {
     const resolved = await this.resolveInstallTarget(key);
     if (!resolved?.version) throw AppException.notFound('plugin', key);
 
-    const { crmName, version } = resolved;
+    const { slug, crmName, version } = resolved;
     const existing = await this.registry.findByName(crmName);
     if (!existing) throw AppException.notFound('plugin', crmName);
 
-    const extracted = await this.installer.extract({
-      packageName: version.packageName,
-      version: version.version,
-      checksum: version.checksum,
-    });
+    const extracted = await this.extractViaInstallGrant(slug, version);
 
     try {
       assertWebBundlePresent(extracted.absDir);
@@ -329,25 +322,87 @@ export class MarketplaceService {
     return (this.config.get<string>('APP_VERSION') ?? '').trim();
   }
 
+  private async installationLookup(): Promise<{ installationId: string }> {
+    const { installationId } = await this.identity.getOrCreate();
+    return { installationId };
+  }
+
+  /**
+   * Mint a CP install-grant and unpack via downloadUrl (ssri-verified).
+   * Used for both public (CP proxies npm) and private (uploaded artifact) plugins.
+   */
+  private async extractViaInstallGrant(
+    slug: string,
+    version: MarketplacePluginVersion,
+  ): Promise<PackageInstallResult> {
+    if (!this.controlPlane.isConfigured()) {
+      throw AppException.badRequest('CONTROL_PLANE_URL is not configured', {
+        code: 'CONTROL_PLANE_NOT_CONFIGURED',
+      });
+    }
+    const { installationId } = await this.installationLookup();
+    const grant = await this.controlPlane.createInstallGrant(slug, {
+      installationId,
+      version: version.version,
+      product: 'khirby',
+    });
+    const downloadUrl = this.normalizeGrantDownloadUrl(grant.downloadUrl);
+    return this.installer.extract({
+      packageName: grant.packageName,
+      version: grant.version,
+      checksum: grant.checksum,
+      downloadUrl,
+    });
+  }
+
+  /**
+   * Reject SSRF (wrong host) and rewrite onto the configured Control Plane
+   * origin. CP may emit `http://` when `PUBLIC_API_BASE_URL` / X-Forwarded-Proto
+   * is wrong while CRM uses `https://ctrl.bearly.pro` — hostname must match;
+   * scheme follows our `CONTROL_PLANE_URL`.
+   */
+  private normalizeGrantDownloadUrl(downloadUrl: string): string {
+    let download: URL;
+    let base: URL;
+    try {
+      download = new URL(downloadUrl);
+      base = new URL(this.controlPlane.baseUrl());
+    } catch {
+      throw AppException.badRequest('Invalid install-grant downloadUrl', {
+        code: 'invalid_download_url',
+      });
+    }
+    if (download.hostname !== base.hostname) {
+      throw AppException.badRequest('install-grant downloadUrl must use the Control Plane host', {
+        code: 'invalid_download_url',
+      });
+    }
+    return `${base.origin}${download.pathname}${download.search}`;
+  }
+
   private async resolveInstallTarget(slugOrName: string): Promise<{
     slug: string;
     crmName: string;
     version: MarketplacePluginVersion | null;
   } | null> {
-    // Prefer slug lookup against Control Plane.
+    const lookup = this.controlPlane.isConfigured() ? await this.installationLookup() : null;
+
+    // Prefer slug lookup against Control Plane (with entitlement filter).
     let slug = slugOrName;
-    let cpPlugin = this.controlPlane.isConfigured()
-      ? await this.controlPlane.getPlugin(slugOrName)
-      : null;
+    let cpPlugin =
+      this.controlPlane.isConfigured() && lookup
+        ? await this.controlPlane.getPlugin(slugOrName, lookup)
+        : null;
 
     if (!cpPlugin) {
       const document = await this.catalog.load();
       const entry = document.entries.find((e) => e.slug === slugOrName || e.name === slugOrName);
       if (entry) {
         slug = entry.slug;
-        cpPlugin = this.controlPlane.isConfigured()
-          ? await this.controlPlane.getPlugin(slug)
-          : null;
+        cpPlugin =
+          this.controlPlane.isConfigured() && lookup
+            ? await this.controlPlane.getPlugin(slug, lookup)
+            : null;
         if (!cpPlugin && this.registry.loadedNames().includes(entry.name)) {
           return { slug, crmName: entry.name, version: null };
         }
@@ -359,7 +414,7 @@ export class MarketplaceService {
     if (!cpPlugin) return null;
 
     slug = cpPlugin.slug;
-    const version = await this.resolveLatestVersion(slug, cpPlugin.latestVersion);
+    const version = await this.resolveLatestVersion(slug, cpPlugin.latestVersion, lookup!);
     const fromManifest =
       version?.manifest && typeof version.manifest.id === 'string' ? version.manifest.id : null;
     const crmName =
@@ -373,15 +428,16 @@ export class MarketplaceService {
   private async resolveLatestVersion(
     slug: string,
     latestVersion: string | null,
+    lookup: { installationId: string },
   ): Promise<MarketplacePluginVersion | null> {
     const appVersion = this.appVersion();
     if (latestVersion) {
-      const one = await this.controlPlane.getPluginVersion(slug, latestVersion);
+      const one = await this.controlPlane.getPluginVersion(slug, latestVersion, lookup);
       if (one?.approvedAt && isCompatibleWithProduct(one.minimumProductVersion, appVersion)) {
         return one;
       }
     }
-    const versions = await this.controlPlane.getPluginVersions(slug);
+    const versions = await this.controlPlane.getPluginVersions(slug, lookup);
     if (versions == null) throw AppException.upstreamFailed('controlPlane');
     if (!versions.length) return null;
     const approved = versions.filter((v) => v.approvedAt);
