@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-07-24
 - **Deciders:** Damian Orzeł, Claude (pairing)
+- **Pokelo ADR id:** `a3f33195-e3cb-459f-a549-7ad598ea9de5` (Khirby project)
 - **Amended:** 2026-07-24 — see *Amendment: account locale and backend-served
   labels* at the end. Extends this decision; reverses nothing in it.
 

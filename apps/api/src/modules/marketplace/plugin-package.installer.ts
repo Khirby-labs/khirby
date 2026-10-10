@@ -26,7 +26,15 @@ export type PackageInstallInput = {
   version: string;
   /** ssri integrity string from the Control Plane (e.g. sha512-...). */
   checksum: string;
+  /**
+   * Control Plane install-grant URL (private artifact or CP-proxied npm).
+   * When set, bytes are fetched from here instead of the public npm registry.
+   */
+  downloadUrl?: string;
 };
+
+/** Tarball download from Control Plane can be larger than a JSON API round-trip. */
+export const PLUGIN_TARBALL_FETCH_TIMEOUT_MS = 60_000;
 
 export type PackageInstallResult = {
   /** Relative segment under `plugins/` (e.g. `crm-plugin-webhook`). */
@@ -102,9 +110,9 @@ export function assertSafePackageInstallInput(input: PackageInstallInput): {
 }
 
 /**
- * Fetch a published npm package, verify its integrity, and unpack into `plugins/`.
- * Marketplace installs may land on former first-party dir names
- * (`allowReservedScaffoldDirs`).
+ * Fetch a package tarball (Control Plane grant URL or public npm), verify its
+ * integrity, and unpack into `plugins/`. Marketplace installs may land on former
+ * first-party dir names (`allowReservedScaffoldDirs`).
  */
 @Injectable()
 export class PluginPackageInstaller {
@@ -112,6 +120,7 @@ export class PluginPackageInstaller {
 
   async extract(input: PackageInstallInput): Promise<PackageInstallResult> {
     const { packageName, version, checksum } = assertSafePackageInstallInput(input);
+    const downloadUrl = input.downloadUrl?.trim() || undefined;
 
     const pacote = loadPacote();
     const ssri = loadSsri();
@@ -122,15 +131,29 @@ export class PluginPackageInstaller {
     // Stage under the volume so rename stays on the same filesystem.
     const staging = mkdtempSync(join(volumeDir, '.pkg-'));
     let moved = false;
+    let tgzPath: string | null = null;
     try {
-      const tarball = await pacote.tarball(spec);
-      if (!ssri.checkData(tarball, checksum)) {
-        throw AppException.badRequest('Package integrity check failed', {
-          code: 'integrity_mismatch',
-        });
+      let extractSpec = spec;
+      if (downloadUrl) {
+        const tarball = await fetchTarballBytes(downloadUrl);
+        if (!ssri.checkData(tarball, checksum)) {
+          throw AppException.badRequest('Package integrity check failed', {
+            code: 'integrity_mismatch',
+          });
+        }
+        tgzPath = join(volumeDir, `.dl-${process.pid}-${Date.now()}.tgz`);
+        writeFileSync(tgzPath, tarball);
+        extractSpec = tgzPath;
+        await pacote.extract(extractSpec, staging, { integrity: checksum });
+      } else {
+        const tarball = await pacote.tarball(spec);
+        if (!ssri.checkData(tarball, checksum)) {
+          throw AppException.badRequest('Package integrity check failed', {
+            code: 'integrity_mismatch',
+          });
+        }
+        await pacote.extract(spec, staging, { integrity: checksum });
       }
-
-      await pacote.extract(spec, staging, { integrity: checksum });
 
       const pkg = readPackageJson(staging);
       const incomingName = typeof pkg.name === 'string' ? pkg.name : packageName;
@@ -174,7 +197,7 @@ export class PluginPackageInstaller {
         throw swapErr;
       }
 
-      this.logger.log(`Extracted ${spec} → plugins/${dirName}`);
+      this.logger.log(`Extracted ${downloadUrl ? 'grant tarball' : spec} → plugins/${dirName}`);
       return makeSwapHandle({
         directory: dirName,
         absDir,
@@ -185,14 +208,35 @@ export class PluginPackageInstaller {
     } catch (err) {
       if (err instanceof HttpException) throw err;
       this.logger.warn(
-        `Failed to fetch ${spec}: ${err instanceof Error ? err.message : String(err)}`,
+        `Failed to fetch ${downloadUrl ?? spec}: ${err instanceof Error ? err.message : String(err)}`,
       );
-      throw AppException.upstreamFailed('npm');
+      throw AppException.upstreamFailed(downloadUrl ? 'controlPlane' : 'npm');
     } finally {
+      if (tgzPath && existsSync(tgzPath)) {
+        rmSync(tgzPath, { force: true });
+      }
       if (!moved && existsSync(staging)) {
         rmSync(staging, { recursive: true, force: true });
       }
     }
+  }
+}
+
+async function fetchTarballBytes(downloadUrl: string): Promise<Buffer> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PLUGIN_TARBALL_FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(downloadUrl, {
+      method: 'GET',
+      signal: controller.signal,
+      headers: { accept: 'application/octet-stream,*/*' },
+    });
+    if (!res.ok) {
+      throw AppException.upstreamFailed('controlPlane');
+    }
+    return Buffer.from(await res.arrayBuffer());
+  } finally {
+    clearTimeout(timer);
   }
 }
 

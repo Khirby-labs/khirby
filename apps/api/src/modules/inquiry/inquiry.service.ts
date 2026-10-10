@@ -25,12 +25,37 @@ import {
   resolveLoadedProvider,
 } from '../../../../../packages/plugin-host/src';
 import { assertPublicAdaptiveBatch } from './adaptive-intake-guards';
+import {
+  buildContactAcceptMetadata,
+  contactFieldLabelsFromSchema,
+  extractPhoneFromContactFields,
+  readContactFieldsFromSourceMeta,
+} from '../forms/adaptive-contact-fields';
 
 const TERMINAL_STATUSES: InquiryStatus[] = ['accepted', 'rejected', 'spam'];
 
 function detectVisitorLocale(content: string): 'pl' | 'en' | undefined {
   if (/[ąćęłńóśźż]/i.test(content)) return 'pl';
   return undefined;
+}
+
+/**
+ * Pull a phone from adaptive Q&A: assistant asks about phone/telefon, visitor answers.
+ * Exported for unit tests.
+ */
+export function extractPhoneFromInquiryThread(
+  messages: Array<{ role: string; content: string }>,
+): string | null {
+  for (let i = 0; i < messages.length - 1; i++) {
+    const q = messages[i];
+    const a = messages[i + 1];
+    if (q.role !== 'assistant' || a.role !== 'visitor') continue;
+    if (!/telefon|phone|mobile|komórk|komork/i.test(q.content)) continue;
+    const raw = a.content.trim();
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length >= 7 && digits.length <= 15) return raw;
+  }
+  return null;
 }
 
 const ALLOWED_TRANSITIONS: Record<InquiryStatus, InquiryStatus[]> = {
@@ -659,6 +684,8 @@ export class InquiryService {
     contactName?: string;
     email?: string;
     companyName?: string;
+    /** Operator-defined contact-step values (ADR-0058). Not AI follow-ups. */
+    contactFields?: Record<string, unknown>;
   }) {
     const { opening, questions, answers } = assertPublicAdaptiveBatch({
       opening: input.opening,
@@ -683,13 +710,20 @@ export class InquiryService {
       messageRows.push({ role: 'visitor', content: answers[i] });
     }
 
+    const sourceMeta: Record<string, unknown> = {
+      ...(input.sourceMeta ?? {}),
+      ...(input.contactFields && Object.keys(input.contactFields).length > 0
+        ? { contactFields: input.contactFields }
+        : {}),
+    };
+
     const created = await this.db.transaction(async (tx) => {
       const [row] = await tx
         .insert(inquiries)
         .values({
           formId: input.formId,
           source: input.source ?? null,
-          sourceMeta: input.sourceMeta ?? {},
+          sourceMeta,
           status: 'active',
           contactName: input.contactName ?? null,
           email: input.email ?? null,
@@ -786,10 +820,33 @@ export class InquiryService {
         throw new ConflictException('Inquiry status changed concurrently');
       }
 
+      // Prefer structured contact-step phone (ADR-0058); thread regex is fallback.
+      const contactFields = readContactFieldsFromSourceMeta(current.sourceMeta);
+      const fromFields = extractPhoneFromContactFields(contactFields);
+      let fieldLabels: ReturnType<typeof contactFieldLabelsFromSchema> | undefined;
+      if (current.formId) {
+        const [form] = await tx
+          .select({ schema: forms.schema })
+          .from(forms)
+          .where(eq(forms.id, current.formId))
+          .limit(1);
+        if (form) fieldLabels = contactFieldLabelsFromSchema(form.schema);
+      }
+      const thread = await tx
+        .select({ role: inquiryMessages.role, content: inquiryMessages.content })
+        .from(inquiryMessages)
+        .where(eq(inquiryMessages.inquiryId, id))
+        .orderBy(asc(inquiryMessages.createdAt));
+      const phone = fromFields ?? extractPhoneFromInquiryThread(thread);
+
       // Upsert contact (uses ContactsService.db — OK under advisory lock)
       const contact = await this.contacts.upsertByEmail(current.email.trim(), {
         name: current.contactName ?? undefined,
-        metadata: current.companyName?.trim() ? { company: current.companyName.trim() } : undefined,
+        phone: phone ?? undefined,
+        metadata: buildContactAcceptMetadata({
+          companyName: current.companyName,
+          contactFields,
+        }),
       });
 
       const brief: InquiryBrief = {
@@ -816,6 +873,8 @@ export class InquiryService {
         proposedType: current.proposedType,
         tags: current.tags ?? [],
         brief,
+        contactFields: contactFields ?? undefined,
+        fieldLabels,
       });
 
       // Stamp leadId on the inquiry

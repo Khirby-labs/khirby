@@ -3,12 +3,13 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagg
 import { SessionGuard } from '../../core/auth/session.guard';
 import { PermissionGuard } from '../../core/rbac/rbac.guard';
 import { RequirePermission } from '../../core/rbac/require-permission.decorator';
+import { PluginScopeAdminGuard } from '../../../../../packages/plugin-host/src';
 import { PluginRegistryService } from './plugin-registry.service';
 
 @ApiTags('plugins')
 @ApiBearerAuth('session')
 @Controller('plugins')
-@UseGuards(SessionGuard, PermissionGuard)
+@UseGuards(SessionGuard, PermissionGuard, PluginScopeAdminGuard)
 @RequirePermission('integrations', 'manage')
 export class PluginsController {
   constructor(private readonly registry: PluginRegistryService) {}

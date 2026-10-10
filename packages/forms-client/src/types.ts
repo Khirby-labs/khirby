@@ -37,6 +37,12 @@ export interface PublicForm {
    * requested locale. Null/absent when not configured or form is static.
    */
   openingLabel?: string | null;
+  /**
+   * Adaptive contact-step fields (ADR-0058). Same resolved list as `fields`
+   * when the form is adaptive — bind the contact step here, not AI follow-ups.
+   * Absent on static/lead forms and older CRM servers.
+   */
+  contactFields?: FormField[];
   /** Server-advertised capability flags (absent on older CRM servers). */
   capabilities?: { adaptiveAvailable: boolean };
 }
@@ -71,6 +77,11 @@ export interface SubmitAdaptiveInquiryInput {
   name?: string;
   email?: string;
   company?: string;
+  /**
+   * Operator-defined contact-step values keyed by field.name (ADR-0058).
+   * Not counted toward the AI follow-up limit.
+   */
+  fields?: Record<string, unknown>;
 }
 
 export interface GetFormOptions {

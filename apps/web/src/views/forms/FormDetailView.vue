@@ -106,32 +106,42 @@
             @update:opening-labels="form.openingLabels = $event"
           />
 
-          <!-- Schema fields (static / lead) -->
-          <div v-else class="crm-panel p-6 space-y-4 ring-1 ring-accent/25">
+          <!-- Schema (static/lead) or contact-step fields (adaptive, ADR-0058) -->
+          <div class="crm-panel p-6 space-y-4 ring-1 ring-accent/25">
             <div class="flex flex-wrap items-center justify-between gap-2">
               <h3 class="text-sm font-semibold text-text-primary">
-                {{ t('forms.detail.schema.title') }}
+                {{
+                  isAdaptive
+                    ? t('forms.detail.contactFields.title')
+                    : t('forms.detail.schema.title')
+                }}
               </h3>
               <div class="flex flex-wrap items-center gap-2">
-                <AppSelect
-                  v-model="templateToApply"
-                  :options="templateApplyOptions"
-                  :aria-label="t('forms.detail.schema.applyTemplate')"
-                  :placeholder="t('forms.detail.schema.applyTemplatePlaceholder')"
-                  trigger-class="py-1 text-xs"
-                />
-                <button
-                  class="text-xs text-accent hover:text-accent"
-                  :disabled="!templateToApply"
-                  @click="applyTemplate"
-                >
-                  {{ t('forms.detail.schema.apply') }}
-                </button>
+                <template v-if="!isAdaptive">
+                  <AppSelect
+                    v-model="templateToApply"
+                    :options="templateApplyOptions"
+                    :aria-label="t('forms.detail.schema.applyTemplate')"
+                    :placeholder="t('forms.detail.schema.applyTemplatePlaceholder')"
+                    trigger-class="py-1 text-xs"
+                  />
+                  <button
+                    class="text-xs text-accent hover:text-accent"
+                    :disabled="!templateToApply"
+                    @click="applyTemplate"
+                  >
+                    {{ t('forms.detail.schema.apply') }}
+                  </button>
+                </template>
                 <button class="btn-primary text-xs px-2.5 py-1" @click="addField">
                   <span aria-hidden="true">+</span> {{ t('forms.detail.schema.addField') }}
                 </button>
               </div>
             </div>
+
+            <p v-if="isAdaptive" class="text-xs text-text-ghost">
+              {{ t('forms.detail.contactFields.hint') }}
+            </p>
 
             <!--
               The only <i18n-t>-with-slot case in the app: "email" is a schema
@@ -140,6 +150,7 @@
               DOM nodes, which no inflected language can reassemble.
             -->
             <i18n-t
+              v-else
               keypath="forms.detail.schema.emailHint"
               tag="p"
               class="text-xs text-text-ghost"
@@ -153,8 +164,16 @@
 
             <EmptyState
               v-if="schema.length === 0"
-              :title="t('forms.detail.schema.empty.title')"
-              :message="t('forms.detail.schema.empty.message')"
+              :title="
+                isAdaptive
+                  ? t('forms.detail.contactFields.empty.title')
+                  : t('forms.detail.schema.empty.title')
+              "
+              :message="
+                isAdaptive
+                  ? t('forms.detail.contactFields.empty.message')
+                  : t('forms.detail.schema.empty.message')
+              "
             >
               <template #action>
                 <button class="btn-primary" @click="addField">
@@ -301,6 +320,7 @@
             :form-id="form.id"
             :form-name="form.name"
             :opening-labels="form.openingLabels"
+            :contact-fields="previewFields"
             :can-test="canTestAdaptive"
           />
           <FormPreview v-else :name="form.name" :fields="previewFields" />
@@ -504,10 +524,26 @@ type ValidationProblem =
   | { code: 'selectNeedsOptions'; name: string }
   | { code: 'emailFieldRequired' }
   | { code: 'adaptiveLeadInvalid' }
-  | { code: 'adaptivePromptRequired' };
+  | { code: 'adaptivePromptRequired' }
+  | { code: 'reservedContactField'; name: string };
 
 /** The schema identifier the server matches submissions on — an identifier, never copy. */
 const EMAIL_FIELD = 'email';
+
+/** First-class adaptive keys — must not appear in contact-step schema (ADR-0058). */
+const ADAPTIVE_RESERVED_CONTACT_NAMES = new Set([
+  'name',
+  'email',
+  'company',
+  'companyName',
+  'opening',
+  'content',
+  'questions',
+  'answers',
+  'locale',
+  'fields',
+  '_hp',
+]);
 
 let uidSeq = 0;
 const nextUid = () => ++uidSeq;
@@ -677,14 +713,14 @@ const submitUrl = computed(() => {
 
 const exampleJson = computed(() =>
   isAdaptive.value
-    ? buildInquiryExampleJson()
+    ? buildInquiryExampleJson(previewFields.value)
     : formatSubmitBodyJson(buildExampleSubmitData(previewFields.value)),
 );
 
 const curlExample = computed(() => {
   if (!form.value) return '';
   if (isAdaptive.value) {
-    return buildInquiryCurlExample(apiOrigin.value, form.value.endpointToken);
+    return buildInquiryCurlExample(apiOrigin.value, form.value.endpointToken, previewFields.value);
   }
   return buildCurlExample(submitUrl.value, buildExampleSubmitData(previewFields.value));
 });
@@ -694,7 +730,7 @@ const sdkInstallHint = computed(() => buildSdkInstallHint());
 const sdkExample = computed(() => {
   if (!form.value) return '';
   if (isAdaptive.value) {
-    return buildInquirySdkExample(apiOrigin.value, form.value.endpointToken);
+    return buildInquirySdkExample(apiOrigin.value, form.value.endpointToken, previewFields.value);
   }
   return buildSdkExample(apiOrigin.value, form.value.endpointToken, previewFields.value);
 });
@@ -854,14 +890,17 @@ function validateBeforeSave(): ValidationProblem | null {
     if (!form.value.systemPrompt?.trim()) {
       return { code: 'adaptivePromptRequired' };
     }
-    // Adaptive forms skip schema field validation — conversation is the intake.
-    return null;
   }
 
   const names = schema.value.map((f) => f.name.trim());
   if (names.some((n) => n === '')) return { code: 'fieldNameRequired' };
   const dupe = names.find((n, i) => names.indexOf(n) !== i);
   if (dupe) return { code: 'duplicateFieldName', name: dupe };
+
+  if (form.value.destination === 'inquiry' && form.value.intakeMode === 'adaptive') {
+    const reserved = names.find((n) => ADAPTIVE_RESERVED_CONTACT_NAMES.has(n));
+    if (reserved) return { code: 'reservedContactField', name: reserved };
+  }
 
   const selectMissingOptions = schema.value.find(
     (f) => f.type === 'select' && !(f.options && f.options.length > 0),
@@ -898,6 +937,8 @@ function problemText(problem: ValidationProblem): string {
       return t('forms.intakeMode.adaptiveLeadError');
     case 'adaptivePromptRequired':
       return t('forms.detail.validation.adaptivePromptRequired');
+    case 'reservedContactField':
+      return t('forms.detail.validation.reservedContactField', { name: problem.name });
   }
 }
 
@@ -923,7 +964,7 @@ async function saveForm() {
       systemPrompt: form.value.systemPrompt ?? null,
       openingLabels: form.value.openingLabels ?? null,
       active: form.value.active,
-      schema: isAdaptive.value ? [] : stripUid(schema.value),
+      schema: stripUid(schema.value),
     });
     savedSystemPrompt.value = form.value.systemPrompt ?? null;
     savedSnapshot.value = serialize();

@@ -3,6 +3,7 @@
 - **Status:** Accepted — encryption env amended by [ADR-0046](0046-one-instance-secrets-key.md) (`KHIRBY_SECRETS_KEY`; `MAIL_SECRETS_KEY` remains a decrypt alias)
 - **Date:** 2026-08-03
 - **Deciders:** Damian
+- **Pokelo ADR id:** `be8d3d9a-9bb8-4c5b-aadd-a8018812cf0d` (Khirby project)
 
 ## Context
 

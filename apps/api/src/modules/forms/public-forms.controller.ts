@@ -206,6 +206,24 @@ export class PublicFormsController {
         );
       }
 
+      // Contact-step extras (ADR-0058) — not counted toward ADAPTIVE_MAX_FOLLOW_UPS.
+      let contactFields: Record<string, unknown> | undefined;
+      const rawFields = body['fields'];
+      if (rawFields !== undefined && rawFields !== null) {
+        if (typeof rawFields !== 'object' || Array.isArray(rawFields)) {
+          throw AppException.badRequest('fields must be an object keyed by field name.', {
+            field: 'fields',
+          });
+        }
+        contactFields = this.forms.validateSubmission(
+          form.schema ?? [],
+          rawFields as Record<string, unknown>,
+        );
+      } else if (form.schema?.length) {
+        // Still enforce required contact fields when the operator defined a schema.
+        contactFields = this.forms.validateSubmission(form.schema, {});
+      }
+
       const created = await this.inquiry.submitAdaptiveIntake({
         formId: form.id,
         source: form.name,
@@ -217,6 +235,7 @@ export class PublicFormsController {
         contactName,
         email,
         companyName,
+        contactFields,
       });
 
       return {

@@ -5,8 +5,12 @@ import {
   HeartbeatPayload,
   HeartbeatResponse,
   HeartbeatResponseSchema,
+  InstallGrantRequest,
+  InstallGrantResponse,
+  InstallGrantResponseSchema,
   ListMarketplacePluginsQuery,
   MarketplacePlugin,
+  MarketplacePluginLookupQuery,
   MarketplacePluginSchema,
   MarketplacePluginVersion,
   MarketplacePluginVersionSchema,
@@ -110,6 +114,7 @@ export class ControlPlaneClient {
     if (query.search) params.set('search', query.search);
     if (query.verified !== undefined) params.set('verified', String(query.verified));
     if (query.compatibleWith) params.set('compatibleWith', query.compatibleWith);
+    if (query.installationId) params.set('installationId', query.installationId);
     const qs = params.toString();
     const path = `/v1/marketplace/plugins${qs ? `?${qs}` : ''}`;
     const data = await this.request('GET', path, { soft: true });
@@ -117,35 +122,68 @@ export class ControlPlaneClient {
     return this.parse(z.array(MarketplacePluginSchema), data, 'listPlugins', { soft: true });
   }
 
-  async getPlugin(slug: string): Promise<MarketplacePlugin | null> {
+  async getPlugin(
+    slug: string,
+    query: MarketplacePluginLookupQuery = {},
+  ): Promise<MarketplacePlugin | null> {
     if (!this.isConfigured()) return null;
-    const data = await this.request('GET', `/v1/marketplace/plugins/${encodeURIComponent(slug)}`, {
-      soft: true,
-    });
+    const qs = marketplaceLookupQs(query);
+    const data = await this.request(
+      'GET',
+      `/v1/marketplace/plugins/${encodeURIComponent(slug)}${qs}`,
+      { soft: true },
+    );
     if (data == null) return null;
     return this.parse(MarketplacePluginSchema, data, 'getPlugin');
   }
 
-  async getPluginVersions(slug: string): Promise<MarketplacePluginVersion[] | null> {
+  async getPluginVersions(
+    slug: string,
+    query: MarketplacePluginLookupQuery = {},
+  ): Promise<MarketplacePluginVersion[] | null> {
     if (!this.isConfigured()) return null;
+    const qs = marketplaceLookupQs(query);
     const data = await this.request(
       'GET',
-      `/v1/marketplace/plugins/${encodeURIComponent(slug)}/versions`,
+      `/v1/marketplace/plugins/${encodeURIComponent(slug)}/versions${qs}`,
       { soft: true },
     );
     if (data == null) return null;
     return this.parse(z.array(MarketplacePluginVersionSchema), data, 'getPluginVersions');
   }
 
-  async getPluginVersion(slug: string, version: string): Promise<MarketplacePluginVersion | null> {
+  async getPluginVersion(
+    slug: string,
+    version: string,
+    query: MarketplacePluginLookupQuery = {},
+  ): Promise<MarketplacePluginVersion | null> {
     if (!this.isConfigured()) return null;
+    const qs = marketplaceLookupQs(query);
     const data = await this.request(
       'GET',
-      `/v1/marketplace/plugins/${encodeURIComponent(slug)}/versions/${encodeURIComponent(version)}`,
+      `/v1/marketplace/plugins/${encodeURIComponent(slug)}/versions/${encodeURIComponent(version)}${qs}`,
       { soft: true },
     );
     if (data == null) return null;
     return this.parse(MarketplacePluginVersionSchema, data, 'getPluginVersion');
+  }
+
+  /**
+   * Short-lived tarball URL for Marketplace install (public npm via CP, or private
+   * artifact). Hard-fails — install cannot soft-degrade to an empty body.
+   */
+  async createInstallGrant(slug: string, body: InstallGrantRequest): Promise<InstallGrantResponse> {
+    if (!this.isConfigured()) {
+      throw AppException.badRequest('CONTROL_PLANE_URL is not configured', {
+        code: 'CONTROL_PLANE_NOT_CONFIGURED',
+      });
+    }
+    const data = await this.request(
+      'POST',
+      `/v1/marketplace/plugins/${encodeURIComponent(slug)}/install-grant`,
+      { body },
+    );
+    return this.parse(InstallGrantResponseSchema, data, 'createInstallGrant');
   }
 
   private parse<T>(schema: z.ZodType<T>, data: unknown, label: string): T;
@@ -229,6 +267,14 @@ export class ControlPlaneClient {
       ? AppException.upstreamFailed('controlPlane')
       : AppException.upstreamFailed('controlPlane');
   }
+}
+
+function marketplaceLookupQs(query: MarketplacePluginLookupQuery): string {
+  const params = new URLSearchParams();
+  if (query.installationId) params.set('installationId', query.installationId);
+  if (query.compatibleWith) params.set('compatibleWith', query.compatibleWith);
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
 }
 
 function sleep(ms: number): Promise<void> {

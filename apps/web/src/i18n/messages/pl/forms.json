@@ -47,6 +47,14 @@
       "title": "Zamienić wszystkie pola?"
     },
     "save": "Zapisz zmiany",
+    "contactFields": {
+      "title": "Pola kontaktowe",
+      "hint": "Wyświetlane po pytaniach AI. Imię, e-mail i firma zostają osobno — nie dodawaj ich tutaj.",
+      "empty": {
+        "title": "Brak pól kontaktowych",
+        "message": "Dodaj telefon, adres lub inne pola na krok kontaktowy."
+      }
+    },
     "schema": {
       "addField": "Dodaj pole",
       "apply": "Zastosuj",
@@ -109,6 +117,7 @@
       "emailFieldRequired": "Dodaj wymagane pole „{field}” — zgłoszenia są dopasowywane do kontaktów po adresie e-mail.",
       "fieldNameRequired": "Każde pole musi mieć nazwę.",
       "nameRequired": "Nazwa jest wymagana.",
+      "reservedContactField": "„{name}” jest zarezerwowane — imię, e-mail i firma zbierane są osobno.",
       "selectNeedsOptions": "Lista rozwijana „{name}” musi mieć co najmniej jedną opcję.",
       "slugFormat": "Slug może zawierać tylko małe litery, cyfry i łączniki.",
       "unnamedField": "bez nazwy"

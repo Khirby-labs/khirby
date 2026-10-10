@@ -12,6 +12,7 @@ import {
   SubmissionSource,
 } from '../../core/database/schema';
 import { validateSubmissionDataAgainstSchema } from './validate-submission-data';
+import { assertAdaptiveContactSchema } from './adaptive-contact-fields';
 import { AppException } from '../../core/errors/app-exception';
 // Relative import: nest build is plain tsc; bare '@khirby/types' would survive into dist.
 import { resolveFormFieldLabel, type LocaleCode } from '../../../../../packages/types/src';
@@ -116,6 +117,11 @@ export class FormsService {
     openingLabel: string | null;
     capabilities: { adaptiveAvailable: boolean };
     fields: PublicFormField[];
+    /**
+     * Adaptive contact-step fields (ADR-0058). Same resolved list as `fields`
+     * when intakeMode is adaptive — landings bind the contact step here, not AI Q&A.
+     */
+    contactFields?: PublicFormField[];
   } {
     const fields = (form.schema ?? []).map((f): PublicFormField => {
       const field: PublicFormField = {
@@ -130,15 +136,17 @@ export class FormsService {
     const labels = form.openingLabels;
     const openingLabel =
       labels?.[locale]?.trim() || labels?.en?.trim() || labels?.pl?.trim() || null;
+    const intakeMode = form.intakeMode ?? 'static';
     return {
       name: form.name,
       slug: form.slug,
       kind: form.kind,
       destination: form.destination ?? 'lead',
-      intakeMode: form.intakeMode ?? 'static',
+      intakeMode,
       openingLabel,
       capabilities: { adaptiveAvailable: opts.adaptiveAvailable ?? false },
       fields,
+      ...(intakeMode === 'adaptive' ? { contactFields: fields } : {}),
     };
   }
 
@@ -205,6 +213,7 @@ export class FormsService {
     }
 
     this.assertSchemaCollectsEmail(dto.schema, destination);
+    if (intakeMode === 'adaptive') assertAdaptiveContactSchema(dto.schema);
     // Allow empty prompt on create — detail page drafts it (ADR-0054).
     this.assertAdaptiveHasPrompt(intakeMode, dto.systemPrompt, { requireOnCreate: false });
 
@@ -258,6 +267,9 @@ export class FormsService {
     }
 
     if (dto.schema !== undefined) this.assertSchemaCollectsEmail(dto.schema, destination);
+    if (intakeMode === 'adaptive') {
+      assertAdaptiveContactSchema(dto.schema !== undefined ? dto.schema : existing.schema);
+    }
     this.assertAdaptiveHasPrompt(intakeMode, systemPrompt, { requireOnCreate: true });
 
     if (dto.slug && dto.slug !== existing.slug) {

@@ -291,6 +291,25 @@ export interface PluginConfigField {
   placeholders?: PluginConfigPlaceholder[];
 }
 
+/**
+ * Opaque row-scope provider contract (ADR-0055). Implemented by Enterprise
+ * multi-workspace plugins and registered on the Nest `SCOPE_PROVIDER` token.
+ * Core does not interpret scope ids.
+ */
+export interface PluginScopeProvider {
+  resolveFromSession(session: { userId?: string; scopeId?: string }): Promise<string | null>;
+  resolveFromRequest?(req: {
+    session?: { userId?: string; scopeId?: string } | null;
+    headers?: Record<string, string | string[] | undefined>;
+    url?: string;
+  }): Promise<string | null>;
+  isEnforcementRequired(): boolean | Promise<boolean>;
+  getSessionClaims?(
+    userId: string,
+    preferredScopeId?: string | null,
+  ): Promise<Record<string, unknown> | null>;
+}
+
 export interface CrmPlugin {
   /** Unique plugin id (snake_case) */
   name: string;

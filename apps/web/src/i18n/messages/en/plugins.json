@@ -274,5 +274,11 @@
   "hello": {
     "displayName": "Hello example",
     "description": "A minimal example plugin: it writes a log line whenever a contact is created."
+  },
+  "multiWorkspace": {
+    "displayName": "Multi-Workspace",
+    "description": "Enterprise workspaces with row isolation and an AI usage dashboard.",
+    "nav": "Workspaces",
+    "usageNav": "AI usage"
   }
 }

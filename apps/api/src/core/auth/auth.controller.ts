@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { Throttle } from '@nestjs/throttler';
 import { FastifyRequest } from 'fastify';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
@@ -22,6 +23,11 @@ import { IsEmail, IsIn, IsString, MinLength, ValidateIf } from 'class-validator'
 import { SUPPORTED_LOCALE_CODES } from '../../../../../packages/types/src';
 import type { SessionUser, LoginResponse } from '../../../../../packages/types/src';
 import { AppException } from '../errors/app-exception';
+import {
+  SCOPE_PROVIDER,
+  type ScopeProviderLike,
+  resolveLoadedProvider,
+} from '../../../../../packages/plugin-host/src';
 
 class LoginDto {
   @IsEmail() email: string;
@@ -50,7 +56,13 @@ export class AuthController {
   constructor(
     private auth: AuthService,
     private rbac: RbacService,
+    private readonly moduleRef: ModuleRef,
   ) {}
+
+  /** Volume Enterprise plugin may bind SCOPE_PROVIDER after boot (ADR-0048 / ADR-0055). */
+  private scopeProvider(): ScopeProviderLike | null {
+    return resolveLoadedProvider<ScopeProviderLike>(this.moduleRef, SCOPE_PROVIDER);
+  }
 
   @Post('login')
   @Throttle({ default: { limit: 10, ttl: 60000 } })
@@ -63,8 +75,17 @@ export class AuthController {
     const user = await this.auth.validateUser(dto.email, dto.password);
     await req.session.regenerate();
     req.session.userId = user.id;
+    const provider = this.scopeProvider();
+    if (provider) {
+      try {
+        const scopeId = await provider.resolveFromSession({ userId: user.id });
+        if (scopeId) req.session.scopeId = scopeId;
+      } catch {
+        /* Community / provider not ready */
+      }
+    }
     await req.session.save();
-    return { user: await this.toSessionUser(user) };
+    return { user: await this.toSessionUser(user, req.session.scopeId) };
   }
 
   @Post('logout')
@@ -86,7 +107,7 @@ export class AuthController {
   async me(@Req() req: FastifyRequest): Promise<SessionUser> {
     const user = await this.auth.findById((req.session as any).userId);
     if (!user) throw AppException.sessionExpired();
-    return this.toSessionUser(user);
+    return this.toSessionUser(user, req.session.scopeId);
   }
 
   @Put('locale')
@@ -116,15 +137,34 @@ export class AuthController {
     );
   }
 
-  private async toSessionUser(user: {
-    id: string;
-    email: string;
-    locale: string | null;
-  }): Promise<SessionUser> {
+  private async toSessionUser(
+    user: {
+      id: string;
+      email: string;
+      locale: string | null;
+    },
+    preferredScopeId?: string | null,
+  ): Promise<SessionUser> {
     const [permissions, isSuperAdmin] = await Promise.all([
       this.rbac.getUserPermissions(user.id),
       this.rbac.isSuperAdmin(user.id),
     ]);
-    return { id: user.id, email: user.email, locale: user.locale, permissions, isSuperAdmin };
+    let scope: Record<string, unknown> | null = null;
+    const provider = this.scopeProvider();
+    if (provider?.getSessionClaims) {
+      try {
+        scope = (await provider.getSessionClaims(user.id, preferredScopeId)) ?? null;
+      } catch {
+        scope = null;
+      }
+    }
+    return {
+      id: user.id,
+      email: user.email,
+      locale: user.locale,
+      permissions,
+      isSuperAdmin,
+      scope,
+    };
   }
 }

@@ -162,4 +162,58 @@ describe('ControlPlaneClient', () => {
     const client = makeClient({ CONTROL_PLANE_URL: 'https://cp.example.com' });
     await expect(client.listPlugins()).resolves.toBeNull();
   });
+
+  it('listPlugins and getPlugin pass installationId for private entitlements', async () => {
+    fetchMock.mockResolvedValue(jsonResponse([]));
+    const client = makeClient({ CONTROL_PLANE_URL: 'https://cp.example.com' });
+    await client.listPlugins({ installationId: INSTALLATION_ID, compatibleWith: '1.0.0' });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `https://cp.example.com/v1/marketplace/plugins?compatibleWith=1.0.0&installationId=${INSTALLATION_ID}`,
+      expect.objectContaining({ method: 'GET' }),
+    );
+
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse({
+        slug: 'multi-workspace',
+        name: 'Multi-Workspace',
+        description: null,
+        packageName: '@khirby/plugin-multi-workspace',
+        publisherName: 'Khirby',
+        verified: true,
+        repositoryUrl: null,
+        latestVersion: '1.0.0',
+        permissions: null,
+      }),
+    );
+    await client.getPlugin('multi-workspace', { installationId: INSTALLATION_ID });
+    expect(fetchMock).toHaveBeenLastCalledWith(
+      `https://cp.example.com/v1/marketplace/plugins/multi-workspace?installationId=${INSTALLATION_ID}`,
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('createInstallGrant posts and validates the response', async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        slug: 'multi-workspace',
+        version: '1.0.0',
+        packageName: '@khirby/plugin-multi-workspace',
+        checksum: 'sha512-abc',
+        downloadUrl:
+          'https://cp.example.com/v1/marketplace/plugins/multi-workspace/versions/1.0.0/tarball?token=x',
+        expiresAt: '2026-10-10T12:10:00.000Z',
+      }),
+    );
+    const client = makeClient({ CONTROL_PLANE_URL: 'https://cp.example.com' });
+    const grant = await client.createInstallGrant('multi-workspace', {
+      installationId: INSTALLATION_ID,
+      version: '1.0.0',
+      product: 'khirby',
+    });
+    expect(grant.downloadUrl).toContain('/tarball?token=');
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://cp.example.com/v1/marketplace/plugins/multi-workspace/install-grant',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
 });

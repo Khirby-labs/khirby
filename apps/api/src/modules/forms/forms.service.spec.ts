@@ -169,6 +169,44 @@ describe('FormsService', () => {
       expect(service.toPublicForm(form, 'en').openingLabel).toBe('What problem are you solving?');
     });
 
+    it('exposes contactFields (= fields) for adaptive forms', () => {
+      const result = service.toPublicForm(
+        {
+          name: 'Adaptive',
+          slug: 'adaptive',
+          kind: 'contact',
+          destination: 'inquiry',
+          intakeMode: 'adaptive',
+          schema: [
+            {
+              name: 'phone',
+              label: 'Phone',
+              labels: { en: 'Phone', pl: 'Telefon' },
+              type: 'tel',
+              required: false,
+            },
+          ],
+        },
+        'pl',
+      );
+      expect(result.fields).toEqual([
+        { name: 'phone', label: 'Telefon', type: 'tel', required: false },
+      ]);
+      expect(result.contactFields).toEqual(result.fields);
+    });
+
+    it('omits contactFields for static forms', () => {
+      const result = service.toPublicForm({
+        name: 'Static',
+        slug: 'static',
+        kind: 'contact',
+        destination: 'inquiry',
+        intakeMode: 'static',
+        schema: [],
+      });
+      expect(result.contactFields).toBeUndefined();
+    });
+
     it('falls back openingLabel to en then pl when locale entry is missing', () => {
       const onlyEn = service.toPublicForm(
         {
@@ -469,6 +507,27 @@ describe('FormsService', () => {
           schema: [{ name: 'message', label: 'Message', type: 'textarea', required: true }],
         }),
       ).rejects.toThrow(BadRequestException);
+      expect(db.update).not.toHaveBeenCalled();
+    });
+
+    it('rejects reserved contact field names on adaptive forms', async () => {
+      const existing = {
+        id: 'fa',
+        name: 'Adaptive',
+        slug: 'adaptive',
+        schema: [],
+        active: true,
+        destination: 'inquiry',
+        intakeMode: 'adaptive',
+        systemPrompt: 'Gather context.',
+      };
+      db.select.mockImplementationOnce(() => makeChain([existing]));
+
+      await expect(
+        service.update('fa', {
+          schema: [{ name: 'email', label: 'Email', type: 'email', required: true }],
+        }),
+      ).rejects.toThrow(/reserved/i);
       expect(db.update).not.toHaveBeenCalled();
     });
 

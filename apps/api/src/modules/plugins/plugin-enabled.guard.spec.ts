@@ -12,7 +12,7 @@ function makeContext(): ExecutionContext {
 
 describe('PluginEnabledGuard', () => {
   let reflector: { getAllAndOverride: jest.Mock };
-  let registry: { isEnabled: jest.Mock; findByName: jest.Mock };
+  let registry: { isEnabled: jest.Mock; findByName: jest.Mock; isEnabledAsync?: jest.Mock };
   let guard: PluginEnabledGuard;
 
   beforeEach(() => {
@@ -32,6 +32,16 @@ describe('PluginEnabledGuard', () => {
     );
     registry.isEnabled.mockReturnValue(true);
     await expect(guard.canActivate(makeContext())).resolves.toBe(true);
+  });
+
+  it('prefers isEnabledAsync when present', async () => {
+    reflector.getAllAndOverride.mockImplementation((key: string) =>
+      key === PLUGIN_NAME_KEY ? 'crm_demo' : undefined,
+    );
+    registry.isEnabledAsync = jest.fn().mockResolvedValue(true);
+    registry.isEnabled.mockReturnValue(false);
+    await expect(guard.canActivate(makeContext())).resolves.toBe(true);
+    expect(registry.isEnabledAsync).toHaveBeenCalledWith('crm_demo');
   });
 
   it('throws when the plugin is disabled', async () => {

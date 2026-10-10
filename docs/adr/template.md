@@ -3,6 +3,7 @@
 - **Status:** Proposed | Accepted | Superseded by ADR-XXXX
 - **Date:** YYYY-MM-DD
 - **Deciders:** <who>
+- **Pokelo ADR id:** `<filled by scripts/adr-sync-to-pokelo.mjs>` (Khirby project)
 
 ## Context
 

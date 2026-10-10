@@ -4,7 +4,7 @@
 - **Date:** 2026-08-07
 - **Deciders:** Damian Orzeł, Auto
 - **Relates to:** ADR-0011 (i18n architecture)
-- **Pokelo ADR id:** `cac66b77-063b-4051-af5c-1d5b3bde1c13` (Bearly CRM project)
+- **Pokelo ADR id:** `cac66b77-063b-4051-af5c-1d5b3bde1c13` (Khirby project)
 
 ## Context
 

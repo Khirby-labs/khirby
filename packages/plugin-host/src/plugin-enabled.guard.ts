@@ -21,6 +21,13 @@ export class PluginEnabledGuard implements CanActivate {
     ]);
     if (!pluginName) return true;
 
+    if (typeof this.registry.isEnabledAsync === 'function') {
+      if (!(await this.registry.isEnabledAsync(pluginName))) {
+        throw AppException.pluginDisabled(pluginName);
+      }
+      return true;
+    }
+
     if (typeof this.registry.isEnabled === 'function') {
       if (!this.registry.isEnabled(pluginName)) {
         throw AppException.pluginDisabled(pluginName);

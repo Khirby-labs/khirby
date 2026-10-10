@@ -3,7 +3,7 @@
 - **Status:** Accepted — encryption env amended by [ADR-0046](0046-one-instance-secrets-key.md) (`KHIRBY_SECRETS_KEY`; `POKELO_SECRETS_KEY` remains a decrypt alias)
 - **Date:** 2026-08-04
 - **Deciders:** Damian Orzeł, Auto
-- **Pokelo ADR id:** `d14fd9b5-9780-40a3-8711-a0c09747b700` (Bearly CRM project)
+- **Pokelo ADR id:** `d14fd9b5-9780-40a3-8711-a0c09747b700` (Khirby project)
 
 ## Context
 

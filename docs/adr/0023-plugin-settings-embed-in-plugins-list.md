@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-04
 - **Deciders:** Damian Orzeł, Auto
-- **Pokelo ADR id:** `533270aa-1791-44d1-9cea-babab6564160` (Bearly CRM project)
+- **Pokelo ADR id:** `533270aa-1791-44d1-9cea-babab6564160` (Khirby project)
 
 ## Context
 

@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-09-19
 - **Deciders:** Patryk
+- **Pokelo ADR id:** `742d8213-0539-48f0-ae1d-7ed4bcfc8da9` (Khirby project)
 
 ## Context
 
@@ -60,3 +61,4 @@ settings or invent a second preview path that creates real inquiries.
 - **Global Compose system prompt only** — rejected; forms differ by intent.
 - **Preview via public createInquiry** — rejected; pollutes Inquiries.
 - **Schema-field generation from the brief** — out of scope for adaptive v1.
+  Operator-defined contact-step fields (reuse of `forms.schema`) are ADR-0058.

@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-08-07
 - **Deciders:** Damian Orzeł
-- **Pokelo ADR id:** `b14a7133-a003-4378-8e0e-23b5deaf6126` (Bearly CRM project)
+- **Pokelo ADR id:** `b14a7133-a003-4378-8e0e-23b5deaf6126` (Khirby project)
 
 ## Context
 

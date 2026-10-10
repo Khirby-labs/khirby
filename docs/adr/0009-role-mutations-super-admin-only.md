@@ -3,6 +3,7 @@
 - **Status:** Accepted
 - **Date:** 2026-07-24
 - **Deciders:** Damian Orzeł
+- **Pokelo ADR id:** `7848c2d6-8cd0-4c88-b9d2-efa536cae2a9` (Khirby project)
 
 ## Context
 

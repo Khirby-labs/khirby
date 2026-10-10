@@ -226,6 +226,29 @@
             :placeholder="visitorCopy('contactEmailPlaceholder')"
           />
         </div>
+        <div v-for="field in contactFields" :key="field.name" class="space-y-1">
+          <label :for="`adaptive-preview-cf-${field.name}`" class="crm-label">
+            {{ contactFieldLabel(field) }}
+            <span v-if="field.required" class="text-danger">
+              <span aria-hidden="true">*</span>
+              <span class="sr-only">{{ t('common.form.required') }}</span>
+            </span>
+          </label>
+          <textarea
+            v-if="field.type === 'textarea'"
+            :id="`adaptive-preview-cf-${field.name}`"
+            v-model="contactExtra[field.name]"
+            class="crm-input"
+            rows="2"
+          />
+          <input
+            v-else
+            :id="`adaptive-preview-cf-${field.name}`"
+            v-model="contactExtra[field.name]"
+            :type="previewInputType(field.type)"
+            class="crm-input"
+          />
+        </div>
         <p v-if="error" class="crm-error text-xs">{{ error }}</p>
         <button class="btn-primary w-full" type="submit" :disabled="!contactReady">
           {{ t('forms.adaptive.preview.finish') }}
@@ -256,6 +279,16 @@
             <label class="crm-label">{{ visitorCopy('contactEmail') }}</label>
             <input class="crm-input" type="email" :value="contactEmail" readonly disabled />
           </div>
+          <div v-for="field in contactFields" :key="`done-${field.name}`">
+            <label class="crm-label">{{ contactFieldLabel(field) }}</label>
+            <input
+              class="crm-input"
+              type="text"
+              :value="contactExtra[field.name] ?? ''"
+              readonly
+              disabled
+            />
+          </div>
         </div>
         <button type="button" class="btn-primary w-full" @click="reset">
           {{ t('forms.adaptive.preview.reset') }}
@@ -279,6 +312,14 @@ const props = defineProps<{
   formName?: string;
   canTest: boolean;
   openingLabels?: { en?: string; pl?: string } | null;
+  /** Operator-defined contact-step fields (ADR-0058). Preview-only; not submitted. */
+  contactFields?: Array<{
+    name: string;
+    label?: string;
+    labels?: { en?: string; pl?: string };
+    type: string;
+    required: boolean;
+  }>;
 }>();
 
 const { t, locale } = useI18n();
@@ -303,7 +344,24 @@ const questions = ref<string[]>([]);
 const answers = ref<string[]>([]);
 const contactName = ref('');
 const contactEmail = ref('');
+const contactExtra = ref<Record<string, string>>({});
 const error = ref('');
+
+const contactFields = computed(() => props.contactFields ?? []);
+
+function contactFieldLabel(field: {
+  label?: string;
+  labels?: { en?: string; pl?: string };
+}): string {
+  const fromLocale = field.labels?.[previewLocale.value]?.trim();
+  if (fromLocale) return fromLocale;
+  return field.labels?.en?.trim() || field.labels?.pl?.trim() || field.label || '';
+}
+
+function previewInputType(type: string): string {
+  if (type === 'email' || type === 'tel' || type === 'number' || type === 'url') return type;
+  return 'text';
+}
 
 /** Real first question from the form — not a numbered placeholder. */
 const openingQuestion = computed(() => {
@@ -351,6 +409,7 @@ function resetKeepLocale() {
   answers.value = [];
   contactName.value = '';
   contactEmail.value = '';
+  contactExtra.value = {};
   error.value = '';
 }
 

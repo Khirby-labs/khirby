@@ -189,6 +189,12 @@
           </form>
 
           <div v-if="hasCustomMetadata" class="pt-4 border-t border-border space-y-4">
+            <div v-if="formContactRows.length">
+              <h3 class="text-xs font-medium text-text-ghost uppercase tracking-wider mb-2">
+                {{ t('contacts.detail.formContact') }}
+              </h3>
+              <RecordFields :rows="formContactRows" />
+            </div>
             <div v-if="listmonkRows.length">
               <h3 class="text-xs font-medium text-text-ghost uppercase tracking-wider mb-2">
                 {{ t('contacts.detail.newsletter') }}
@@ -426,16 +432,27 @@ const listmonkRows = computed((): RecordFieldRow[] => {
   return rows;
 });
 
+/** Adaptive inquiry contact-step bag written on accept (ADR-0058). */
+const formContactRows = computed(() => {
+  const bag = contact.value?.metadata?.formContact;
+  if (!bag || typeof bag !== 'object' || Array.isArray(bag)) return [] as RecordFieldRow[];
+  return recordToFieldRows(bag as Record<string, unknown>, fieldFormatOpts.value);
+});
+
 const otherMetadataRows = computed(() => {
   const meta = { ...(contact.value?.metadata ?? {}) };
   delete meta.interests;
   delete meta.listmonk;
   delete meta.custom;
+  delete meta.formContact;
   return recordToFieldRows(meta, fieldFormatOpts.value);
 });
 
 const hasCustomMetadata = computed(
-  () => listmonkRows.value.length > 0 || otherMetadataRows.value.length > 0,
+  () =>
+    formContactRows.value.length > 0 ||
+    listmonkRows.value.length > 0 ||
+    otherMetadataRows.value.length > 0,
 );
 
 function submissionRows(data?: Record<string, unknown>): RecordFieldRow[] {

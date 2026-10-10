@@ -1,9 +1,9 @@
 {
   "settings": {
     "title": "Poczta",
-    "subtitle": "Podłącz firmową skrzynkę pocztową przez IMAP, SMTP lub Google.",
+    "subtitle": "Podłącz skrzynkę aktywnego workspace przez IMAP, SMTP lub Google. Każdy workspace ma własną skrzynkę.",
     "enabledLabel": "Włącz skrzynkę",
-    "enabledHint": "Aktywuje synchronizację IMAP i umożliwia wysyłanie przez SMTP.",
+    "enabledHint": "Aktywuje synchronizację IMAP i umożliwia wysyłanie przez SMTP dla tego workspace.",
     "lastSync": "Ostatnia synchronizacja",
     "testConnection": "Testuj połączenie",
     "testing": "Testowanie…",

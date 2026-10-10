@@ -1,0 +1,38 @@
+---
+description: Pokelo ADRs are the source of truth — always keep them in sync with docs/adr/
+alwaysApply: true
+---
+
+# Pokelo ADRs = source of truth
+
+Architecture decisions live as **ADR-typed** records in the **Khirby** Pokelo
+project (`khirby-d5fb3b0f` / `d5fb3b0f-a5e5-44ca-9ec0-d3cc4f50963a`).
+`docs/adr/` is the git mirror for PRs and offline work — **not** a second place
+agents may leave out of date.
+
+## Mandatory
+
+1. **Any create / amend / supersede** of an ADR must land in Pokelo in the same
+   turn (not “later”, not “user will sync”). Use
+   `node scripts/adr-sync-to-pokelo.mjs <file-or-NNNN>` (or `/adr`, which calls it).
+2. Pokelo document **`type` must be `ADR`**. Never create or leave an ADR as
+   `Note`, `Tech Spec`, or under a docs folder — ADRs are a separate entity and
+   must not clutter the documents list.
+3. After sync, the local file must carry
+   `- **Pokelo ADR id:** \`<uuid>\` (Khirby project)`.
+4. When **reading** architecture intent (Ask / RAG / “what did we decide?”),
+   prefer Pokelo search/`docs get` on type ADR. Treat a repo-only ADR without a
+   Pokelo id as incomplete work.
+
+## Status mapping
+
+- Local status line starting with `Superseded` → Pokelo `deprecated`.
+- `Accepted` (including “amended by …” / “partly superseded by …”) → `approved`.
+  Do **not** mark deprecated just because the word “superseded” appears mid-line.
+
+## Do not
+
+- Skip Pokelo because “the file is in git”.
+- Publish ADRs via ad-hoc Note creates or folder dumps.
+- Leave Pokelo on old wording after amending `docs/adr/*.md` (e.g. status notes,
+  decision text superseded by a newer ADR).

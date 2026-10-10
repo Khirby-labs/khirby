@@ -3,8 +3,9 @@
 
 ## Orientation (read before non-trivial work)
 - Recent context: docs/journal/DEVLOG.md (index — open entries only as needed)
-- Architectural decisions: docs/adr/ — check before changing architecture;
-  propose a new ADR (skill /adr) when you make one
+- Architectural decisions: **Pokelo (Khirby) is the source of truth**; `docs/adr/`
+  is the git mirror. Check before changing architecture; create/amend via `/adr`
+  and always sync with `node scripts/adr-sync-to-pokelo.mjs` in the same turn
 - Known traps: docs/journal/INCIDENTS.md
 - UI design system for apps/web: docs/DESIGN-SYSTEM.md.
   System architecture & request flow: docs/ARCHITECTURE.md.

@@ -127,6 +127,36 @@ export const ListMarketplacePluginsQuerySchema = z.object({
   search: z.string().optional(),
   verified: z.boolean().optional(),
   compatibleWith: z.string().optional(),
+  /** Include private plugins entitled to this installation (Control Plane ADR-0007). */
+  installationId: z.string().uuid().optional(),
 });
 
 export type ListMarketplacePluginsQuery = z.infer<typeof ListMarketplacePluginsQuerySchema>;
+
+/** Optional query on getPlugin / versions — same entitlement filter as list. */
+export const MarketplacePluginLookupQuerySchema = z.object({
+  installationId: z.string().uuid().optional(),
+  compatibleWith: z.string().optional(),
+});
+
+export type MarketplacePluginLookupQuery = z.infer<typeof MarketplacePluginLookupQuerySchema>;
+
+// ─── Install grant (private + public tarball via Control Plane) ──────────────
+
+export const InstallGrantRequestSchema = z.object({
+  installationId: z.string().uuid(),
+  version: z.string().min(1).max(64).optional(),
+  product: ProductSlugSchema.optional(),
+});
+
+export const InstallGrantResponseSchema = z.object({
+  slug: z.string(),
+  version: z.string(),
+  packageName: z.string(),
+  checksum: z.string(),
+  downloadUrl: z.string().url(),
+  expiresAt: z.string().datetime(),
+});
+
+export type InstallGrantRequest = z.infer<typeof InstallGrantRequestSchema>;
+export type InstallGrantResponse = z.infer<typeof InstallGrantResponseSchema>;

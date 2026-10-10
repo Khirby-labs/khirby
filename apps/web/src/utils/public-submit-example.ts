@@ -89,21 +89,29 @@ await crm.submit('${endpointToken}', ${dataLines});`;
 }
 
 /** Inquiry adaptive: plan (no DB) → one-shot submit with opening + Q/A + contact. */
-export function buildInquirySdkExample(baseUrl: string, endpointToken: string): string {
+export function buildInquirySdkExample(
+  baseUrl: string,
+  endpointToken: string,
+  contactFields?: FormField[] | null,
+): string {
   const base = baseUrl.replace(/\/$/, '');
+  const fieldsExample = contactFields?.length
+    ? `\n  fields: ${JSON.stringify(buildExampleSubmitData(contactFields), null, 2).replace(/\n/g, '\n  ')},`
+    : '';
   return `import { createClient } from '@khirby/forms-client';
 
 const crm = createClient({ baseUrl: '${base}', locale: 'pl' });
 
 const form = await crm.getForm('${endpointToken}', { locale: 'pl' });
-// form.openingLabel → first field label
+// form.openingLabel → first question
+// form.contactFields → contact-step schema (not AI follow-ups)
 
 // 1) Plan follow-ups — ephemeral, no Inquiry row
 const { questions } = await crm.planAdaptive('${endpointToken}', {
   opening: 'Mamy hurtownię — handlowcy gubią wątki w WhatsAppie.',
   locale: 'pl',
 });
-// questions → show all fields at once (form, not chat)
+// questions → show all AI fields at once (form, not chat)
 
 // 2) One DB write: opening + planned Q→A + contact → ready_for_review
 await crm.submitAdaptive('${endpointToken}', {
@@ -116,30 +124,47 @@ await crm.submitAdaptive('${endpointToken}', {
   ],
   name: 'Ada',
   email: 'ada@example.com',
-  company: 'Acme',
+  company: 'Acme',${fieldsExample}
   locale: 'pl',
 });`;
 }
 
-export function buildInquiryCurlExample(origin: string, endpointToken: string): string {
+export function buildInquiryCurlExample(
+  origin: string,
+  endpointToken: string,
+  contactFields?: FormField[] | null,
+): string {
   const base = origin.replace(/\/$/, '');
   const planUrl = `${base}/api/public/forms/${endpointToken}/adaptive/plan`;
   const submitUrl = `${base}/api/public/forms/${endpointToken}/inquiries`;
+  const fieldsPayload = contactFields?.length
+    ? `,"fields":${JSON.stringify(buildExampleSubmitData(contactFields))}`
+    : '';
   return `# 1) Plan follow-ups (no DB write)
 curl -X POST '${planUrl}' \\
   -H 'Content-Type: application/json' \\
   -d '{"opening":"We need help choosing a CRM.","locale":"en","_hp":""}'
 
-# 2) One-shot persist: opening + questions + answers + contact
+# 2) One-shot persist: opening + questions + answers + contact (+ optional fields)
 curl -X POST '${submitUrl}' \\
   -H 'Content-Type: application/json' \\
-  -d '{"opening":"We need help choosing a CRM.","questions":["Team size?","Timeline?","Tools?"],"answers":["About 20 people","This quarter","Sheets"],"name":"Ada","email":"ada@example.com","company":"Acme","locale":"en","_hp":""}'`;
+  -d '{"opening":"We need help choosing a CRM.","questions":["Team size?","Timeline?","Tools?"],"answers":["About 20 people","This quarter","Sheets"],"name":"Ada","email":"ada@example.com","company":"Acme"${fieldsPayload},"locale":"en","_hp":""}'`;
 }
 
-export function buildInquiryExampleJson(): string {
-  return formatSubmitBodyJson({
-    message: 'We need help choosing a CRM.',
-  });
+export function buildInquiryExampleJson(contactFields?: FormField[] | null): string {
+  const body: Record<string, unknown> = {
+    opening: 'We need help choosing a CRM.',
+    questions: ['Team size?', 'Timeline?', 'Tools?'],
+    answers: ['About 20 people', 'This quarter', 'Sheets'],
+    name: 'Ada',
+    email: 'ada@example.com',
+    company: 'Acme',
+    locale: 'en',
+  };
+  if (contactFields?.length) {
+    body.fields = buildExampleSubmitData(contactFields);
+  }
+  return formatSubmitBodyJson(body);
 }
 
 export function buildPublicInquiryUrl(origin: string, endpointToken: string): string {

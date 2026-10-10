@@ -231,6 +231,45 @@ describe('PluginPackageInstaller.extract', () => {
     result.commit();
   });
 
+  it('downloads a Control Plane grant URL instead of npm when downloadUrl is set', async () => {
+    const bytes = Buffer.from('grant-tarball');
+    const fetchMock = jest.fn().mockResolvedValue(
+      new Response(bytes, {
+        status: 200,
+        headers: { 'content-type': 'application/octet-stream' },
+      }),
+    );
+    const prevFetch = global.fetch;
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const installer = new PluginPackageInstaller();
+      const result = await installer.extract({
+        packageName: '@khirby/plugin-demo',
+        version: '1.0.0',
+        checksum: 'sha512-deadbeef',
+        downloadUrl:
+          'https://ctrl.bearly.pro/v1/marketplace/plugins/demo/versions/1.0.0/tarball?token=t',
+      });
+
+      expect(tarball).not.toHaveBeenCalled();
+      expect(fetchMock).toHaveBeenCalledWith(
+        'https://ctrl.bearly.pro/v1/marketplace/plugins/demo/versions/1.0.0/tarball?token=t',
+        expect.objectContaining({ method: 'GET' }),
+      );
+      expect(checkData).toHaveBeenCalledWith(bytes, 'sha512-deadbeef');
+      expect(extract).toHaveBeenCalledWith(
+        expect.stringMatching(/\.dl-.*\.tgz$/),
+        expect.any(String),
+        { integrity: 'sha512-deadbeef' },
+      );
+      expect(result.directory).toBe('khirby__plugin-demo');
+      result.commit();
+    } finally {
+      global.fetch = prevFetch;
+    }
+  });
+
   it('rejects on integrity mismatch when checkData returns false', async () => {
     checkData.mockReturnValue(false);
     const installer = new PluginPackageInstaller();

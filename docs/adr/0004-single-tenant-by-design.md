@@ -1,8 +1,9 @@
 # 0004 — Single-tenant by design
 
-- **Status:** Accepted (backfilled)
+- **Status:** Accepted — narrowed by [0055](0055-enterprise-row-scope-via-plugin-host-hooks.md) (Enterprise = private plugin + host Scope hooks; Community/core stay single-tenant)
 - **Date:** 2026-07-23
 - **Deciders:** Damian
+- **Pokelo ADR id:** `c961776e-fbc8-4089-8cd5-a8db539f6b1b` (Khirby project)
 
 ## Context
 

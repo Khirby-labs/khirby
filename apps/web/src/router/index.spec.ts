@@ -215,4 +215,36 @@ describe('router guard (beforeEach)', () => {
     expect(router.hasRoute('plugin-hot-web-bust')).toBe(true);
     remove.mockRestore();
   });
+
+  it('registers a redirect from multi-workspace /usage to the usage tab', () => {
+    registerPluginRoutes([
+      {
+        id: 'p-mw',
+        name: 'crm_multi_workspace',
+        displayName: 'Multi-Workspace',
+        description: null,
+        version: '0.1.2',
+        enabled: true,
+        config: {},
+        installedAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        webBundleUrl: '/api/plugins/crm_multi_workspace/web/entry.js',
+        webBundleVersion: '1',
+        frontendRoutes: [
+          {
+            path: '/plugins/multi-workspace',
+            name: 'plugin-multi-workspace',
+            navLabel: 'Workspaces',
+            navIcon: 'plugins',
+          },
+        ],
+      },
+    ]);
+
+    expect(router.hasRoute('plugin-multi-workspace-usage')).toBe(true);
+    const resolved = router.resolve('/plugins/multi-workspace/usage');
+    expect(resolved.name).toBe('plugin-multi-workspace-usage');
+    const record = router.getRoutes().find((r) => r.name === 'plugin-multi-workspace-usage');
+    expect(record?.redirect).toBe('/plugins/multi-workspace?tab=usage');
+  });
 });

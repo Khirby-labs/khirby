@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { LeadsService } from './leads.service';
+import { LeadsService, buildInquiryIntakeComment } from './leads.service';
 import { PipelineStagesService } from './pipeline-stages.service';
 import { ContactsService } from '../contacts/contacts.service';
 import { EventsService } from '../../core/events/events.service';
@@ -184,9 +184,10 @@ describe('LeadsService', () => {
         createdAt: new Date('2026-01-01'),
         updatedAt: new Date('2026-01-01'),
       };
+      const commentChain = makeChain([{ id: 'cmt-1' }]);
       db.insert
         .mockImplementationOnce(() => makeChain([leadRow]))
-        .mockImplementationOnce(() => makeChain([{ id: 'cmt-1' }]));
+        .mockImplementationOnce(() => commentChain);
 
       const result = await service.createFromInquiry({
         inquiryId: 'inq-1',
@@ -214,6 +215,13 @@ describe('LeadsService', () => {
       expect(result.title).toBe('Alice · Acme');
       expect(result.formName).toBe('Demo form');
       expect(db.insert).toHaveBeenCalledTimes(2);
+      expect(commentChain.values).toHaveBeenCalledWith(
+        expect.objectContaining({
+          leadId: 'l2',
+          userId: null,
+          body: 'Needs a CRM for sales.\n\nTeam size: 12',
+        }),
+      );
       expect(stages.ensureDefaults).toHaveBeenCalled();
       expect(stages.getFirstStage).toHaveBeenCalled();
     });
@@ -271,5 +279,75 @@ describe('LeadsService', () => {
       expect(stages.findById).toHaveBeenCalledWith('stage-2');
       expect(result.stageId).toBe('stage-2');
     });
+  });
+});
+
+describe('buildInquiryIntakeComment', () => {
+  const emptyBrief = {
+    problem: null,
+    desiredOutcome: null,
+    currentProcess: null,
+    currentTools: [],
+    teamSize: null,
+    constraints: [],
+    timeline: null,
+    inquiryType: null,
+  };
+
+  it('writes the summary and a single address line, not field keys', () => {
+    const body = buildInquiryIntakeComment({
+      aiSummary:
+        'Klient chce wycenę instalacji fotowoltaicznej około 10 kWp z magazynem energii dla domu jednorodzinnego w Gliwicach, na dachu z dachówki ceramicznej o dostępnej powierzchni około 50 m², z realizacją planowaną na wiosnę.',
+      brief: {
+        ...emptyBrief,
+        problem:
+          'Dom w Gliwicach, fotowoltaika ok. 10 kWp, dachówka ceramiczna — proszę o wycenę z magazynem energii.',
+      },
+      contactFields: {
+        city: 'Tarnowskie Góry',
+        street: 'ul. Konduktorska 79',
+        postalCode: '42-600',
+      },
+    });
+
+    expect(body).toBe(
+      [
+        'Klient chce wycenę instalacji fotowoltaicznej około 10 kWp z magazynem energii dla domu jednorodzinnego w Gliwicach, na dachu z dachówki ceramicznej o dostępnej powierzchni około 50 m², z realizacją planowaną na wiosnę.',
+        '',
+        'Adres: ul. Konduktorska 79, 42-600 Tarnowskie Góry',
+      ].join('\n'),
+    );
+    expect(body).not.toMatch(/Type:|city:|street:|postalCode:|Problem:|Tags:/);
+  });
+
+  it('uses the problem as the note when there is no summary', () => {
+    expect(
+      buildInquiryIntakeComment({
+        brief: { ...emptyBrief, problem: 'Excel chaos in the sales team.' },
+      }),
+    ).toBe('Excel chaos in the sales team.');
+  });
+
+  it('labels phone and extra fields in the language of the note', () => {
+    expect(
+      buildInquiryIntakeComment({
+        aiSummary: 'Proszę o wycenę.',
+        contactFields: { phone: '500600700', roofArea: '50 m²' },
+        fieldLabels: { roofArea: { pl: 'Powierzchnia dachu', en: 'Roof area' } },
+        brief: { ...emptyBrief, timeline: 'wiosna' },
+      }),
+    ).toBe(
+      [
+        'Proszę o wycenę.',
+        '',
+        'Telefon: 500600700',
+        'Powierzchnia dachu: 50 m²',
+        'Termin: wiosna',
+      ].join('\n'),
+    );
+  });
+
+  it('returns an empty string when there is nothing to say', () => {
+    expect(buildInquiryIntakeComment({})).toBe('');
   });
 });

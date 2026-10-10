@@ -67,12 +67,19 @@ function stateSigningKey(): string {
   return secret && secret.length >= 32 ? secret : 'dev-secret-change-in-prod';
 }
 
-type OAuthStatePayload = { userId: string; nonce: string; exp: number };
+type OAuthStatePayload = {
+  userId: string;
+  /** Active workspace when Multi-Workspace is on; null/omitted for Community singleton. */
+  scopeId?: string | null;
+  nonce: string;
+  exp: number;
+};
 
 /** HMAC-signed state — survives SameSite=strict (callback has no session cookie). */
-export function signOAuthState(userId: string): string {
+export function signOAuthState(userId: string, scopeId?: string | null): string {
   const payload: OAuthStatePayload = {
     userId,
+    scopeId: scopeId ?? null,
     nonce: randomBytes(16).toString('hex'),
     exp: Date.now() + STATE_TTL_MS,
   };
@@ -81,7 +88,7 @@ export function signOAuthState(userId: string): string {
   return `${body}.${sig}`;
 }
 
-export function verifyOAuthState(state: string): { userId: string } {
+export function verifyOAuthState(state: string): { userId: string; scopeId: string | null } {
   const [body, sig] = state.split('.');
   if (!body || !sig) throw AppException.badRequest('Invalid OAuth state.');
   const expected = createHmac('sha256', stateSigningKey()).update(body).digest('base64url');
@@ -99,7 +106,9 @@ export function verifyOAuthState(state: string): { userId: string } {
   if (!payload.userId || !payload.exp || payload.exp < Date.now()) {
     throw AppException.badRequest('OAuth state expired. Try connecting again.');
   }
-  return { userId: payload.userId };
+  const scopeId =
+    typeof payload.scopeId === 'string' && payload.scopeId.trim() ? payload.scopeId.trim() : null;
+  return { userId: payload.userId, scopeId };
 }
 
 export function createGoogleOAuthClient(redirectUri?: string): OAuth2Client {
@@ -107,13 +116,13 @@ export function createGoogleOAuthClient(redirectUri?: string): OAuth2Client {
   return new OAuth2Client(clientId, clientSecret, redirectUri ?? googleMailOAuthRedirectUri());
 }
 
-export function buildGoogleAuthUrl(userId: string): string {
+export function buildGoogleAuthUrl(userId: string, scopeId?: string | null): string {
   const client = createGoogleOAuthClient();
   return client.generateAuthUrl({
     access_type: 'offline',
     prompt: 'consent',
     scope: [GOOGLE_MAIL_SCOPE, 'openid', 'email'],
-    state: signOAuthState(userId),
+    state: signOAuthState(userId, scopeId),
     include_granted_scopes: true,
   });
 }

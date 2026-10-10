@@ -58,6 +58,7 @@
   "detail.fields.email": "Label of the email field on the contact edit form. Required — asterisk rendered separately. 1 word.",
   "detail.fields.name": "Label of the name field on the contact edit form. Optional. 1 word.",
   "detail.fields.phone": "Label of the phone field on the contact edit form. Optional. 1 word.",
+  "detail.formContact": "Heading above adaptive-form contact-step values (phone/address) copied onto the contact on accept. ≤3 words.",
   "detail.metadata": "Heading above leftover contact metadata that is not listmonk/interests. ≤3 words.",
   "detail.newsletter": "Heading above Listmonk subscription details on the contact page. Glossary: newsletter stays. 1 word.",
   "detail.listmonk.status": "Label for Listmonk subscription status. 1 word.",

@@ -34,11 +34,14 @@ function setup() {
     imapSecure: true,
     imapUser: 'crm',
   };
+  const creds = { mailbox, authMethod: 'password' as const, imapPassword: 'test' };
   const mailboxSvc = {
     setIdleWorker: jest.fn(),
-    getDecryptedCredentials: jest
-      .fn()
-      .mockResolvedValue({ mailbox, authMethod: 'password', imapPassword: 'test' }),
+    getDecryptedCredentials: jest.fn().mockResolvedValue(creds),
+    listEnabledDecryptedCredentials: jest.fn().mockResolvedValue([creds]),
+    listEnabledRows: jest.fn().mockResolvedValue([mailbox]),
+    mailboxScopeId: jest.fn().mockResolvedValue(null),
+    withMailboxScope: jest.fn(async (_scope: string | null, fn: () => Promise<unknown>) => fn()),
     getRawRow: jest.fn(async () => ({ ...mailbox, imapLastUid: checkpoint })),
     updateSyncPointer: jest.fn(async (_id, patch) => {
       if (patch.imapLastUid != null) checkpoint = patch.imapLastUid;

@@ -37,7 +37,10 @@ function makeRouter() {
   });
 }
 
-async function mountSidebar(plugins: unknown[] = [], permissions: SessionUser['permissions'] = []) {
+async function mountSidebar(
+  plugins: unknown[] = [],
+  permissions: SessionUser['permissions'] = [{ resource: 'integrations', action: 'manage' }],
+) {
   const pinia = createPinia();
   setActivePinia(pinia);
 

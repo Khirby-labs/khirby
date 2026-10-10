@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { ImapFlow } from 'imapflow';
 import * as nodemailer from 'nodemailer';
 import { Db } from '../../core/database/db';
@@ -20,6 +20,12 @@ import {
   settingsOAuthReturnUrl,
   verifyOAuthState,
 } from './mail-google-oauth';
+import {
+  getScopeId,
+  withScopedDb,
+  SCOPE_DB_ROLE,
+  SCOPE_GUC,
+} from '../../../../../packages/plugin-host/src';
 
 type MailboxRow = typeof mailboxes.$inferSelect;
 
@@ -113,12 +119,61 @@ export class MailboxService {
   }
 
   async get(): Promise<MailboxGetResponse> {
+    // Under Multi-Workspace, ScopeInterceptor + RLS make this the active workspace row.
     const [row] = await this.db.select().from(mailboxes).limit(1);
     return {
       mailbox: row ? toPublic(row) : null,
       googleOAuthConfigured: isGoogleMailOAuthConfigured(),
       secretsKeyConfigured: isMailSecretsKeyConfigured(),
     };
+  }
+
+  /**
+   * All enabled mailboxes (unscoped). Used by the IDLE worker so each workspace
+   * can run its own IMAP session. Request paths must keep using get() / upsert().
+   */
+  async listEnabledRows(): Promise<MailboxRow[]> {
+    return this.db.select().from(mailboxes).where(eq(mailboxes.enabled, true));
+  }
+
+  async listEnabledDecryptedCredentials(): Promise<DecryptedMailboxCredentials[]> {
+    const rows = await this.listEnabledRows();
+    const out: DecryptedMailboxCredentials[] = [];
+    for (const row of rows) {
+      const creds = await this.decryptRow(row);
+      if (creds) out.push(creds);
+    }
+    return out;
+  }
+
+  /** Opaque scope_id from Enterprise plugin column (absent on Community). */
+  async mailboxScopeId(mailboxId: string): Promise<string | null> {
+    try {
+      const rows = (await this.db.execute(
+        sql`SELECT scope_id::text AS sid FROM mailboxes WHERE id = ${mailboxId}::uuid LIMIT 1`,
+      )) as unknown as Array<{ sid: string | null }>;
+      const list = Array.isArray(rows) ? rows : [];
+      const sid = list[0]?.sid;
+      return sid && sid.length > 0 ? sid : null;
+    } catch {
+      return null;
+    }
+  }
+
+  /** Run a background write under the mailbox's workspace (ADR-0055 / ADR-0056). */
+  async withMailboxScope<T>(scopeId: string | null, fn: () => Promise<T>): Promise<T> {
+    if (!scopeId) return fn();
+    return withScopedDb(
+      this.db,
+      scopeId,
+      async (tx, id) => {
+        await tx.execute(sql.raw(`SET LOCAL ROLE ${SCOPE_DB_ROLE}`));
+        await tx.execute(
+          sql.raw(`SELECT set_config('${SCOPE_GUC}', '${id.replace(/'/g, "''")}', true)`),
+        );
+      },
+      fn,
+    );
   }
 
   async upsert(dto: UpsertMailboxDto): Promise<MailboxPublic> {
@@ -201,7 +256,8 @@ export class MailboxService {
     if (!isMailSecretsKeyConfigured()) {
       throw AppException.badRequest('KHIRBY_SECRETS_KEY is not configured.');
     }
-    return { url: buildGoogleAuthUrl(userId) };
+    // Capture active workspace so the cookieless callback writes the right row.
+    return { url: buildGoogleAuthUrl(userId, getScopeId()) };
   }
 
   async handleGoogleOAuthCallback(query: {
@@ -218,7 +274,7 @@ export class MailboxService {
 
     let auditUserId: string | undefined;
     try {
-      const { userId } = verifyOAuthState(query.state);
+      const { userId, scopeId } = verifyOAuthState(query.state);
       auditUserId = userId;
       if (!isMailSecretsKeyConfigured()) {
         this.logger.warn(`Google OAuth callback rejected: secrets_key_missing userId=${userId}`);
@@ -229,46 +285,50 @@ export class MailboxService {
       const gmail = gmailTransportDefaults();
       const localPart = tokens.email.split('@')[0] || 'CRM';
 
-      const [existing] = await this.db.select().from(mailboxes).limit(1);
-      const oauthRefreshTokenEnc = encrypt(tokens.refreshToken);
-      const oauthTokenExpiresAt = tokens.expiryDate ? new Date(tokens.expiryDate) : null;
+      await this.withMailboxScope(scopeId, async () => {
+        const [existing] = await this.db.select().from(mailboxes).limit(1);
+        const oauthRefreshTokenEnc = encrypt(tokens.refreshToken);
+        const oauthTokenExpiresAt = tokens.expiryDate ? new Date(tokens.expiryDate) : null;
 
-      const patch = {
-        authMethod: 'google_oauth' as const,
-        name: existing?.name || tokens.email,
-        fromName: existing?.fromName || localPart,
-        fromAddress: tokens.email,
-        imapHost: gmail.imap.host,
-        imapPort: gmail.imap.port,
-        imapSecure: gmail.imap.secure,
-        imapUser: tokens.email,
-        imapPasswordEnc: null,
-        smtpHost: gmail.smtp.host,
-        smtpPort: gmail.smtp.port,
-        smtpSecure: gmail.smtp.secure,
-        smtpUser: tokens.email,
-        smtpPasswordEnc: null,
-        oauthRefreshTokenEnc,
-        oauthTokenExpiresAt,
-        updatedAt: new Date(),
-        // OAuth success is enough to go live — matches “Sign in with Google and the rest configures itself”.
-        enabled: true,
-        backfillDays: existing?.backfillDays ?? 30,
-        connectionStatus: 'reconnecting',
-        lastSyncError: null,
-      };
+        const patch = {
+          authMethod: 'google_oauth' as const,
+          name: existing?.name || tokens.email,
+          fromName: existing?.fromName || localPart,
+          fromAddress: tokens.email,
+          imapHost: gmail.imap.host,
+          imapPort: gmail.imap.port,
+          imapSecure: gmail.imap.secure,
+          imapUser: tokens.email,
+          imapPasswordEnc: null,
+          smtpHost: gmail.smtp.host,
+          smtpPort: gmail.smtp.port,
+          smtpSecure: gmail.smtp.secure,
+          smtpUser: tokens.email,
+          smtpPasswordEnc: null,
+          oauthRefreshTokenEnc,
+          oauthTokenExpiresAt,
+          updatedAt: new Date(),
+          // OAuth success is enough to go live — matches “Sign in with Google and the rest configures itself”.
+          enabled: true,
+          backfillDays: existing?.backfillDays ?? 30,
+          connectionStatus: 'reconnecting',
+          lastSyncError: null,
+        };
 
-      if (!existing) {
-        await this.db.insert(mailboxes).values(patch as any);
-      } else {
-        await this.db
-          .update(mailboxes)
-          .set(patch as any)
-          .where(eq(mailboxes.id, existing.id));
-      }
+        if (!existing) {
+          await this.db.insert(mailboxes).values(patch as any);
+        } else {
+          await this.db
+            .update(mailboxes)
+            .set(patch as any)
+            .where(eq(mailboxes.id, existing.id));
+        }
+      });
 
       await this.triggerWorkerRestart();
-      this.logger.log(`Google OAuth mailbox connected userId=${userId} email=${tokens.email}`);
+      this.logger.log(
+        `Google OAuth mailbox connected userId=${userId} scopeId=${scopeId ?? 'none'} email=${tokens.email}`,
+      );
       return settingsOAuthReturnUrl('ok');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -299,10 +359,14 @@ export class MailboxService {
     return toPublic(updated);
   }
 
+  /** Current-scope (or singleton) enabled mailbox — SMTP send / connection test. */
   async getDecryptedCredentials(): Promise<DecryptedMailboxCredentials | null> {
     const [row] = await this.db.select().from(mailboxes).limit(1);
     if (!row || !row.enabled) return null;
+    return this.decryptRow(row);
+  }
 
+  private async decryptRow(row: MailboxRow): Promise<DecryptedMailboxCredentials | null> {
     if (row.authMethod === 'google_oauth') {
       if (!row.oauthRefreshTokenEnc) return null;
       const refreshToken = decrypt(row.oauthRefreshTokenEnc);
@@ -336,7 +400,15 @@ export class MailboxService {
     };
   }
 
-  async getRawRow(): Promise<MailboxRow | null> {
+  async getRawRow(mailboxId?: string): Promise<MailboxRow | null> {
+    if (mailboxId) {
+      const [row] = await this.db
+        .select()
+        .from(mailboxes)
+        .where(eq(mailboxes.id, mailboxId))
+        .limit(1);
+      return row ?? null;
+    }
     const [row] = await this.db.select().from(mailboxes).limit(1);
     return row ?? null;
   }

@@ -312,6 +312,7 @@ describe('PublicFormsController', () => {
           locale: 'en',
         }),
       );
+      expect(forms.validateSubmission).not.toHaveBeenCalled();
       expect(inquiry.createFromForm).not.toHaveBeenCalled();
       expect(result).toEqual(
         expect.objectContaining({
@@ -319,6 +320,53 @@ describe('PublicFormsController', () => {
           inquiryId: 'inq-adapt',
           status: 'ready_for_review',
           intakeMode: 'adaptive',
+        }),
+      );
+    });
+
+    it('adaptive: validates contact fields separately from AI follow-ups', async () => {
+      const schema = [
+        { name: 'phone', label: 'Phone', type: 'tel', required: false },
+        { name: 'street', label: 'Street', type: 'text', required: true },
+        { name: 'city', label: 'City', type: 'text', required: true },
+      ];
+      forms.findByToken.mockResolvedValueOnce({
+        ...inquiryForm,
+        intakeMode: 'adaptive',
+        schema,
+      });
+      forms.validateSubmission.mockReturnValueOnce({
+        phone: '500600700',
+        street: 'Ul. Długa 1',
+        city: 'Gdańsk',
+      });
+
+      await controller.createInquiry(
+        'tok',
+        {
+          opening: 'We need a PV quote for our warehouse roof today.',
+          questions: ['Roof size?', 'Timeline?', 'Power?'],
+          answers: ['200 m2', 'Q3', '20 kW'],
+          name: 'Ada',
+          email: 'ada@example.com',
+          fields: { phone: '500600700', street: 'Ul. Długa 1', city: 'Gdańsk' },
+        },
+        makeReq(),
+      );
+
+      expect(forms.validateSubmission).toHaveBeenCalledWith(schema, {
+        phone: '500600700',
+        street: 'Ul. Długa 1',
+        city: 'Gdańsk',
+      });
+      expect(inquiry.submitAdaptiveIntake).toHaveBeenCalledWith(
+        expect.objectContaining({
+          contactFields: {
+            phone: '500600700',
+            street: 'Ul. Długa 1',
+            city: 'Gdańsk',
+          },
+          questions: ['Roof size?', 'Timeline?', 'Power?'],
         }),
       );
     });

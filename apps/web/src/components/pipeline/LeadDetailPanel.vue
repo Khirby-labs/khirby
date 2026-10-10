@@ -160,6 +160,10 @@
                   </dt>
                   <dd class="text-text-secondary">{{ inquiryOrigin.contactName }}</dd>
                 </div>
+                <div v-for="row in inquiryContactFieldRows" :key="`cf-${row.key}`">
+                  <dt class="text-text-ghost text-xs">{{ row.label }}</dt>
+                  <dd class="text-text-secondary whitespace-pre-wrap">{{ row.value }}</dd>
+                </div>
                 <div v-if="inquiryOrigin.source">
                   <dt class="text-text-ghost text-xs">
                     {{ t('pipeline.leadDetail.inquirySource') }}
@@ -167,7 +171,11 @@
                   <dd class="text-text-secondary">{{ inquiryOrigin.source }}</dd>
                 </div>
                 <div
-                  v-if="inquiryBriefRows.length === 0 && !inquiryOrigin.aiSummary"
+                  v-if="
+                    inquiryBriefRows.length === 0 &&
+                    inquiryContactFieldRows.length === 0 &&
+                    !inquiryOrigin.aiSummary
+                  "
                   class="text-text-ghost text-xs"
                 >
                   {{ t('pipeline.leadDetail.inquiryEmpty') }}
@@ -310,6 +318,20 @@ const deleting = ref(false);
 const lead = computed(() => store.selectedLead);
 
 const inquiryOrigin = computed(() => lead.value?.inquiryOrigin ?? null);
+
+/** Adaptive contact-step extras (phone, address, …) — ADR-0058. */
+const inquiryContactFieldRows = computed(() => {
+  const bag = inquiryOrigin.value?.contactFields;
+  if (!bag || typeof bag !== 'object')
+    return [] as Array<{ key: string; label: string; value: string }>;
+  return Object.entries(bag)
+    .filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== '')
+    .map(([key, value]) => ({
+      key,
+      label: key,
+      value: String(value),
+    }));
+});
 
 const inquiryBriefRows = computed(() => {
   const brief = inquiryOrigin.value?.structuredData;

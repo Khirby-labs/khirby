@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# adr-publish.sh — create a new ADR, save locally AND push to Pokelo
+# adr-publish.sh — interactive create: local file + Pokelo (type ADR)
 #
 # Usage:
 #   ./scripts/adr-publish.sh "Short decision title"
 #
+# For agents / non-interactive sync of an existing file, prefer:
+#   node scripts/adr-sync-to-pokelo.mjs docs/adr/NNNN-slug.md
+#
 # Reads POKELO_TOKEN and POKELO_PROJECT_ID from .env (root of monorepo).
 # Opens $EDITOR for the ADR body, then saves to docs/adr/ and publishes to Pokelo.
+# Pokelo is the source of truth; docs/adr/ is the git mirror.
 
 set -euo pipefail
 

@@ -190,6 +190,45 @@ describe('createClient — inquiry methods', () => {
       );
       expect(res.status).toBe('ready_for_review');
     });
+
+    it('includes fields (contact-step) and validates against contactFields', async () => {
+      const formBody = {
+        name: 'Adaptive',
+        slug: 'adaptive',
+        kind: 'contact',
+        destination: 'inquiry',
+        intakeMode: 'adaptive',
+        fields: [
+          { name: 'phone', label: 'Phone', type: 'tel', required: false },
+          { name: 'city', label: 'City', type: 'text', required: true },
+        ],
+        contactFields: [
+          { name: 'phone', label: 'Phone', type: 'tel', required: false },
+          { name: 'city', label: 'City', type: 'text', required: true },
+        ],
+      };
+      const result = { publicToken: 'pub-f', inquiryId: 'inq-f', status: 'ready_for_review' };
+      const fetchFn = jest
+        .fn()
+        .mockResolvedValueOnce({ ok: true, json: async () => formBody })
+        .mockResolvedValueOnce({ ok: true, json: async () => result });
+      const client = createClient({ baseUrl, fetch: fetchFn as unknown as typeof fetch });
+
+      await client.submitAdaptive('tok-1', {
+        opening: 'Need a PV quote for our warehouse roof.',
+        questions: ['Q1?', 'Q2?', 'Q3?'],
+        answers: ['A1', 'A2', 'A3'],
+        email: 'ada@example.com',
+        fields: { phone: '500600700', city: 'Gdańsk' },
+      });
+
+      const submitCall = fetchFn.mock.calls.find(
+        (c) => typeof c[0] === 'string' && String(c[0]).endsWith('/inquiries'),
+      );
+      expect(submitCall).toBeDefined();
+      const sentBody = JSON.parse((submitCall![1] as RequestInit).body as string);
+      expect(sentBody.fields).toEqual({ phone: '500600700', city: 'Gdańsk' });
+    });
   });
 
   describe('BoundForm.createInquiry()', () => {

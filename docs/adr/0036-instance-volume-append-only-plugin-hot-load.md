@@ -3,6 +3,7 @@
 - **Status:** Accepted — path amended by [0039](0039-instance-plugins-live-in-plugins-dir.md); `./web` ban superseded by [0043](0043-volume-plugin-vue-web-hot-load.md)
 - **Date:** 2026-08-18
 - **Deciders:** Patryk
+- **Pokelo ADR id:** `5e276846-9e03-490d-977c-dfa5e28b9cf3` (Khirby project)
 
 ## Context
 

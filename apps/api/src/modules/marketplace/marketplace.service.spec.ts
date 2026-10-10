@@ -76,13 +76,38 @@ function makeRegistry(options: {
   } as any;
 }
 
+const GRANT_DOWNLOAD_URL =
+  'https://ctrl.bearly.pro/v1/marketplace/plugins/a/versions/1.0.0/tarball?token=x';
+
+function makeGrant(overrides: Record<string, unknown> = {}) {
+  return {
+    slug: 'a',
+    version: '1.0.0',
+    packageName: '@khirby/plugin-a',
+    checksum: 'sha512-abc',
+    downloadUrl: GRANT_DOWNLOAD_URL,
+    expiresAt: '2026-10-10T12:10:00.000Z',
+    ...overrides,
+  };
+}
+
 function makeCp(overrides: Record<string, unknown> = {}) {
   return {
     isConfigured: () => true,
+    baseUrl: () => 'https://ctrl.bearly.pro',
     getPlugin: jest.fn().mockResolvedValue(null),
     getPluginVersion: jest.fn().mockResolvedValue(null),
     getPluginVersions: jest.fn().mockResolvedValue([]),
     submitPlugin: jest.fn().mockResolvedValue(null),
+    createInstallGrant: jest
+      .fn()
+      .mockImplementation(async (_slug: string, body: { version?: string }) => {
+        const version = body.version ?? '1.0.0';
+        return makeGrant({
+          version,
+          downloadUrl: `https://ctrl.bearly.pro/v1/marketplace/plugins/a/versions/${version}/tarball?token=x`,
+        });
+      }),
     ...overrides,
   } as any;
 }
@@ -108,7 +133,7 @@ function makeIdentity() {
   return {
     getOrCreate: jest
       .fn()
-      .mockResolvedValue({ installationId: '11111111-1111-1111-1111-111111111111' }),
+      .mockResolvedValue({ installationId: '11111111-1111-4111-8111-111111111111' }),
   } as any;
 }
 
@@ -464,21 +489,29 @@ describe('MarketplaceService.install', () => {
     });
 
     const catalog = makeCatalog(catalogWith([]));
+    const createInstallGrant = jest.fn().mockResolvedValue(makeGrant());
     const svc = makeService({
       catalogMock: catalog,
       registry: makeRegistry({ loaded: [], installFromDirectory, findAll }),
       cp: makeCp({
         getPlugin,
         getPluginVersion: jest.fn().mockResolvedValue(versionMeta),
+        createInstallGrant,
       }),
       installer: makeInstaller({ extract }),
     });
 
     const result = await svc.install('a');
+    expect(createInstallGrant).toHaveBeenCalledWith('a', {
+      installationId: '11111111-1111-4111-8111-111111111111',
+      version: '1.0.0',
+      product: 'khirby',
+    });
     expect(extract).toHaveBeenCalledWith({
       packageName: '@khirby/plugin-a',
       version: '1.0.0',
       checksum: 'sha512-abc',
+      downloadUrl: GRANT_DOWNLOAD_URL,
     });
     expect(installFromDirectory).toHaveBeenCalledWith('plugin-a', '@khirby/plugin-a', {
       allowReservedScaffoldDirs: true,
@@ -487,6 +520,53 @@ describe('MarketplaceService.install', () => {
     expect(commit).toHaveBeenCalled();
     expect(rollback).not.toHaveBeenCalled();
     expect(catalog.invalidate).toHaveBeenCalled();
+  });
+
+  it('rewrites http install-grant downloadUrl onto the configured https Control Plane origin', async () => {
+    const extract = jest.fn().mockResolvedValue({
+      directory: 'plugin-a',
+      absDir: '/tmp/khirby-no-such-plugin-dir',
+      packageName: '@khirby/plugin-a',
+      commit: jest.fn(),
+      rollback: jest.fn(),
+    });
+    const createInstallGrant = jest.fn().mockResolvedValue(
+      makeGrant({
+        downloadUrl:
+          'http://ctrl.bearly.pro/v1/marketplace/plugins/a/versions/1.0.0/tarball?token=x',
+      }),
+    );
+    const svc = makeService({
+      registry: makeRegistry({
+        loaded: [],
+        installFromDirectory: jest.fn().mockResolvedValue({ name: 'crm_a', status: 'installed' }),
+        findAll: jest.fn().mockResolvedValue([{ name: 'crm_a', enabled: true }]),
+      }),
+      cp: makeCp({
+        getPlugin: jest.fn().mockResolvedValue({
+          slug: 'a',
+          name: 'A',
+          description: null,
+          packageName: '@khirby/plugin-a',
+          publisherName: 'Khirby',
+          verified: true,
+          repositoryUrl: null,
+          latestVersion: '1.0.0',
+          permissions: null,
+        }),
+        getPluginVersion: jest.fn().mockResolvedValue(versionMeta),
+        createInstallGrant,
+      }),
+      installer: makeInstaller({ extract }),
+    });
+
+    await svc.install('a');
+    expect(extract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        downloadUrl:
+          'https://ctrl.bearly.pro/v1/marketplace/plugins/a/versions/1.0.0/tarball?token=x',
+      }),
+    );
   });
 
   it('refuses an unknown slug without asking the installer', async () => {
@@ -653,6 +733,8 @@ describe('MarketplaceService.install', () => {
       packageName: '@khirby/plugin-a',
       version: '1.5.0',
       checksum: 'sha512-abc',
+      downloadUrl:
+        'https://ctrl.bearly.pro/v1/marketplace/plugins/a/versions/1.5.0/tarball?token=x',
     });
   });
 
@@ -876,7 +958,7 @@ describe('MarketplaceService.submit', () => {
       slug: 'my-plugin',
       name: 'My Plugin',
       packageName: '@acme/plugin',
-      installationId: '11111111-1111-1111-1111-111111111111',
+      installationId: '11111111-1111-4111-8111-111111111111',
     });
     expect(result.slug).toBe('my-plugin');
   });

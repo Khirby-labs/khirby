@@ -1,8 +1,9 @@
 # 0014 — Core firm mailbox (IMAP+SMTP), email threads as first-class CRM data
 
-- **Status:** Accepted — encryption env amended by [ADR-0046](0046-one-instance-secrets-key.md) (`KHIRBY_SECRETS_KEY`; `MAIL_SECRETS_KEY` remains a decrypt alias)
+- **Status:** Accepted — encryption env amended by [ADR-0046](0046-one-instance-secrets-key.md) (`KHIRBY_SECRETS_KEY`; `MAIL_SECRETS_KEY` remains a decrypt alias); singleton narrowed to per-scope under Enterprise by [ADR-0056](0056-per-workspace-firm-mailbox.md)
 - **Date:** 2026-07-29
 - **Deciders:** Damian
+- **Pokelo ADR id:** `6ae081c0-ff91-457d-929d-ead275dfc546` (Khirby project)
 
 ## Context
 

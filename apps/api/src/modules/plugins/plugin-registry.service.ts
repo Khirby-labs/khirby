@@ -9,7 +9,13 @@ import { DB_TOKEN } from '../../core/database/database.module';
 import { plugins } from '../../core/database/schema';
 import { CrmPlugin, CrmEvent, PluginContext, CRM_PLUGINS } from '@khirby/plugin-sdk';
 import { AppException } from '../../core/errors/app-exception';
-import type { InstancePluginsLike } from '../../../../../packages/plugin-host/src';
+import {
+  getScopeId,
+  PLUGIN_SCOPE_POLICY,
+  resolveLoadedProvider,
+  type InstancePluginsLike,
+  type PluginScopePolicyLike,
+} from '../../../../../packages/plugin-host/src';
 // Relative, not '@khirby/types': `nest build` is plain tsc and the bare
 // specifier does not survive into the build output (INCIDENTS 2026-07-24).
 import type { AvailablePlugin } from '../../../../../packages/types/src';
@@ -393,16 +399,37 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     return createReadStream(absPath);
   }
 
+  private pluginScopePolicy(): PluginScopePolicyLike | null {
+    return resolveLoadedProvider<PluginScopePolicyLike>(this.moduleRef, PLUGIN_SCOPE_POLICY);
+  }
+
+  /** Overlay per-workspace enabled + config when Multi-Workspace policy is active (ADR-0057). */
+  private async applyScopeOverlay(row: PluginRow): Promise<PluginRow> {
+    const policy = this.pluginScopePolicy();
+    if (!policy || !(await Promise.resolve(policy.isActive()))) return row;
+    const scopeId = getScopeId();
+    const enabled = await policy.isEnabled(row.name, scopeId);
+    const cfg = await policy.getConfig(row.name, scopeId);
+    return {
+      ...row,
+      enabled,
+      config: (cfg ?? row.config ?? {}) as PluginRow['config'],
+    };
+  }
+
   async findAll() {
     const rows = await this.db.select().from(plugins);
-    return rows
-      .filter((row) => !isMarketplaceDemoPlugin(row.name))
-      .map((row) => this.enrichRow(row));
+    const out = [];
+    for (const row of rows.filter((r) => !isMarketplaceDemoPlugin(r.name))) {
+      out.push(this.enrichRow(await this.applyScopeOverlay(row)));
+    }
+    return out;
   }
 
   async findByName(name: string) {
     const [row] = await this.db.select().from(plugins).where(eq(plugins.name, name)).limit(1);
-    return row ?? null;
+    if (!row) return null;
+    return this.applyScopeOverlay(row);
   }
 
   /**
@@ -435,8 +462,12 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     available: AvailablePlugin[];
   }> {
     const rows = await this.db.select().from(plugins);
+    const installed = [];
+    for (const row of rows) {
+      installed.push(this.enrichRow(await this.applyScopeOverlay(row)));
+    }
     return {
-      installed: rows.map((row) => this.enrichRow(row)),
+      installed,
       available: this.availableFrom(rows),
     };
   }
@@ -464,6 +495,17 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
   /** True when the plugin has an active in-memory context (enabled + migrated + inited). */
   isEnabled(name: string): boolean {
     return this.contexts.has(name);
+  }
+
+  /**
+   * Instance Nest loaded AND (if Multi-Workspace) enabled for the active scope.
+   * HTTP guards / bridge must use this; sync isEnabled alone is not enough (ADR-0057).
+   */
+  async isEnabledAsync(name: string): Promise<boolean> {
+    if (!this.contexts.has(name)) return false;
+    const policy = this.pluginScopePolicy();
+    if (!policy || !(await Promise.resolve(policy.isActive()))) return true;
+    return policy.isEnabled(name, getScopeId());
   }
 
   /**
@@ -613,22 +655,25 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
     this.appendManifest(pkgName, resolved);
 
     try {
+      let status: 'installed' | 're-enabled' | 'already_active';
       if (!this.loadedNames().includes(name)) {
         await this.hotLoad(absDir);
-        return { name, status: 'installed' };
+        status = 'installed';
+      } else {
+        const [row] = await this.db.select().from(plugins).where(eq(plugins.name, name)).limit(1);
+        if (!row) {
+          await this.install(name);
+          status = 'installed';
+        } else if (!row.enabled || !(await this.isEnabledAsync(name))) {
+          await this.enable(name);
+          status = 're-enabled';
+        } else {
+          await this.reloadFromDirectory(resolved);
+          status = 'already_active';
+        }
       }
-
-      const row = await this.findByName(name);
-      if (!row) {
-        await this.install(name);
-        return { name, status: 'installed' };
-      }
-      if (!row.enabled) {
-        await this.enable(name);
-        return { name, status: 're-enabled' };
-      }
-      await this.reloadFromDirectory(resolved);
-      return { name, status: 'already_active' };
+      await this.enableForActiveWorkspaceIfScoped(name);
+      return { name, status };
     } catch (err) {
       if (!hadManifestEntry) {
         try {
@@ -1035,8 +1080,22 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
   }
 
   async enable(name: string) {
-    const row = await this.findByName(name);
+    const [row] = await this.db.select().from(plugins).where(eq(plugins.name, name)).limit(1);
     if (!row) throw AppException.notFound('plugin', name);
+
+    const policy = this.pluginScopePolicy();
+    if (policy && (await Promise.resolve(policy.isActive()))) {
+      const scopeId = getScopeId();
+      if (!scopeId) {
+        throw AppException.badRequest('Active workspace required to enable a plugin');
+      }
+      // Keep Nest loaded instance-wide; toggle only the workspace row.
+      await this.ensureInstanceActivated(name, row);
+      await policy.setState(name, scopeId, { enabled: true });
+      const overlaid = await this.applyScopeOverlay(row);
+      return this.enrichRow(overlaid);
+    }
+
     const [updated] = await this.db
       .update(plugins)
       .set({ enabled: true, updatedAt: new Date() } as any)
@@ -1062,8 +1121,20 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
   }
 
   async disable(name: string) {
-    const row = await this.findByName(name);
+    const [row] = await this.db.select().from(plugins).where(eq(plugins.name, name)).limit(1);
     if (!row) throw AppException.notFound('plugin', name);
+
+    const policy = this.pluginScopePolicy();
+    if (policy && (await Promise.resolve(policy.isActive()))) {
+      const scopeId = getScopeId();
+      if (!scopeId) {
+        throw AppException.badRequest('Active workspace required to disable a plugin');
+      }
+      // Do not unload Nest — other workspaces may still use the plugin.
+      await policy.setState(name, scopeId, { enabled: false });
+      return this.enrichRow(await this.applyScopeOverlay(row));
+    }
+
     const [updated] = await this.db
       .update(plugins)
       .set({ enabled: false, updatedAt: new Date() } as any)
@@ -1074,8 +1145,25 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
   }
 
   async updateConfig(name: string, config: Record<string, string>) {
-    const row = await this.findByName(name);
+    const [row] = await this.db.select().from(plugins).where(eq(plugins.name, name)).limit(1);
     if (!row) throw AppException.notFound('plugin', name);
+
+    const policy = this.pluginScopePolicy();
+    if (policy && (await Promise.resolve(policy.isActive()))) {
+      const scopeId = getScopeId();
+      if (!scopeId) {
+        throw AppException.badRequest('Active workspace required to update plugin config');
+      }
+      await this.ensureInstanceActivated(name, row);
+      await policy.setState(name, scopeId, { config });
+      // Call-time readers use findByName → overlay; keep a fallback context for emit().
+      if (this.contexts.has(name)) {
+        const ctx = this.buildContext(name, config);
+        this.contexts.set(name, ctx);
+      }
+      return this.enrichRow(await this.applyScopeOverlay(row));
+    }
+
     const [updated] = await this.db
       .update(plugins)
       .set({ config, updatedAt: new Date() } as any)
@@ -1089,6 +1177,35 @@ export class PluginRegistryService implements OnModuleInit, InstancePluginsLike 
       if (plugin?.onInit) await Promise.resolve(plugin.onInit(ctx)).catch(() => null);
     }
     return this.enrichRow(updated);
+  }
+
+  /** After Marketplace install, turn the plugin on for the active workspace. */
+  private async enableForActiveWorkspaceIfScoped(name: string): Promise<void> {
+    const policy = this.pluginScopePolicy();
+    if (!policy || !(await Promise.resolve(policy.isActive()))) return;
+    const scopeId = getScopeId();
+    if (!scopeId) return;
+    await policy.setState(name, scopeId, { enabled: true });
+  }
+
+  /** Ensure instance row is enabled and Nest context exists (workspace toggles must not unload). */
+  private async ensureInstanceActivated(name: string, row: PluginRow): Promise<void> {
+    let current = row;
+    if (!row.enabled) {
+      const [updated] = await this.db
+        .update(plugins)
+        .set({ enabled: true, updatedAt: new Date() } as any)
+        .where(eq(plugins.name, name))
+        .returning();
+      current = updated;
+    }
+    if (this.contexts.has(name)) return;
+    const plugin = this.registeredPlugins.find((p) => p.name === name);
+    if (!plugin) return;
+    const ok = await this.activate(plugin, { ...current, enabled: true });
+    if (!ok) {
+      throw AppException.badRequest(`Plugin ${name} migration failed`);
+    }
   }
 
   // ─── helpers ───────────────────────────────────────────────────────────────

@@ -1,9 +1,9 @@
 {
   "settings": {
     "title": "Mail",
-    "subtitle": "Connect your company mailbox via IMAP, SMTP, or Google.",
+    "subtitle": "Connect the mailbox for the active workspace via IMAP, SMTP, or Google. Each workspace has its own inbox.",
     "enabledLabel": "Enable mailbox",
-    "enabledHint": "Activates IMAP sync and enables sending via SMTP.",
+    "enabledHint": "Activates IMAP sync and enables sending via SMTP for this workspace.",
     "lastSync": "Last sync",
     "testConnection": "Test connection",
     "testing": "Testing…",

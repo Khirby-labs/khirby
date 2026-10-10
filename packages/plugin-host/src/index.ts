@@ -97,3 +97,39 @@ export {
   parseModelReasoningSupport,
   type ReasoningEffort,
 } from './reasoning-effort';
+export {
+  getScopeId,
+  getScopeStore,
+  getScopedDb,
+  runWithScope,
+  runWithScopeAsync,
+  type ScopeStore,
+} from './scope/scope-context';
+export {
+  SCOPE_PROVIDER,
+  type ScopeProviderLike,
+  type ScopeSessionLike,
+  type ScopeRequestLike,
+} from './scope/scope-provider';
+export {
+  PLUGIN_SCOPE_POLICY,
+  type PluginScopePolicyLike,
+  type PluginScopeState,
+} from './scope/plugin-scope-policy';
+export { PluginScopeAdminGuard } from './plugin-scope-admin.guard';
+export {
+  SCOPE_GUC,
+  SCOPE_DB_ROLE,
+  ScopeEnforcementError,
+  createScopedDbProxy,
+  scopeSetLocalSql,
+  assertScopeIfRequired,
+} from './scope/scoped-db';
+export { withScopedDb, type SetLocalScopeFn } from './scope/scope.interceptor';
+export {
+  AI_USAGE_RECORDER,
+  type AiUsageRecorderLike,
+  type AiUsageEventInput,
+  type AiUsageReserveInput,
+  type AiUsageFeature,
+} from './scope/ai-usage-recorder';

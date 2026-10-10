@@ -169,7 +169,7 @@ function makeChain(returnValue?: unknown) {
 - Do not break the `makeChain()` mock pattern — tests depend on it
 - Do not use `JwtGuard` — it was removed; use `SessionGuard`
 - Do not use JWT or localStorage for auth — session cookie is the only auth mechanism
-- Do not add multi-tenancy — this is intentionally single-tenant
+- Do not add multi-tenancy to public core (`apps/api` / `apps/web`) — Community stays single-tenant (ADR-0004). Enterprise multi-workspace is a private plugin plus opaque Scope hooks on `@khirby/plugin-host` (ADR-0055) — do not put `tenants` tables or workspace UI in core
 - Do not use `TypeORM` or `Prisma` — Drizzle ORM is the chosen ORM
 - Do not use the Options API in Vue components — use Composition API (`<script setup>`)
 - Do not install packages in sub-packages directly; use `pnpm add -w` or workspace protocol
@@ -190,3 +190,5 @@ function makeChain(returnValue?: unknown) {
 - Do not force `reasoning_effort: none` on Ask Khirby when the model rejects tools on `/chat/completions` — POST `/responses` with `reasoning.effort` (ADR-0049)
 - Do not treat unset `CONTROL_PLANE_URL` as "no Control Plane" — it defaults to `https://ctrl.bearly.pro`; explicit empty disables outbound CP (ADR-0051)
 - Do not `npm install` a Marketplace plugin’s `dependencies` after `pacote.extract` — the tarball must bundle runtime deps; peer only `@khirby/plugin-sdk` / `plugin-host` / Nest / Vue (ADR-0052)
+- Do not raise `ADAPTIVE_MAX_FOLLOW_UPS` to fit phone/address into AI Q&A — use operator contact fields on `forms.schema` / submit `fields` (ADR-0058)
+- Do not dump inquiry field keys, tags, company, type, or a repeated problem line into the accept-from-review lead comment — write the handoff note (summary, one address line, phone, brief facts) (ADR-0059)

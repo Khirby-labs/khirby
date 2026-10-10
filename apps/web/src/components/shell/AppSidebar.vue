@@ -60,26 +60,26 @@
         />
       </div>
 
-      <!-- Discovery, between the daily work above and the plugin pages below —
-           ADR-0033. Always rendered: unlike the plugin group it has no data to
-           depend on. -->
-      <div v-if="collapsed" class="my-3 h-px bg-border-subtle" aria-hidden="true" />
-      <p
-        v-else
-        class="px-2.5 pb-1.5 pt-4 font-mono text-[10px] uppercase tracking-wider text-text-ghost"
-      >
-        {{ t('shell.sidebar.extensions') }}
-      </p>
-      <div class="space-y-0.5">
-        <SidebarLink
-          v-for="item in marketplaceNav"
-          :key="item.to"
-          :to="item.to"
-          :icon="item.icon"
-          :label="t(item.labelKey)"
-          :collapsed="collapsed"
-        />
-      </div>
+      <!-- Discovery (ADR-0033). Hidden when Multi-Workspace denies non-owners (ADR-0057). -->
+      <template v-if="filteredMarketplaceNav.length">
+        <div v-if="collapsed" class="my-3 h-px bg-border-subtle" aria-hidden="true" />
+        <p
+          v-else
+          class="px-2.5 pb-1.5 pt-4 font-mono text-[10px] uppercase tracking-wider text-text-ghost"
+        >
+          {{ t('shell.sidebar.extensions') }}
+        </p>
+        <div class="space-y-0.5">
+          <SidebarLink
+            v-for="item in filteredMarketplaceNav"
+            :key="item.to"
+            :to="item.to"
+            :icon="item.icon"
+            :label="t(item.labelKey)"
+            :collapsed="collapsed"
+          />
+        </div>
+      </template>
 
       <template v-if="pluginNav.length">
         <div v-if="collapsed" class="my-3 h-px bg-border-subtle" aria-hidden="true" />
@@ -170,6 +170,9 @@ const collapsed = computed(() => isDesktop.value && ui.railCollapsed);
 const filteredWorkspaceNav = computed(() =>
   filterNavForUser(workspaceNav, auth.user?.permissions ?? []),
 );
+
+/** Marketplace is owner-only under Multi-Workspace (ADR-0057). */
+const filteredMarketplaceNav = computed(() => (auth.canManagePlugins ? marketplaceNav : []));
 
 const pluginNav = computed(() =>
   plugins.value
