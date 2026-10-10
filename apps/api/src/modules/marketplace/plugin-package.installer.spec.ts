@@ -233,14 +233,12 @@ describe('PluginPackageInstaller.extract', () => {
 
   it('downloads a Control Plane grant URL instead of npm when downloadUrl is set', async () => {
     const bytes = Buffer.from('grant-tarball');
-    const fetchMock = jest
-      .fn()
-      .mockResolvedValue(
-        new Response(bytes, {
-          status: 200,
-          headers: { 'content-type': 'application/octet-stream' },
-        }),
-      );
+    const fetchMock = jest.fn().mockResolvedValue(
+      new Response(bytes, {
+        status: 200,
+        headers: { 'content-type': 'application/octet-stream' },
+      }),
+    );
     const prevFetch = global.fetch;
     global.fetch = fetchMock as unknown as typeof fetch;
 
