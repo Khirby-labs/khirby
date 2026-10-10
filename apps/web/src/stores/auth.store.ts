@@ -97,6 +97,18 @@ export const useAuthStore = defineStore('auth', () => {
     );
   }
 
+  /**
+   * Marketplace + plugin settings. Community (no scope claims) keeps integrations:manage.
+   * Multi-Workspace: only the active workspace owner (ADR-0057).
+   */
+  const canManagePlugins = computed(() => {
+    const scope = user.value?.scope as { canManagePlugins?: boolean } | null | undefined;
+    if (scope && typeof scope.canManagePlugins === 'boolean') {
+      return scope.canManagePlugins;
+    }
+    return hasPermission('integrations', 'manage');
+  });
+
   return {
     user,
     loading,
@@ -104,6 +116,7 @@ export const useAuthStore = defineStore('auth', () => {
     networkError,
     isAuthenticated,
     isSuperAdmin,
+    canManagePlugins,
     checkSession,
     clearSession,
     login,

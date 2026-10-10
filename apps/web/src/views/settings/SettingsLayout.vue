@@ -45,6 +45,10 @@ import { useAuthStore } from '../../stores/auth.store';
 const { t } = useI18n();
 const auth = useAuthStore();
 const visibleSettingsNav = computed(() =>
-  filterNavForUser(settingsNav, auth.user?.permissions ?? []),
+  filterNavForUser(settingsNav, auth.user?.permissions ?? []).filter((item) => {
+    // Integrations (plugins) — workspace owner only under Multi-Workspace (ADR-0057).
+    if (item.to === '/settings/integrations') return auth.canManagePlugins;
+    return true;
+  }),
 );
 </script>

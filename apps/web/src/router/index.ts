@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
+import type { Plugin } from '@khirby/types';
 import { useAuthStore } from '../stores/auth.store';
 import { usePluginsStore } from '../stores/plugins.store';
 import { pluginComponentMap, pluginChildRoutes } from '../plugins/plugin-registry';
@@ -262,19 +263,7 @@ function toLayoutChildPath(fullPath: string): string {
  * Można wołać wielokrotnie (np. po enable/disable).
  */
 export function registerPluginRoutes(
-  plugins: Array<{
-    name: string;
-    enabled: boolean;
-    webBundleUrl?: string;
-    webBundleVersion?: string;
-    frontendRoutes?: Array<{
-      path: string;
-      name: string;
-      navLabel?: string;
-      navLabelKey?: string;
-      showInNav?: boolean;
-    }>;
-  }>,
+  plugins: Array<Pick<Plugin, 'name' | 'enabled'> & Partial<Plugin>>,
 ) {
   const enabledRouteNames = new Set<string>();
 
@@ -290,11 +279,26 @@ export function registerPluginRoutes(
           : () => import('../views/plugins/InstancePluginView.vue'));
 
       enabledRouteNames.add(route.name);
+      const usageRedirectName =
+        plugin.name === 'crm_multi_workspace' ? 'plugin-multi-workspace-usage' : null;
+      if (usageRedirectName) enabledRouteNames.add(usageRedirectName);
 
       const bundleKey = `${plugin.webBundleUrl ?? ''}@${plugin.webBundleVersion ?? ''}`;
       if (router.hasRoute(route.name)) {
         if (registeredPluginRouteBundles.get(route.name) === bundleKey) continue;
         router.removeRoute(route.name);
+      }
+
+      // Volume PluginWebEntry.children are not in pluginChildRoutes (generated
+      // ./web only). Multi-workspace keeps usage as ?tab=usage — register a
+      // path redirect so /plugins/multi-workspace/usage is not a hard 404.
+      const children = [...(pluginChildRoutes[plugin.name] ?? [])];
+      if (usageRedirectName) {
+        children.push({
+          path: 'usage',
+          name: usageRedirectName,
+          redirect: `${route.path}?tab=usage`,
+        });
       }
 
       router.addRoute(LAYOUT_ROUTE_NAME, {
@@ -304,7 +308,7 @@ export function registerPluginRoutes(
         // A plugin screen gets a tab title too: its declared key when the SPA
         // knows it, otherwise the literal the plugin shipped (ADR-0011).
         meta: { titleKey: route.navLabelKey, title: route.navLabel },
-        children: pluginChildRoutes[plugin.name] ?? [],
+        children,
       });
       registeredPluginRouteBundles.set(route.name, bundleKey);
     }
@@ -397,6 +401,14 @@ router.beforeEach(async (to) => {
 
     if (to.path.startsWith('/inquiries') && !auth.hasPermission('inquiries', 'manage')) {
       return;
+    }
+
+    // Marketplace + plugin settings: workspace owner under Multi-Workspace (ADR-0057).
+    if (
+      (to.name === 'marketplace' || to.name === 'settings-integrations') &&
+      !auth.canManagePlugins
+    ) {
+      return { path: '/contacts', replace: true };
     }
   }
 });

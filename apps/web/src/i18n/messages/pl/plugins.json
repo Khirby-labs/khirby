@@ -274,5 +274,11 @@
   "hello": {
     "displayName": "Przykład Hello",
     "description": "Minimalna wtyczka pokazowa — zapisuje linię w logu przy każdym nowym kontakcie."
+  },
+  "multiWorkspace": {
+    "displayName": "Wiele firm",
+    "description": "Enterprise: izolacja firm, zużycie AI i dashboard.",
+    "nav": "Firmy",
+    "usageNav": "Zużycie AI"
   }
 }

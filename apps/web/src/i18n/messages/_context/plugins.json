@@ -150,5 +150,9 @@
   "pokelo.status.saved": "Brief success confirmation after settings are saved.",
   "pokelo.status.autoSelected": "Hint when the only visible project was auto-bound. {name} is the project name.",
   "hello.displayName": "Title of the example plugin's Marketplace card and of its own page. It is a demonstration fixture, not a product — the name should read as an example, not as a feature. 'Hello' stays English in both languages (it is the package name).",
-  "hello.description": "One sentence under that title: this plugin exists to show the install path working, and all it does is write a line to the log when a contact is created. Plain, no marketing."
+  "hello.description": "One sentence under that title: this plugin exists to show the install path working, and all it does is write a line to the log when a contact is created. Plain, no marketing.",
+  "multiWorkspace.displayName": "Product name in the plugin list for the Enterprise multi-workspace plugin.",
+  "multiWorkspace.description": "One-line plugin card description. Keep Enterprise as a product tier word.",
+  "multiWorkspace.nav": "Sidebar label for the workspace switcher screen.",
+  "multiWorkspace.usageNav": "Sidebar label for the AI usage dashboard under the multi-workspace plugin. Volume UI copy lives in the plugin local i18n catalog, not these keys."
 }
