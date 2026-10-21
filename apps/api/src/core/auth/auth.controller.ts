@@ -8,15 +8,18 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { ModuleRef } from '@nestjs/core';
 import { Throttle } from '@nestjs/throttler';
 import { FastifyRequest } from 'fastify';
 import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
+import { OidcService } from './oidc.service';
 import { SessionGuard } from './session.guard';
 import { RbacService } from '../rbac/rbac.service';
-import { IsEmail, IsIn, IsString, MinLength, ValidateIf } from 'class-validator';
+import { FirmMembershipSyncService } from '../../modules/control-plane/firm-membership-sync.service';
+import { IsEmail, IsIn, IsOptional, IsString, MinLength, ValidateIf } from 'class-validator';
 // Relative import (like permission-catalog): `nest build` is plain tsc; a bare
 // '@khirby/types' specifier would survive into dist. SUPPORTED_LOCALE_CODES is a
 // value import, so the relative path is load-bearing here, not just a convention.
@@ -50,13 +53,24 @@ class ChangePasswordDto {
   @IsString() @MinLength(8) newPassword: string;
 }
 
+class OidcCompleteDto {
+  @IsString() code: string;
+  @IsString() state: string;
+}
+
+class OidcLinkStartDto {
+  @IsOptional() @IsString() password?: string;
+}
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private auth: AuthService,
+    private oidc: OidcService,
     private rbac: RbacService,
     private readonly moduleRef: ModuleRef,
+    private readonly firmSync: FirmMembershipSyncService,
   ) {}
 
   /** Volume Enterprise plugin may bind SCOPE_PROVIDER after boot (ADR-0048 / ADR-0055). */
@@ -73,6 +87,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() dto: LoginDto, @Req() req: FastifyRequest): Promise<LoginResponse> {
     const user = await this.auth.validateUser(dto.email, dto.password);
+    await this.firmSync.syncForUser(user.id, user.email);
     await req.session.regenerate();
     req.session.userId = user.id;
     const provider = this.scopeProvider();
@@ -135,6 +150,169 @@ export class AuthController {
       dto.currentPassword,
       dto.newPassword,
     );
+  }
+
+  @Get('oidc/status')
+  @ApiOperation({ summary: 'Whether central OIDC SSO is enabled' })
+  oidcStatus() {
+    return this.oidc.status();
+  }
+
+  @Get('oidc/login/start')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @ApiOperation({ summary: 'Start OIDC login (Authorization Code + PKCE)' })
+  async oidcLoginStart(@Req() req: FastifyRequest) {
+    const redirectUri = this.oidcRedirectUri(req);
+    const { state, nonce } = this.oidc.createStateNonce();
+    const { verifier, challenge } = this.oidc.createPkce();
+    // Redis-backed pending (not only session cookie) — cookie can be missing after
+    // the Control Plane redirect (localhost vs 127.0.0.1 / SameSite).
+    await this.oidc.savePending(state, {
+      mode: 'login',
+      nonce,
+      verifier,
+      redirectUri,
+    });
+    (req.session as any).oidc = { mode: 'login', state, nonce, verifier, redirectUri };
+    await req.session.save();
+    const authorizationUrl = await this.oidc.buildAuthorizationUrl({
+      mode: 'login',
+      redirectUri,
+      state,
+      nonce,
+      codeChallenge: challenge,
+    });
+    return { authorizationUrl };
+  }
+
+  @Post('oidc/complete')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Complete OIDC login or link; establishes host-only session' })
+  async oidcComplete(
+    @Body() dto: OidcCompleteDto,
+    @Req() req: FastifyRequest,
+  ): Promise<LoginResponse> {
+    const sessionPending = (req.session as any).oidc as
+      | {
+          mode: 'login' | 'link';
+          state: string;
+          nonce: string;
+          verifier: string;
+          redirectUri: string;
+          userId?: string;
+        }
+      | undefined;
+    const redisPending = await this.oidc.takePending(dto.state);
+    const pending =
+      redisPending ??
+      (sessionPending && sessionPending.state === dto.state
+        ? {
+            mode: sessionPending.mode,
+            nonce: sessionPending.nonce,
+            verifier: sessionPending.verifier,
+            redirectUri: sessionPending.redirectUri,
+            userId: sessionPending.userId,
+          }
+        : null);
+    if (!pending) {
+      throw AppException.invalidCredentials();
+    }
+    const sessionUserId = (req.session as any).userId as string | undefined;
+    // Link completion must be the same browser session that started it.
+    if (pending.mode === 'link' && (!pending.userId || pending.userId !== sessionUserId)) {
+      throw AppException.invalidCredentials();
+    }
+    const localUserId = pending.mode === 'link' ? pending.userId : undefined;
+    const user = await this.oidc.complete({
+      code: dto.code,
+      redirectUri: pending.redirectUri,
+      codeVerifier: pending.verifier,
+      expectedNonce: pending.nonce,
+      mode: pending.mode,
+      localUserId,
+    });
+    await this.firmSync.syncForUser(user.id, user.email);
+    delete (req.session as any).oidc;
+    await req.session.regenerate();
+    req.session.userId = user.id;
+    const provider = this.scopeProvider();
+    if (provider) {
+      try {
+        const scopeId = await provider.resolveFromSession({ userId: user.id });
+        if (scopeId) req.session.scopeId = scopeId;
+      } catch {
+        /* Community / provider not ready */
+      }
+    }
+    await req.session.save();
+    return { user: await this.toSessionUser(user, req.session.scopeId) };
+  }
+
+  @Get('oidc/link/status')
+  @UseGuards(SessionGuard)
+  @ApiBearerAuth('session')
+  @ApiOperation({ summary: 'Account linking status for current user (ADR-0010)' })
+  oidcLinkStatus(@Req() req: FastifyRequest) {
+    return this.oidc.linkStatus((req.session as any).userId);
+  }
+
+  @Post('oidc/link/start')
+  @UseGuards(SessionGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth('session')
+  @ApiOperation({ summary: 'Start OIDC account link; preserves local userId' })
+  async oidcLinkStart(@Body() dto: OidcLinkStartDto, @Req() req: FastifyRequest) {
+    const userId = (req.session as any).userId as string;
+    await this.oidc.assertPassword(userId, dto.password);
+    const redirectUri = this.oidcRedirectUri(req);
+    const { state, nonce } = this.oidc.createStateNonce();
+    const { verifier, challenge } = this.oidc.createPkce();
+    await this.oidc.savePending(state, {
+      mode: 'link',
+      nonce,
+      verifier,
+      redirectUri,
+      userId,
+    });
+    (req.session as any).oidc = { mode: 'link', state, nonce, verifier, redirectUri, userId };
+    await req.session.save();
+    const authorizationUrl = await this.oidc.buildAuthorizationUrl({
+      mode: 'link',
+      redirectUri,
+      state,
+      nonce,
+      codeChallenge: challenge,
+    });
+    return { authorizationUrl, status: 'link_pending' as const };
+  }
+
+  private oidcRedirectUri(req?: FastifyRequest): string {
+    const configured = process.env.OIDC_REDIRECT_URI?.trim();
+    if (!configured) {
+      throw new ServiceUnavailableException('OIDC_REDIRECT_URI is not configured');
+    }
+    const configuredUrl = new URL(configured);
+    // Only swap localhost ↔ 127.0.0.1 on the same port. Any other Origin is ignored
+    // so the redirect stays on the URI registered with Control Plane.
+    const originHeader = req?.headers?.origin ?? req?.headers?.referer;
+    if (typeof originHeader === 'string' && originHeader) {
+      try {
+        const requestOrigin = new URL(originHeader);
+        const localHosts = new Set(['localhost', '127.0.0.1']);
+        if (
+          localHosts.has(requestOrigin.hostname) &&
+          localHosts.has(configuredUrl.hostname) &&
+          requestOrigin.protocol === configuredUrl.protocol &&
+          requestOrigin.port === configuredUrl.port
+        ) {
+          return `${requestOrigin.origin}${configuredUrl.pathname}`;
+        }
+      } catch {
+        /* fall through */
+      }
+    }
+    return configured;
   }
 
   private async toSessionUser(

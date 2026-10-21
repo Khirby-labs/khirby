@@ -70,6 +70,37 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  /** Suite SSO (Control Plane OIDC) — call after IdP redirects back with code+state. */
+  async function completeOidcLogin(code: string, state: string): Promise<void> {
+    loading.value = true;
+    try {
+      const data = await apiPost<LoginResponse>('/api/auth/oidc/complete', { code, state });
+      resetSessionState(pinia);
+      user.value = data.user;
+      checked.value = true;
+      await applyAccountLocale(data.user.locale);
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function startOidcLogin(): Promise<string> {
+    const data = await apiGet<{ authorizationUrl: string }>('/api/auth/oidc/login/start');
+    if (!data.authorizationUrl) {
+      throw new Error('OIDC authorization URL missing');
+    }
+    return data.authorizationUrl;
+  }
+
+  async function fetchOidcEnabled(): Promise<boolean> {
+    try {
+      const data = await apiGet<{ enabled: boolean }>('/api/auth/oidc/status');
+      return data.enabled === true;
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Persists the interface language on the account, so a second device follows it
    * instead of the browser. A no-op while signed out: /login is localized from
@@ -120,6 +151,9 @@ export const useAuthStore = defineStore('auth', () => {
     checkSession,
     clearSession,
     login,
+    completeOidcLogin,
+    startOidcLogin,
+    fetchOidcEnabled,
     logout,
     saveLocale,
     hasPermission,

@@ -7,7 +7,19 @@
         <p class="text-sm text-text-muted mt-1">{{ t('auth.login.subtitle') }}</p>
       </div>
 
-      <div class="crm-panel p-6">
+      <div class="crm-panel p-6 space-y-4">
+        <template v-if="oidcEnabled">
+          <button
+            type="button"
+            class="btn-ghost w-full"
+            :disabled="auth.loading || ssoLoading"
+            @click="handleSso"
+          >
+            {{ ssoLoading ? t('auth.login.ssoSubmitting') : t('auth.login.sso') }}
+          </button>
+          <p class="text-center text-xs text-text-ghost">{{ t('auth.login.orPassword') }}</p>
+        </template>
+
         <form @submit.prevent="handleLogin" class="space-y-4">
           <div>
             <label class="crm-label" for="email">{{ t('auth.login.email') }}</label>
@@ -38,7 +50,7 @@
 
           <div v-if="error" class="crm-error">{{ error }}</div>
 
-          <button type="submit" :disabled="auth.loading" class="btn-primary w-full">
+          <button type="submit" :disabled="auth.loading || ssoLoading" class="btn-primary w-full">
             {{ auth.loading ? t('auth.login.submitting') : t('auth.login.submit') }}
           </button>
         </form>
@@ -53,7 +65,7 @@
  * the locale comes from the global i18n instance (navigator, or the stored
  * choice), never from the account being signed into.
  */
-import { ref } from 'vue';
+import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../stores/auth.store';
@@ -65,6 +77,16 @@ const router = useRouter();
 const email = ref('');
 const password = ref('');
 const error = ref('');
+const oidcEnabled = ref(false);
+const ssoLoading = ref(false);
+
+onMounted(async () => {
+  if (auth.isAuthenticated) {
+    await router.replace('/contacts');
+    return;
+  }
+  oidcEnabled.value = await auth.fetchOidcEnabled();
+});
 
 async function handleLogin() {
   error.value = '';
@@ -73,6 +95,20 @@ async function handleLogin() {
     await router.push('/contacts');
   } catch (e: unknown) {
     error.value = e instanceof Error ? e.message : t('auth.login.errors.failed');
+  }
+}
+
+async function handleSso() {
+  if (ssoLoading.value) return;
+  error.value = '';
+  ssoLoading.value = true;
+  try {
+    const url = await auth.startOidcLogin();
+    // Full navigation — do not reset ssoLoading (page unloads).
+    window.location.assign(url);
+  } catch (e: unknown) {
+    ssoLoading.value = false;
+    error.value = e instanceof Error ? e.message : t('auth.login.errors.ssoFailed');
   }
 }
 </script>

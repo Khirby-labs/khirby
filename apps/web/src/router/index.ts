@@ -15,6 +15,12 @@ const staticRoutes: RouteRecordRaw[] = [
     meta: { public: true, titleKey: 'route.login' },
   },
   {
+    path: '/auth/oidc/callback',
+    name: 'oidc-callback',
+    component: () => import('../views/auth/OidcCallbackView.vue'),
+    meta: { public: true, titleKey: 'route.login' },
+  },
+  {
     path: '/',
     name: 'app',
     component: () => import('../views/layout/AppLayout.vue'),

@@ -42,6 +42,9 @@ describe('LoginView', () => {
   beforeEach(() => {
     // default happy path; individual tests override
     server.use(
+      http.get(api('/api/auth/oidc/status'), () =>
+        HttpResponse.json({ enabled: false, issuer: null }),
+      ),
       http.post(api('/api/auth/login'), () =>
         HttpResponse.json({
           user: {

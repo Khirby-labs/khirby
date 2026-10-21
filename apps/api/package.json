@@ -46,6 +46,7 @@
     "imapflow": "^1.6.3",
     "ioredis": "^5.11.1",
     "jiti": "^2.7.0",
+    "jose": "^5.10.0",
     "mailparser": "^3.9.20",
     "nodemailer": "^9.0.3",
     "pacote": "^22.0.0",
