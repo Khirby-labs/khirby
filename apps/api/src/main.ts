@@ -141,7 +141,9 @@ async function bootstrap() {
       httpOnly: true,
       // Production always Secure; nginx must send X-Forwarded-Proto (docker/nginx.conf).
       secure: isDev ? 'auto' : true,
-      sameSite: 'strict',
+      // Lax: OIDC returns via top-level redirect from Control Plane (different port /
+      // host alias). Strict drops khirby.sid on that bounce → silent back to /login.
+      sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     },
   });

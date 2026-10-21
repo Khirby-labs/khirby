@@ -100,13 +100,29 @@ export async function apiClient<T = unknown>(path: string, options: RequestInit 
      * Fastify itself is a session problem, and stranding the user is worse.
      */
     if (res.status === 401 && !AUTH_ATTEMPT_CODES.has(body.code)) {
-      const { useAuthStore } = await import('../stores/auth.store');
-      if (getActivePinia()) useAuthStore().clearSession();
-      else invalidateSessionRequests();
-      // Named export 'router' from router/index.ts
-      import('../router').then((mod) => {
-        mod.router.push('/login');
-      });
+      // /auth/me is a boot probe (router + checkSession) — a 401 here means
+      // "not logged in", not "session expired". Clearing + push('/login') races
+      // the OIDC callback: probe 401's async clearSession fires AFTER
+      // oidc/complete succeeded and kicks the user back to login with no error.
+      // oidc/complete must surface its own failure on the callback page.
+      const isSessionProbe = path.includes('/auth/me');
+      const isOidcComplete = path.includes('/auth/oidc/complete');
+      if (!isSessionProbe && !isOidcComplete) {
+        const { useAuthStore } = await import('../stores/auth.store');
+        if (getActivePinia()) {
+          const auth = useAuthStore();
+          // Only bounce when we believed we were signed in — never clobber a
+          // login that completed while this 401 response was in flight.
+          if (auth.user) {
+            auth.clearSession();
+            import('../router').then((mod) => {
+              mod.router.push('/login');
+            });
+          }
+        } else {
+          invalidateSessionRequests();
+        }
+      }
       // Normalize: a bare Nest 401 says "Unauthorized", which is not copy.
       throw new ApiError({ ...body, code: 'SESSION_EXPIRED', message: 'Session expired' });
     }
@@ -173,9 +189,15 @@ export async function apiPostStream(
     signal.throwIfAborted();
     if (res.status === 401 && !AUTH_ATTEMPT_CODES.has(errBody.code)) {
       const { useAuthStore } = await import('../stores/auth.store');
-      if (getActivePinia()) useAuthStore().clearSession();
-      else invalidateSessionRequests();
-      import('../router').then((mod) => mod.router.push('/login'));
+      if (getActivePinia()) {
+        const auth = useAuthStore();
+        if (auth.user) {
+          auth.clearSession();
+          import('../router').then((mod) => mod.router.push('/login'));
+        }
+      } else {
+        invalidateSessionRequests();
+      }
       throw new ApiError({ ...errBody, code: 'SESSION_EXPIRED', message: 'Session expired' });
     }
     throw new ApiError(errBody);

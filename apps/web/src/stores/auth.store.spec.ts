@@ -40,11 +40,9 @@ describe('auth.store', () => {
   beforeEach(() => {
     setActivePinia(createPinia());
     /*
-     * A 401 with code SESSION_EXPIRED makes the api client navigate to /login,
-     * which dynamically imports the real router singleton and runs its guard —
-     * and that guard fetches /api/plugins. Without a handler, MSW's
-     * onUnhandledRequest: 'error' fires ASYNCHRONOUSLY and fails whichever spec
-     * file happens to be running, which looked like a flake in router.spec.
+     * Mid-session 401s (not /auth/me probes) still bounce to /login via the
+     * api client, which imports the real router guard — and that guard may
+     * fetch /api/plugins. Stub it so MSW onUnhandledRequest does not flake.
      */
     server.use(http.get(api('/api/plugins'), () => HttpResponse.json([])));
   });

@@ -55,6 +55,8 @@ export class BootstrapService implements OnApplicationBootstrap {
       .insert(rolePermissions)
       .values(ALL_PERMISSIONS.map((p) => ({ roleId: role.id, ...p })));
 
+    await this.ensureSsoUserRole();
+
     // Create admin user only on first run
     const existing = await this.db.select().from(users).limit(1);
     if (existing.length > 0) {
@@ -70,5 +72,30 @@ export class BootstrapService implements OnApplicationBootstrap {
     const user = await this.auth.createUser(email, password);
     await this.db.insert(userRoles).values({ userId: user.id, roleId: role.id });
     this.logger.log(`First-run admin created: ${email}`);
+  }
+
+  /**
+   * Day-to-day CRM access for SSO accounts. Not instance admin:
+   * no roles, users, settings, or integration management.
+   */
+  private async ensureSsoUserRole() {
+    const name = 'sso-user';
+    const denied = new Set(['roles', 'users', 'settings', 'integrations']);
+    const [existing] = await this.db.select().from(roles).where(eq(roles.name, name)).limit(1);
+    const role =
+      existing ??
+      (
+        await this.db
+          .insert(roles)
+          .values({ name, description: 'Suite SSO member' } as never)
+          .returning()
+      )[0];
+    await this.db.delete(rolePermissions).where(eq(rolePermissions.roleId, role.id));
+    const permissions = ALL_PERMISSIONS.filter((p) => !denied.has(p.resource));
+    if (permissions.length > 0) {
+      await this.db
+        .insert(rolePermissions)
+        .values(permissions.map((p) => ({ roleId: role.id, ...p })));
+    }
   }
 }

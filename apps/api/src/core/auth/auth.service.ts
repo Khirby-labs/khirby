@@ -20,6 +20,11 @@ export class AuthService {
       this.logger.warn(`Login failed for [${emailHash}]`);
       throw AppException.invalidCredentials();
     }
+    if (!user.passwordHash) {
+      const emailHash = createHash('sha256').update(email).digest('hex').slice(0, 8);
+      this.logger.warn(`Password login blocked (SSO-only) for [${emailHash}]`);
+      throw AppException.invalidCredentials();
+    }
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) {
       const emailHash = createHash('sha256').update(email).digest('hex').slice(0, 8);
@@ -61,6 +66,7 @@ export class AuthService {
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
     const [user] = await this.db.select().from(users).where(eq(users.id, userId)).limit(1);
     if (!user) throw AppException.sessionExpired();
+    if (!user.passwordHash) throw AppException.currentPasswordInvalid();
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
     if (!valid) throw AppException.currentPasswordInvalid();
     const passwordHash = await bcrypt.hash(newPassword, 10);

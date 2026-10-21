@@ -127,6 +127,7 @@ export {
   assertScopeIfRequired,
 } from './scope/scoped-db';
 export { withScopedDb, type SetLocalScopeFn } from './scope/scope.interceptor';
+export { SESSION_MEMBERSHIP_SYNC, type SessionMembershipSyncLike } from './session-membership-sync';
 export {
   AI_USAGE_RECORDER,
   type AiUsageRecorderLike,

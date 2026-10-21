@@ -103,19 +103,27 @@ export const forms = pgTable('forms', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
-export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  email: text('email').notNull().unique(),
-  passwordHash: text('password_hash').notNull(),
-  /**
-   * Interface language, chosen in Settings. NULL means "no choice made" — the SPA
-   * then follows the browser, which is also what /login has to do before a session
-   * exists (ADR-0011). Validated against SUPPORTED_LOCALE_CODES on write, so an
-   * unregistered value can never reach the column.
-   */
-  locale: text('locale'),
-  createdAt: timestamp('created_at').defaultNow().notNull(),
-});
+export const users = pgTable(
+  'users',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    email: text('email').notNull().unique(),
+    /** Nullable for SSO-only accounts after OIDC link/provision (Bearly CP ADR-0010). */
+    passwordHash: text('password_hash'),
+    /**
+     * Interface language, chosen in Settings. NULL means "no choice made" — the SPA
+     * then follows the browser, which is also what /login has to do before a session
+     * exists (ADR-0011). Validated against SUPPORTED_LOCALE_CODES on write, so an
+     * unregistered value can never reach the column.
+     */
+    locale: text('locale'),
+    /** OIDC issuer URL when linked to central IdP (unique with oidcSubject). */
+    oidcIssuer: text('oidc_issuer'),
+    oidcSubject: text('oidc_subject'),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => [unique('users_oidc_issuer_subject_uidx').on(t.oidcIssuer, t.oidcSubject)],
+);
 
 export const roles = pgTable('roles', {
   id: uuid('id').defaultRandom().primaryKey(),
