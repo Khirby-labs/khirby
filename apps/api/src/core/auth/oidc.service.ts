@@ -81,9 +81,14 @@ export class OidcService implements OnModuleDestroy {
     return (this.config.get<string>('OIDC_ENABLED') ?? '').toLowerCase() === 'true';
   }
 
-  status(): { enabled: boolean; issuer: string | null } {
-    if (!this.enabled()) return { enabled: false, issuer: null };
-    return { enabled: true, issuer: this.config.get<string>('OIDC_ISSUER') ?? null };
+  status(): { enabled: boolean; issuer: string | null; autoLogin: boolean } {
+    if (!this.enabled()) return { enabled: false, issuer: null, autoLogin: false };
+    const flag = (this.config.get<string>('OIDC_AUTO_LOGIN') ?? '').trim().toLowerCase();
+    return {
+      enabled: true,
+      issuer: this.config.get<string>('OIDC_ISSUER') ?? null,
+      autoLogin: flag === 'true' || flag === '1' || flag === 'yes',
+    };
   }
 
   async linkStatus(userId: string): Promise<OidcLinkStatus> {
@@ -216,7 +221,7 @@ export class OidcService implements OnModuleDestroy {
       .limit(1);
     if (existing) return;
 
-    // Never super-admin. Operators set OIDC_DEFAULT_ROLE; otherwise the seeded sso-user role.
+    // Never super-admin. OIDC_DEFAULT_ROLE overrides the seeded sso-user role.
     const roleName = this.config.get<string>('OIDC_DEFAULT_ROLE')?.trim() || 'sso-user';
     const [role] = await this.db.select().from(roles).where(eq(roles.name, roleName)).limit(1);
     if (!role) {
@@ -242,7 +247,13 @@ export class OidcService implements OnModuleDestroy {
     const [taken] = await this.db
       .select()
       .from(users)
-      .where(and(eq(users.oidcIssuer, issuer), eq(users.oidcSubject, subject), isNotNull(users.oidcIssuer)))
+      .where(
+        and(
+          eq(users.oidcIssuer, issuer),
+          eq(users.oidcSubject, subject),
+          isNotNull(users.oidcIssuer),
+        ),
+      )
       .limit(1);
     if (taken && taken.id !== localUserId) {
       throw new ConflictException({

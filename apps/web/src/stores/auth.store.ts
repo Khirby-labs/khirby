@@ -92,12 +92,14 @@ export const useAuthStore = defineStore('auth', () => {
     return data.authorizationUrl;
   }
 
-  async function fetchOidcEnabled(): Promise<boolean> {
+  async function fetchOidcStatus(): Promise<{ enabled: boolean; autoLogin: boolean }> {
     try {
-      const data = await apiGet<{ enabled: boolean }>('/api/auth/oidc/status');
-      return data.enabled === true;
+      const data = await apiGet<{ enabled?: boolean; autoLogin?: boolean }>(
+        '/api/auth/oidc/status',
+      );
+      return { enabled: data.enabled === true, autoLogin: data.autoLogin === true };
     } catch {
-      return false;
+      return { enabled: false, autoLogin: false };
     }
   }
 
@@ -153,7 +155,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     completeOidcLogin,
     startOidcLogin,
-    fetchOidcEnabled,
+    fetchOidcStatus,
     logout,
     saveLocale,
     hasPermission,

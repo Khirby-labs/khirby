@@ -85,7 +85,13 @@ onMounted(async () => {
     await router.replace('/contacts');
     return;
   }
-  oidcEnabled.value = await auth.fetchOidcEnabled();
+  const status = await auth.fetchOidcStatus();
+  oidcEnabled.value = status.enabled;
+  const params = new URLSearchParams(window.location.search);
+  // ?local=1 keeps the password form when OIDC_AUTO_LOGIN is on.
+  if (status.autoLogin && params.get('local') !== '1' && !params.get('error')) {
+    await handleSso();
+  }
 });
 
 async function handleLogin() {

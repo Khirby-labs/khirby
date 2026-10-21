@@ -18,7 +18,6 @@ import { AuthService } from './auth.service';
 import { OidcService } from './oidc.service';
 import { SessionGuard } from './session.guard';
 import { RbacService } from '../rbac/rbac.service';
-import { FirmMembershipSyncService } from '../../modules/control-plane/firm-membership-sync.service';
 import { IsEmail, IsIn, IsOptional, IsString, MinLength, ValidateIf } from 'class-validator';
 // Relative import (like permission-catalog): `nest build` is plain tsc; a bare
 // '@khirby/types' specifier would survive into dist. SUPPORTED_LOCALE_CODES is a
@@ -28,7 +27,9 @@ import type { SessionUser, LoginResponse } from '../../../../../packages/types/s
 import { AppException } from '../errors/app-exception';
 import {
   SCOPE_PROVIDER,
+  SESSION_MEMBERSHIP_SYNC,
   type ScopeProviderLike,
+  type SessionMembershipSyncLike,
   resolveLoadedProvider,
 } from '../../../../../packages/plugin-host/src';
 
@@ -70,12 +71,25 @@ export class AuthController {
     private oidc: OidcService,
     private rbac: RbacService,
     private readonly moduleRef: ModuleRef,
-    private readonly firmSync: FirmMembershipSyncService,
   ) {}
 
   /** Volume Enterprise plugin may bind SCOPE_PROVIDER after boot (ADR-0048 / ADR-0055). */
   private scopeProvider(): ScopeProviderLike | null {
     return resolveLoadedProvider<ScopeProviderLike>(this.moduleRef, SCOPE_PROVIDER);
+  }
+
+  /** Firm membership lives in the multi-workspace plugin. Community installs skip this. */
+  private async syncMembership(userId: string, email: string | null | undefined): Promise<void> {
+    const sync = resolveLoadedProvider<SessionMembershipSyncLike>(
+      this.moduleRef,
+      SESSION_MEMBERSHIP_SYNC,
+    );
+    if (!sync) return;
+    try {
+      await sync.syncForUser(userId, email);
+    } catch {
+      /* plugin not ready */
+    }
   }
 
   @Post('login')
@@ -87,7 +101,7 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() dto: LoginDto, @Req() req: FastifyRequest): Promise<LoginResponse> {
     const user = await this.auth.validateUser(dto.email, dto.password);
-    await this.firmSync.syncForUser(user.id, user.email);
+    await this.syncMembership(user.id, user.email);
     await req.session.regenerate();
     req.session.userId = user.id;
     const provider = this.scopeProvider();
@@ -232,7 +246,7 @@ export class AuthController {
       mode: pending.mode,
       localUserId,
     });
-    await this.firmSync.syncForUser(user.id, user.email);
+    await this.syncMembership(user.id, user.email);
     delete (req.session as any).oidc;
     await req.session.regenerate();
     req.session.userId = user.id;

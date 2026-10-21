@@ -4,8 +4,6 @@ import { DatabaseModule } from '../../core/database/database.module';
 import { RbacModule } from '../../core/rbac/rbac.module';
 import { ControlPlaneClient } from './control-plane.client';
 import { ControlPlaneController } from './control-plane.controller';
-import { ControlPlaneProvisioningService } from './control-plane-provisioning.service';
-import { FirmMembershipSyncService } from './firm-membership-sync.service';
 import { InstallationIdentityService } from './installation-identity.service';
 import { TelemetryScheduler } from './telemetry.scheduler';
 import { TelemetryService } from './telemetry.service';
@@ -23,9 +21,7 @@ import { TelemetryService } from './telemetry.service';
     InstallationIdentityService,
     TelemetryService,
     TelemetryScheduler,
-    ControlPlaneProvisioningService,
-    FirmMembershipSyncService,
   ],
-  exports: [ControlPlaneClient, InstallationIdentityService, FirmMembershipSyncService],
+  exports: [ControlPlaneClient, InstallationIdentityService],
 })
 export class ControlPlaneModule {}
